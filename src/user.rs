@@ -3,7 +3,8 @@ use std::fmt;
 #[derive(Debug)]
 pub struct User {
   pub id: u32,
-  pub name: String,
+  pub first_name: String,
+  pub last_name: String,
   pub role: EmployeeRole,
   pub clients: Vec<u32>,
 }
@@ -11,7 +12,8 @@ pub struct User {
 impl PartialEq for User {
   fn eq(&self, other: &Self) -> bool {
     self.id == other.id
-      && self.name == other.name
+      && self.first_name == other.first_name
+      && self.last_name == other.last_name
       && self.clients == other.clients
       && self.role == other.role
   }
@@ -48,15 +50,24 @@ impl PartialEq for EmployeeRole {
 impl User {
   pub fn new(
     id: u32,
-    name: String,
+    first_name: String,
+    last_name: String,
     role: EmployeeRole,
     clients: Vec<u32>) -> User {
     User {
       id,
-      name,
+      first_name,
+      last_name,
       role,
       clients,
     }
+  }
+  pub fn full_name(&self) -> String {
+    let mut name = String::new();
+    name.push_str(&self.first_name);
+    name.push_str(" ");
+    name.push_str(&self.last_name);
+    name
   }
 }
 
@@ -64,9 +75,10 @@ impl fmt::Display for User {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "{} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {}\n",
       &self.id,
-      &self.name[..],
+      &self.first_name[..],
+      &self.last_name[..],
       &self.role,
       &self
         .clients
@@ -84,14 +96,16 @@ mod tests {
 
   #[test]
   fn new_users() {
-    let u1 = User::new(1, String::from("Carol"), ICC, vec![]);
-    let u2 = User::new(2, String::from("Kerri"), FP, vec![]);
+    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), ICC, vec![]);
+    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), FP, vec![]);
     let test_vec: Vec<u32> = vec![];
     assert_eq!(u1.id, 1);
-    assert_eq!(u1.name, String::from("Carol"));
+    assert_eq!(u1.first_name, String::from("Carol"));
+    assert_eq!(u1.last_name, String::from("Carolson"));
     assert_eq!(u1.clients, test_vec);
     assert_eq!(u2.id, 2);
-    assert_eq!(u2.name, String::from("Kerri"));
+    assert_eq!(u2.first_name, String::from("Kerri"));
+    assert_eq!(u2.last_name, String::from("Kerrison"));
     assert_eq!(u2.clients, test_vec);
   }
 }

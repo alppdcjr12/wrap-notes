@@ -13,8 +13,8 @@ use wrap_notes::*;
 
 #[test]
 fn can_write_users() {
-  let u1 = User::new(1, String::from("Pete"), ICC, vec![]);
-  let u2 = User::new(2, String::from("Johana"), FP, vec![]);
+  let u1 = User::new(1, String::from("Pete"), String::from("Smith"), ICC, vec![]);
+  let u2 = User::new(2, String::from("Johana"), String::from("Smith"), FP, vec![]);
 
   let client_string_1 = u1
     .clients
@@ -45,8 +45,8 @@ fn can_write_users() {
     lines,
     vec![
       String::from("##### users #####"),
-      format!("{} | {} | {} | {}", 1, "Pete", "ICC", client_string_1),
-      format!("{} | {} | {} | {}", 2, "Johana", "FP", client_string_2),
+      format!("{} | {} | {} | {} | {}", 1, "Pete", "Smith", "ICC", client_string_1),
+      format!("{} | {} | {} | {} | {}", 2, "Johana", "Smith", "FP", client_string_2),
       String::from("##### users #####"),
     ]
   );
@@ -55,10 +55,10 @@ fn can_write_users() {
 #[test]
 fn can_read_users() {
   let mut lines = String::from("##### users #####\n");
-  lines.push_str("1 | Pete | ICC | 1#2#3#4\n");
-  lines.push_str("2 | Vivian | FP | 5#6#7#8\n");
-  lines.push_str("3 | Sabrina | FP | 9#10#11#12\n");
-  lines.push_str("4 | Dave | ICC | 13#24#35#46\n");
+  lines.push_str("1 | Pete | Peteson | ICC | 1#2#3#4\n");
+  lines.push_str("2 | Vivian | Vivianson | FP | 5#6#7#8\n");
+  lines.push_str("3 | Sabrina | Sabrinason | FP | 9#10#11#12\n");
+  lines.push_str("4 | Dave | Davidson | ICC | 13#24#35#46\n");
   lines.push_str("##### users #####");
 
   let mut file = File::create("test_read_users.txt").unwrap();
@@ -67,10 +67,10 @@ fn can_read_users() {
   assert_eq!(
     NoteArchive::read_users("test_read_users.txt"),
     vec![
-      User::new(1, String::from("Pete"), ICC, vec![1, 2, 3, 4],),
-      User::new(2, String::from("Vivian"), FP, vec![5, 6, 7, 8],),
-      User::new(3, String::from("Sabrina"), FP, vec![9, 10, 11, 12],),
-      User::new(4, String::from("Dave"), ICC, vec![13, 24, 35, 46],),
+      User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4],),
+      User::new(2, String::from("Vivian"), String::from("Vivianson"), FP, vec![5, 6, 7, 8],),
+      User::new(3, String::from("Sabrina"), String::from("Sabrinason"), FP, vec![9, 10, 11, 12],),
+      User::new(4, String::from("Dave"), String::from("Davidson"), ICC, vec![13, 24, 35, 46],),
     ]
   );
   // remove unneeded file
@@ -79,14 +79,15 @@ fn can_read_users() {
 
 #[test]
 fn creates_unique_new_user() {
-  let user_1 = User::new(1, String::from("Pete"), ICC, vec![1, 2, 3, 4]);
-  let user_2 = User::new(2, String::from("Sandy"), FP, vec![5, 6, 7, 8]);
+  let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4]);
+  let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, vec![5, 6, 7, 8]);
   let users = vec![user_1, user_2];
   let mut notes = NoteArchive::new();
   notes.write_users(users, "test_unique_users.txt").unwrap();
 
-  let new_user_attempt = notes.generate_new_user(
+  let new_user_attempt = notes.generate_unique_new_user(
     String::from("Carl"),
+    String::from("Carlson"),
     ICC,
     "test_unique_users.txt",
   );
@@ -96,7 +97,7 @@ fn creates_unique_new_user() {
     Err(_) => panic!("Failed to generate user."),
   };
 
-  assert_eq!(new_user, User::new(3, String::from("Carl"), ICC, vec![]));
+  assert_eq!(new_user, User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![]));
 
   fs::remove_file("test_unique_users.txt").unwrap();
 }
@@ -105,23 +106,23 @@ fn creates_unique_new_user() {
 fn saves_user_to_file() {
   {
     let mut lines = String::from("##### users #####\n");
-    lines.push_str("1 | Pete | ICC | 1#2#3#4\n");
-    lines.push_str("2 | Sandy | FP | 5#6#7#8\n");
+    lines.push_str("1 | Pete | Peteson | ICC | 1#2#3#4\n");
+    lines.push_str("2 | Sandy | Sandyson | FP | 5#6#7#8\n");
     lines.push_str("##### users #####");
 
     let mut file = File::create("test_save_user.txt").unwrap();
     file.write_all(lines.as_bytes()).unwrap();
 
     let mut notes = NoteArchive::new();
-    let user = User::new(3, String::from("Carl"), ICC, vec![]);
+    let user = User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![]);
     notes.save_user(user, "test_save_user.txt");
 
     assert_eq!(
       NoteArchive::read_users("test_save_user.txt"),
       vec![
-        User::new(1, String::from("Pete"), ICC, vec![1, 2, 3, 4],),
-        User::new(2, String::from("Sandy"), FP, vec![5, 6, 7, 8],),
-        User::new(3, String::from("Carl"), ICC, vec![])
+        User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4],),
+        User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, vec![5, 6, 7, 8],),
+        User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![])
       ]
     );
   }
@@ -198,7 +199,7 @@ fn creates_unique_new_client() {
   let mut notes = NoteArchive::new();
   notes.write_clients(clients, "test_unique_clients.txt").unwrap();
 
-  let new_client_attempt = notes.generate_new_client(
+  let new_client_attempt = notes.generate_unique_new_client(
     String::from("Carl"),
     String::from("Carlson"),
     NaiveDate::from_ymd(2008, 3, 4),
