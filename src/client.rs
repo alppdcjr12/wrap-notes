@@ -37,6 +37,42 @@ impl Client {
       collaterals,
     }
   }
+  pub fn full_name(&self) -> String {
+    let mut name = String::new();
+    name.push_str(&self.first_name);
+    name.push_str(" ");
+    name.push_str(&self.last_name);
+    name
+  }
+  pub fn fmt_dob(&self) -> String {
+    let dob: String = format!("{}-{}-{}", &self.dob.year(), &self.dob.month(), &self.dob.day());
+    dob
+  }
+  pub fn fmt_date_of_birth(&self) -> String {
+    let month = match &self.dob.month() {
+      1 => "January",
+      2 => "February",
+      3 => "March",
+      4 => "April",
+      5 => "May",
+      6 => "June",
+      7 => "July",
+      8 => "August",
+      9 => "September",
+      10 => "October",
+      11 => "November",
+      12 => "December",
+      _ => "UNKNOWN MONTH",
+    };
+    let suffix = match &self.dob.day() {
+      1 | 21 | 31 => "st",
+      2 | 22 => "nd",
+      3 | 23 => "rd",
+      _ => "th"
+    };
+    let dob: String = format!("{} {}{}, {}", month, &self.dob.day(), suffix, &self.dob.year());
+    dob
+  }
 }
 
 impl fmt::Display for Client {

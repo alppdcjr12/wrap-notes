@@ -17,6 +17,9 @@ pub struct NoteArchive {
   pub current_user_id: Option<u32>,
   pub clients: Vec<Client>,
   pub current_client_ids: Option<Vec<u32>>,
+  pub current_client_id: Option<u32>,
+  pub current_collateral_ids: Option<Vec<u32>>,
+  pub current_collateral_id: Option<u32>,
 }
 
 impl NoteArchive {
@@ -25,22 +28,24 @@ impl NoteArchive {
       vec![
         User::new(
           1,
-          String::from("Pete"),
+          String::from("Olivia"),
           String::from("Peterson"),
           ICC,
           vec![],
         ),
         User::new(
           2,
-          String::from("Charles"),
-          String::from("Charleson"),
+          String::from("Peter"),
+          String::from("Oliviason"),
           FP,
           vec![],
         )
     ], "users.txt").unwrap();
+    self.load_from_files("users.txt", "clients.txt");
     let user_id = self.choose_user("users.txt");
-    self.load_users("users.txt");
     self.load_user(user_id, "users.txt").unwrap();
+    let client_id = self.choose_client("clients.txt");
+    self.load_client(client_id, "clients.txt").unwrap();
 
   }
   pub fn new() -> NoteArchive {
@@ -49,8 +54,14 @@ impl NoteArchive {
       clients: vec![],
       current_user_id: None,
       current_client_ids: None,
+      current_client_id: None,
+      current_collateral_ids: None,
+      current_collateral_id: None,
     }
   }
+
+  // users
+
   fn pub_display_users(&self) {
     println!("{:-^50}", "-");
     println!("{:-^50}", " Users ");
@@ -61,11 +72,11 @@ impl NoteArchive {
     }
     println!("{:-^50}", "-");
   }
-  fn load_users(&mut self, filepath: &str) {
-    self.users = Self::read_users(filepath);
+  fn load_from_files(&mut self, user_filepath: &str, client_filepath: &str) {
+    self.users = Self::read_users(user_filepath);
+    self.clients = Self::read_clients(client_filepath);
   }
   fn load_user(&mut self, id: u32, filepath: &str) -> std::io::Result<()> {
-    self.load_users(filepath);
     let current: Option<&User> = self.users.iter().find(|u| u.id == id);
     match current {
       Some(u) => {
@@ -74,20 +85,18 @@ impl NoteArchive {
         Ok(())
       },
       None => {
-        Err(Error::new(ErrorKind::Other, "Failed to read user {} from filepath."))
+        Err(Error::new(ErrorKind::Other, "Failed to read user from filepath."))
       }
     }
   }
   fn choose_user(&mut self, filepath: &str) -> u32 {
-    self.load_users(filepath);
     self.pub_display_users();
     
     let verified_id = loop {
-
       let chosen_id = loop {
         let input = loop {
           let mut choice = String::new();
-          println!("Enter user ID (or 'NEW' to create new).");
+          println!("Enter user ID (or 'NEW' to create a new user).");
           let read_attempt = io::stdin().read_line(&mut choice);
           match read_attempt {
             Ok(_) => break choice,
@@ -105,7 +114,6 @@ impl NoteArchive {
           match input.trim().parse() {
             Ok(num) => break num,
             Err(e) => {
-              println!("input is {:?}", input);
               println!("Could not read input as a number; try again ({}).", e);
               continue;
             },
@@ -122,9 +130,6 @@ impl NoteArchive {
     };
     verified_id
   }
-
-  // users
-
   pub fn create_user_get_id(&mut self, filepath: &str) -> u32 {
     
     let user = loop {
@@ -175,7 +180,7 @@ impl NoteArchive {
       match user_attempt {
         Ok(user) => break user,
         Err(e) => {
-          println!("User could not be generated.");
+          println!("User could not be generated: {}.", e);
           continue;
         }
       }
@@ -209,9 +214,8 @@ impl NoteArchive {
     result
   }
   pub fn save_user(&mut self, user: User, filepath: &str) {
-    let mut users: Vec<User> = NoteArchive::read_users(filepath);
-    users.push(user);
-    self.write_users(users, filepath).unwrap();
+    self.users.push(user);
+    self.write_users(self.users, filepath).unwrap();
   }
   pub fn write_users(&mut self, users: Vec<User>, filepath: &str) -> std::io::Result<()> {
     let mut lines = String::from("##### users #####\n");
@@ -269,6 +273,202 @@ impl NoteArchive {
       users.push(u);
     }
     users
+  }
+
+  // clients
+  fn pub_display_clients(&self) {
+    println!("{:-^50}", "-");
+    println!("{:-^50}", " Clients ");
+    println!("{:-^50}", "-");
+    println!("{:-^6} | {:-^8} | {:-^70}", "ID", "NAME", "DOB");
+    match self.current_client_ids {
+      Some(_) => {
+        for c in self.clients.iter().filter(|client| self.current_client_ids.as_ref().unwrap().iter().any(|&id| id == client.id ) ) {
+          println!("{: ^6} | {: ^8} | {: ^70} ({})", c.id, c.full_name(), c.fmt_dob(), c.fmt_date_of_birth());
+        }
+      },
+      None => (),
+    }
+    println!("{:-^50}", "-");
+  }
+  fn load_client(&mut self, id: u32, filepath: &str) -> std::io::Result<()> {
+    let current: Option<&Client> = self.clients.iter().find(|c| c.id == id);
+    match current {
+      Some(c) => {
+        self.current_collateral_ids = Some(c.collaterals.clone());
+        self.current_client_id = Some(c.id);
+        Ok(())
+      },
+      None => {
+        Err(Error::new(ErrorKind::Other, "Failed to read client from filepath."))
+      }
+    }
+  }
+  fn choose_client(&mut self, filepath: &str) -> u32 {
+    self.pub_display_clients();
+    
+    let verified_id = loop {
+      let chosen_id = loop {
+        let input = loop {
+          let mut choice = String::new();
+          println!("Enter client ID (or 'NEW' to create a new client).");
+          let read_attempt = io::stdin().read_line(&mut choice);
+          match read_attempt {
+            Ok(_) => break choice,
+            Err(e) => {
+              println!("Could not read input; try again ({}).", e);
+              continue;
+            },
+          }
+        };
+        let input = input.trim();
+        if input == "NEW" || input == "new" || input == "New" {
+          let num = self.create_client_get_id(filepath);
+          break num
+        } else {
+          match input.trim().parse() {
+            Ok(num) => break num,
+            Err(e) => {
+              println!("Could not read input as a number; try again ({}).", e);
+              continue;
+            },
+          }
+        }
+      };
+      match self.load_client(chosen_id, filepath) {
+        Ok(_) => break chosen_id,
+        Err(e) => {
+          println!("Unable to load client with id {}: {}", chosen_id, e);
+          continue;
+        }
+      }
+    };
+    verified_id
+  }
+  pub fn create_client_get_id(&mut self, filepath: &str) -> u32 {
+    
+    let client = loop {
+      let first_name = loop {
+        let mut first_name_choice = String::new();
+        println!("Enter client's first name.");
+        let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
+        match first_name_attempt {
+          Ok(_) => break String::from(first_name_choice.trim()),
+          Err(e) => {
+            println!("Invalid first name: {}", e);
+            continue;
+          },
+        };
+      };
+      let last_name = loop {
+        let mut last_name_choice = String::new();
+        println!("Enter client's last name.");
+        let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
+        match last_name_attempt {
+          Ok(_) => break String::from(last_name_choice.trim()),
+          Err(e) => {
+            println!("Invalid last name: {}", e);
+            continue;
+          },
+        };
+      };
+      let dob: NaiveDate = loop {
+
+        let birth_year = loop {
+          let mut birth_year_choice = String::new();
+          println!("Enter client's birth year.");
+          let birth_year_attempt = io::stdin().read_line(&mut birth_year_choice);
+          let birth_year_attempt = match birth_year_attempt {
+            Ok(_) => birth_year_choice.trim().parse(),
+            Err(e) => {
+              println!("Invalid birth year: {}", e);
+              continue;
+            },
+          };
+          let birth_year_input = match birth_year_attempt {
+            Ok(val) => val,
+            Err(e) => {
+              println!("Invalid birth year: {}", e);
+              continue;
+            },
+          };
+          if birth_year_input > 9999 || birth_year_input < 1000 {
+            println!("Please enter a valid year.");
+            continue;
+          }
+          break birth_year_input
+        };
+        let birth_month = loop {
+          let mut birth_month_choice = String::new();
+          println!("Enter client's birth month as a decimal number (1-12).");
+          let birth_month_attempt = io::stdin().read_line(&mut birth_month_choice);
+          let birth_month_attempt = match birth_month_attempt {
+            Ok(_) => birth_month_choice.trim().parse(),
+            Err(e) => {
+              println!("Invalid birth month: {}", e);
+              continue;
+            },
+          };
+          let birth_month_input = match birth_month_attempt {
+            Ok(val) => val,
+            Err(e) => {
+              println!("Invalid birth month: {}", e);
+              continue;
+            },
+          };
+          if birth_month_input > 12 || birth_month_input < 1 {
+            println!("Please enter a valid month using decimal numbers 1-12.");
+            continue;
+          }
+          break birth_month_input
+        };
+        let birth_day = loop {
+          let mut birth_day_choice = String::new();
+          println!("Enter client's birth day as a decimal number (1-12).");
+          let birth_day_attempt = io::stdin().read_line(&mut birth_day_choice);
+          let birth_day_attempt = match birth_day_attempt {
+            Ok(_) => birth_day_choice.trim().parse(),
+            Err(e) => {
+              println!("Invalid birth day: {}", e);
+              continue;
+            },
+          };
+          let birth_day_input = match birth_day_attempt {
+            Ok(val) => val,
+            Err(e) => {
+              println!("Invalid birth day: {}", e);
+              continue;
+            },
+          };
+          if birth_day_input > 12 || birth_day_input < 1 {
+            println!("Please enter a valid month using decimal numbers 1-12.");
+            continue;
+          }
+          break birth_day_input
+        };
+
+        match NaiveDate::from_ymd_opt(birth_year, birth_month, birth_day) {
+          Some(date) => break date,
+          None => {
+            println!("{}-{}-{} does not appear to be a valid date. Please try again.", birth_year, birth_month, birth_day);
+            continue;
+          }
+        };
+
+      };
+
+      let client_attempt = self.generate_unique_new_client(first_name, last_name, dob, filepath);
+      match client_attempt {
+        Ok(client) => break client,
+        Err(e) => {
+          println!("Client could not be generated: {}.", e);
+          continue;
+        }
+      }
+    };
+    let id = client.id;
+    self.save_client(client, filepath);
+    id
   }
   pub fn generate_unique_new_client(
     &mut self,
@@ -361,9 +561,8 @@ impl NoteArchive {
     Ok(())
   }
   pub fn save_client(&mut self, client: Client, filepath: &str) {
-    let mut clients: Vec<Client> = NoteArchive::read_clients(filepath);
-    clients.push(client);
-    self.write_clients(clients, filepath).unwrap();
+    self.clients.push(client);
+    self.write_clients(self.clients, filepath).unwrap();
   }
 }
 
@@ -406,10 +605,14 @@ mod tests {
         vec![1, 2, 3]
       );
       a1.write_users(vec![test_user_1, test_user_2], "test_load_user.txt").unwrap();
+
+      a1.load_from_files("test_load_user.txt", "placehold_load_user_client_filepath.txt");
+
       a1.load_user(2, "test_load_user.txt").unwrap();
       assert_eq!(a1.current_user_id, Some(2));
     }
     fs::remove_file("test_load_user.txt").unwrap();
+    fs::remove_file("placehold_load_user_client_filepath.txt").unwrap();
   }
   #[test]
   fn can_load_clients() {
@@ -429,14 +632,15 @@ mod tests {
         FP,
         vec![7, 8, 9]
       );
-      a1.write_users(
-        vec![test_user_1, test_user_2],
-        "test_load_clients_from_user.txt").unwrap();
-        a1.load_user(2, "test_load_clients_from_user.txt").unwrap();
-        assert_eq!(a1.current_client_ids, Some(vec![7, 8, 9])
-      );
+      a1.write_users(vec![test_user_1, test_user_2], "test_load_clients_from_user.txt").unwrap();
+
+      a1.load_from_files("test_load_clients_from_user.txt", "placehold_load_client_client_filepath.txt");
+
+      a1.load_user(2, "test_load_clients_from_user.txt").unwrap();
+      assert_eq!(a1.current_client_ids, Some(vec![7, 8, 9]));
     }
     fs::remove_file("test_load_clients_from_user.txt").unwrap();
+    fs::remove_file("placehold_load_client_client_filepath.txt").unwrap();
   }
 
 }
