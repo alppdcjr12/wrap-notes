@@ -244,8 +244,9 @@ mod tests {
   }
   #[test]
   fn can_load_users() {
-    let mut a1 = NoteArchive::new();
-    let test_user_1 = User::new(
+    {
+      let mut a1 = NoteArchive::new();
+      let test_user_1 = User::new(
       1,
       String::from("Bob Smith"),
       ICC,
@@ -258,13 +259,17 @@ mod tests {
     a1.write_users(
       vec![test_user_1, test_user_2],
       "test_load_user.txt").unwrap();
-    a1.load_user(2, "test_load_user.txt").unwrap();
-    assert_eq!(a1.current_user_id, Some(2));
+      a1.load_user(2, "test_load_user.txt").unwrap();
+      assert_eq!(a1.current_user_id, Some(2));
+    }
+    fs::remove_file("test_load_user.txt").unwrap();
   }
   #[test]
   fn can_load_clients() {
-    let mut a1 = NoteArchive::new();
-    let test_user_1 = User::new(
+    {
+
+      let mut a1 = NoteArchive::new();
+      let test_user_1 = User::new(
       1,
       String::from("Gary Shmonson"),
       ICC,
@@ -274,11 +279,13 @@ mod tests {
       String::from("Gerald Ford"),
       FP,
       vec![7, 8, 9]);
-    a1.write_users(
-      vec![test_user_1, test_user_2],
-      "test_load_clients_from_user.txt").unwrap();
-    a1.load_clients(2, "test_load_clients_from_user.txt").unwrap();
-    assert_eq!(a1.current_client_ids, Some(vec![7, 8, 9]));
-  }
+      a1.write_users(
+        vec![test_user_1, test_user_2],
+        "test_load_clients_from_user.txt").unwrap();
+        a1.load_clients(2, "test_load_clients_from_user.txt").unwrap();
+        assert_eq!(a1.current_client_ids, Some(vec![7, 8, 9]));
+      }
+      fs::remove_file("test_load_clients_from_user.txt").unwrap();
+    }
 
 }
