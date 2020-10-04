@@ -6,6 +6,7 @@ pub struct User {
   pub first_name: String,
   pub last_name: String,
   pub role: EmployeeRole,
+  pub pronouns: u32,
   pub clients: Vec<u32>,
 }
 
@@ -53,12 +54,14 @@ impl User {
     first_name: String,
     last_name: String,
     role: EmployeeRole,
+    pronouns: u32,
     clients: Vec<u32>) -> User {
     User {
       id,
       first_name,
       last_name,
       role,
+      pronouns,
       clients,
     }
   }
@@ -75,11 +78,12 @@ impl fmt::Display for User {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "{} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {}\n",
       &self.id,
       &self.first_name[..],
       &self.last_name[..],
       &self.role,
+      &self.pronouns,
       &self
         .clients
         .iter()
@@ -96,8 +100,8 @@ mod tests {
 
   #[test]
   fn new_users() {
-    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), ICC, vec![]);
-    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), FP, vec![]);
+    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), ICC, 1, vec![]);
+    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), FP, 2, vec![]);
     let test_vec: Vec<u32> = vec![];
     assert_eq!(u1.id, 1);
     assert_eq!(u1.first_name, String::from("Carol"));

@@ -9,12 +9,12 @@ use chrono::{NaiveDate, Datelike, TimeZone, Utc, Local};
 
 use wrap_notes::*;
 
-// User-related tests
+// User
 
 #[test]
 fn can_write_users() {
-  let u1 = User::new(1, String::from("Pete"), String::from("Smith"), ICC, vec![]);
-  let u2 = User::new(2, String::from("Johana"), String::from("Smith"), FP, vec![]);
+  let u1 = User::new(1, String::from("Pete"), String::from("Smith"), ICC, 1, vec![]);
+  let u2 = User::new(2, String::from("Johana"), String::from("Smith"), FP, 1, vec![]);
 
   let client_string_1 = u1
     .clients
@@ -45,8 +45,8 @@ fn can_write_users() {
     lines,
     vec![
       String::from("##### users #####"),
-      format!("{} | {} | {} | {} | {}", 1, "Pete", "Smith", "ICC", client_string_1),
-      format!("{} | {} | {} | {} | {}", 2, "Johana", "Smith", "FP", client_string_2),
+      format!("{} | {} | {} | {} | {} | {}", 1, "Pete", "Smith", "ICC", 1, client_string_1),
+      format!("{} | {} | {} | {} | {} | {}", 2, "Johana", "Smith", "FP", 1, client_string_2),
       String::from("##### users #####"),
     ]
   );
@@ -55,10 +55,10 @@ fn can_write_users() {
 #[test]
 fn can_read_users() {
   let mut lines = String::from("##### users #####\n");
-  lines.push_str("1 | Pete | Peteson | ICC | 1#2#3#4\n");
-  lines.push_str("2 | Vivian | Vivianson | FP | 5#6#7#8\n");
-  lines.push_str("3 | Sabrina | Sabrinason | FP | 9#10#11#12\n");
-  lines.push_str("4 | Dave | Davidson | ICC | 13#24#35#46\n");
+  lines.push_str("1 | Pete | Peteson | ICC | 1 | 1#2#3#4\n");
+  lines.push_str("2 | Vivian | Vivianson | FP | 1 | 5#6#7#8\n");
+  lines.push_str("3 | Sabrina | Sabrinason | FP | 1 | 9#10#11#12\n");
+  lines.push_str("4 | Dave | Davidson | ICC | 1 | 13#24#35#46\n");
   lines.push_str("##### users #####");
 
   let mut file = File::create("test_read_users.txt").unwrap();
@@ -67,10 +67,10 @@ fn can_read_users() {
   assert_eq!(
     NoteArchive::read_users("test_read_users.txt"),
     vec![
-      User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4],),
-      User::new(2, String::from("Vivian"), String::from("Vivianson"), FP, vec![5, 6, 7, 8],),
-      User::new(3, String::from("Sabrina"), String::from("Sabrinason"), FP, vec![9, 10, 11, 12],),
-      User::new(4, String::from("Dave"), String::from("Davidson"), ICC, vec![13, 24, 35, 46],),
+      User::new(1, String::from("Pete"), String::from("Peteson"), ICC, 1, vec![1, 2, 3, 4],),
+      User::new(2, String::from("Vivian"), String::from("Vivianson"), FP, 1, vec![5, 6, 7, 8],),
+      User::new(3, String::from("Sabrina"), String::from("Sabrinason"), FP, 1, vec![9, 10, 11, 12],),
+      User::new(4, String::from("Dave"), String::from("Davidson"), ICC, 1, vec![13, 24, 35, 46],),
     ]
   );
   // remove unneeded file
@@ -79,8 +79,8 @@ fn can_read_users() {
 
 #[test]
 fn creates_unique_new_user() {
-  let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4]);
-  let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, vec![5, 6, 7, 8]);
+  let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, 1, vec![1, 2, 3, 4]);
+  let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, 1, vec![5, 6, 7, 8]);
   let users = vec![user_1, user_2];
   let mut notes = NoteArchive::new();
   notes.write_users(users, "test_unique_users.txt").unwrap();
@@ -89,6 +89,7 @@ fn creates_unique_new_user() {
     String::from("Carl"),
     String::from("Carlson"),
     ICC,
+    1,
     "test_unique_users.txt",
   );
 
@@ -97,7 +98,7 @@ fn creates_unique_new_user() {
     Err(_) => panic!("Failed to generate user."),
   };
 
-  assert_eq!(new_user, User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![]));
+  assert_eq!(new_user, User::new(3, String::from("Carl"), String::from("Carlson"), ICC, 1, vec![]));
 
   fs::remove_file("test_unique_users.txt").unwrap();
 }
@@ -106,9 +107,9 @@ fn creates_unique_new_user() {
 fn saves_user_to_file() {
   {
     let mut notes = NoteArchive::new();
-    let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4],);
-    let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, vec![5, 6, 7, 8],);
-    let user_3 = User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![]);
+    let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, 1, vec![1, 2, 3, 4],);
+    let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, 1, vec![5, 6, 7, 8],);
+    let user_3 = User::new(3, String::from("Carl"), String::from("Carlson"), ICC, 1, vec![]);
     notes.save_user(user_1, "test_save_user.txt");
     notes.save_user(user_2, "test_save_user.txt");
     notes.save_user(user_3, "test_save_user.txt");
@@ -116,16 +117,16 @@ fn saves_user_to_file() {
     assert_eq!(
       NoteArchive::read_users("test_save_user.txt"),
       vec![
-        User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4],),
-        User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, vec![5, 6, 7, 8],),
-        User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![])
+        User::new(1, String::from("Pete"), String::from("Peteson"), ICC, 1, vec![1, 2, 3, 4],),
+        User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, 1, vec![5, 6, 7, 8],),
+        User::new(3, String::from("Carl"), String::from("Carlson"), ICC, 1, vec![])
       ]
     );
   }
   fs::remove_file("test_save_user.txt").unwrap();
 }
 
-// Client-related tests
+// Client
 
 #[test]
 fn can_write_clients() {
@@ -236,4 +237,88 @@ fn saves_client_to_file() {
     );
   }
   fs::remove_file("test_save_client.txt").unwrap();
+}
+
+// Pronouns
+
+#[test]
+fn can_write_pronouns() {
+  let p1 = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
+  let p2 = Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers"));
+
+  NoteArchive::new()
+    .write_pronouns(vec![p1, p2], "test_write_pronouns.txt")
+    .unwrap();
+  let file = File::open("test_write_pronouns.txt").unwrap();
+  let reader = BufReader::new(file);
+
+  let lines: Vec<String> = reader.lines().map(|item| item.unwrap()).collect::<Vec<_>>();
+
+  // remove unneeded file
+  fs::remove_file("test_write_pronouns.txt").unwrap();
+
+  assert_eq!(
+    lines,
+    vec![
+      String::from("##### pronouns #####"),
+      format!("{} | {} | {} | {} | {}", 1, "he", "him", "his", "his"),
+      format!("{} | {} | {} | {} | {}", 2, "she", "her", "her", "hers"),
+      String::from("##### pronouns #####"),
+    ]
+  );
+}
+
+#[test]
+fn can_read_pronouns() {
+  let mut lines = String::from("##### pronouns #####\n");
+  lines.push_str("1 | he | him | his | his\n");
+  lines.push_str("2 | she | her | her | hers\n");
+  lines.push_str("##### users #####");
+
+  let mut file = File::create("test_read_pronouns.txt").unwrap();
+  file.write_all(lines.as_bytes()).unwrap();
+
+  assert_eq!(
+    NoteArchive::read_pronouns("test_read_pronouns.txt"),
+    vec![
+      Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his")),
+      Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers")),
+      ]
+    );
+    // remove unneeded file
+    fs::remove_file("test_read_pronouns.txt").unwrap();
+  }
+  
+#[test]
+fn creates_unique_new_pronouns() {
+  let p1 = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
+  let p2 = Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers"));
+  let pronouns = vec![p1, p2];
+  let mut notes = NoteArchive::new();
+  notes.write_pronouns(pronouns, "test_unique_pronouns.txt").unwrap();
+
+  let new_pronouns_attempt = notes.generate_unique_new_pronouns(
+    String::from("they"),
+    String::from("them"),
+    String::from("their"),
+    String::from("theirs"),
+    "test_unique_pronouns.txt",
+  );
+
+  let new_pronouns = match new_pronouns_attempt {
+    Ok(pronouns) => pronouns,
+    Err(_) => panic!("Failed to generate pronouns."),
+  };
+
+  assert_eq!(
+    new_pronouns,
+    Pronouns::new(
+      3,
+      String::from("they"),
+      String::from("them"),
+      String::from("their"),
+      String::from("theirs"),
+    ));
+
+  fs::remove_file("test_unique_pronouns.txt").unwrap();
 }

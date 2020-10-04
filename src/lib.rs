@@ -11,3 +11,6 @@ pub use note_archive::*;
 
 pub mod client;
 pub use client::*;
+
+pub mod pronouns;
+pub use pronouns::*;

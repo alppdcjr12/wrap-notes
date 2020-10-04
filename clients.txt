@@ -1,3 +1,8 @@
 ##### clients #####
-1 | Pete | Smith | 2018-3-4 | 
+1 | Pete | Dickens | 1992-6-21 | 
+2 | John | Smoth | 1990-9-28 | 
+3 | John | Smith | 2007-6-13 | 
+4 | Bob | Smith | 2005-9-25 | 
+5 | Jack | Nicholson | 2003-7-30 | 
+6 | Chris | Smish | 1998-7-5 | 
 ##### clients #####
