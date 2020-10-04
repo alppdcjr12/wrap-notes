@@ -2,7 +2,7 @@ use std::fmt;
 use chrono::{NaiveDate, Datelike, TimeZone, Utc, Local};
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Client {
   pub id: u32,
   pub first_name: String,

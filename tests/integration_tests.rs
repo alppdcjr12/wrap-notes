@@ -105,17 +105,13 @@ fn creates_unique_new_user() {
 #[test]
 fn saves_user_to_file() {
   {
-    let mut lines = String::from("##### users #####\n");
-    lines.push_str("1 | Pete | Peteson | ICC | 1#2#3#4\n");
-    lines.push_str("2 | Sandy | Sandyson | FP | 5#6#7#8\n");
-    lines.push_str("##### users #####");
-
-    let mut file = File::create("test_save_user.txt").unwrap();
-    file.write_all(lines.as_bytes()).unwrap();
-
     let mut notes = NoteArchive::new();
-    let user = User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![]);
-    notes.save_user(user, "test_save_user.txt");
+    let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, vec![1, 2, 3, 4],);
+    let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, vec![5, 6, 7, 8],);
+    let user_3 = User::new(3, String::from("Carl"), String::from("Carlson"), ICC, vec![]);
+    notes.save_user(user_1, "test_save_user.txt");
+    notes.save_user(user_2, "test_save_user.txt");
+    notes.save_user(user_3, "test_save_user.txt");
 
     assert_eq!(
       NoteArchive::read_users("test_save_user.txt"),
@@ -219,18 +215,15 @@ fn creates_unique_new_client() {
 #[test]
 fn saves_client_to_file() {
   {
-    let mut lines = String::from("##### clients #####\n");
-    lines.push_str("1 | John | Doe | 2005-3-14 | 1#2#3#4\n");
-    lines.push_str("2 | Jane | Doe | 2006-3-14 | 5#6#7#8\n");
-    lines.push_str("3 | Joe | Biden | 2009-6-21 | 9#10#11#12\n");
-    lines.push_str("##### clients #####");
-    
-    let mut file = File::create("test_save_client.txt").unwrap();
-    file.write_all(lines.as_bytes()).unwrap();
-    
     let mut notes = NoteArchive::new();
-    let client = Client::new(4, String::from("Donald"), String::from("Trump"), NaiveDate::from_ymd(2010, 7, 1), vec![13, 24, 35, 46]);
-    notes.save_client(client, "test_save_client.txt");
+    let client_1 = Client::new(1, String::from("John"), String::from("Doe"), NaiveDate::from_ymd(2005, 3, 14), vec![1, 2, 3, 4],);
+    let client_2 = Client::new(2, String::from("Jane"), String::from("Doe"), NaiveDate::from_ymd(2006, 3, 14), vec![5, 6, 7, 8],);
+    let client_3 = Client::new(3, String::from("Joe"), String::from("Biden"), NaiveDate::from_ymd(2009, 6, 21), vec![9, 10, 11, 12]);
+    let client_4 = Client::new(4, String::from("Donald"), String::from("Trump"), NaiveDate::from_ymd(2010, 7, 1), vec![13, 24, 35, 46]);
+    notes.save_client(client_1, "test_save_client.txt");
+    notes.save_client(client_2, "test_save_client.txt");
+    notes.save_client(client_3, "test_save_client.txt");
+    notes.save_client(client_4, "test_save_client.txt");
     
     assert_eq!(
       NoteArchive::read_clients("test_save_client.txt"),

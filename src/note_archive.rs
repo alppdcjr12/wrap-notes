@@ -215,7 +215,7 @@ impl NoteArchive {
   }
   pub fn save_user(&mut self, user: User, filepath: &str) {
     self.users.push(user);
-    self.write_users(self.users, filepath).unwrap();
+    self.write_users(self.users.clone(), filepath).unwrap();
   }
   pub fn write_users(&mut self, users: Vec<User>, filepath: &str) -> std::io::Result<()> {
     let mut lines = String::from("##### users #####\n");
@@ -553,7 +553,7 @@ impl NoteArchive {
   pub fn write_clients(&mut self, clients: Vec<Client>, filepath: &str) -> std::io::Result<()> {
     let mut lines = String::from("##### clients #####\n");
     for c in clients {
-      lines.push_str(&c.to_string());
+      lines.push_str(&c.to_string()[..]);
     }
     lines.push_str("##### clients #####");
     let mut file = File::create(filepath).unwrap();
@@ -562,7 +562,7 @@ impl NoteArchive {
   }
   pub fn save_client(&mut self, client: Client, filepath: &str) {
     self.clients.push(client);
-    self.write_clients(self.clients, filepath).unwrap();
+    self.write_clients(self.clients.clone(), filepath).unwrap();
   }
 }
 

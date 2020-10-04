@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
   pub id: u32,
   pub first_name: String,
@@ -19,7 +19,7 @@ impl PartialEq for User {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EmployeeRole {
   FP,
   ICC,
