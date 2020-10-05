@@ -290,6 +290,7 @@ fn can_read_pronouns() {
   }
   
 #[test]
+
 fn creates_unique_new_pronouns() {
   let p1 = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
   let p2 = Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers"));
@@ -309,7 +310,7 @@ fn creates_unique_new_pronouns() {
     Ok(pronouns) => pronouns,
     Err(_) => panic!("Failed to generate pronouns."),
   };
-
+  
   assert_eq!(
     new_pronouns,
     Pronouns::new(
@@ -319,6 +320,26 @@ fn creates_unique_new_pronouns() {
       String::from("their"),
       String::from("theirs"),
     ));
-
+    
   fs::remove_file("test_unique_pronouns.txt").unwrap();
+}
+
+#[test]
+fn saves_pronouns_to_file() {
+  {
+    let mut notes = NoteArchive::new();
+    let p1 = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
+    let p2 = Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers"));
+    notes.save_pronouns(p1, "test_save_pronouns.txt");
+    notes.save_pronouns(p2, "test_save_pronouns.txt");
+    
+    assert_eq!(
+      NoteArchive::read_pronouns("test_save_pronouns.txt"),
+      vec![
+        Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his")),
+        Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers")),
+      ]
+    );
+  }
+  fs::remove_file("test_save_pronouns.txt").unwrap();
 }

@@ -36,7 +36,7 @@ impl NoteArchive {
 
     loop {
       let client_id = self.choose_client(CLT_FL, USR_FL);
-      self.load_client(client_id, CLT_FL).unwrap();
+      let client = self.load_client(client_id, CLT_FL).unwrap();
     }
 
   }
@@ -140,7 +140,7 @@ impl NoteArchive {
     };
     verified_id
   }
-  pub fn create_user_get_id(&mut self, user_filepath: &str, pronouns_filepath: &str) -> u32 {
+  fn create_user_get_id(&mut self, user_filepath: &str, pronouns_filepath: &str) -> u32 {
     
     let user = loop {
       let first_name = loop {
@@ -365,7 +365,7 @@ impl NoteArchive {
     };
     verified_id
   }
-  pub fn create_client_get_id(&mut self, filepath: &str) -> u32 {
+  fn create_client_get_id(&mut self, filepath: &str) -> u32 {
     
     let client = loop {
       let first_name = loop {
@@ -584,7 +584,7 @@ impl NoteArchive {
     self.clients.push(client);
     self.write_clients(self.clients.clone(), filepath).unwrap();
   }
-  pub fn update_current_clients(&mut self, id: u32) {
+  fn update_current_clients(&mut self, id: u32) {
     self.current_user().clients.push(id);
     self.current_client_ids = Some(self.current_user().clients.clone());
   }
@@ -629,63 +629,57 @@ impl NoteArchive {
     }
     pronouns
   }
-  pub fn get_pronouns(&mut self, filepath: &str) -> u32 {
-    self.pub_display_clients();
+  fn get_pronouns(&mut self, filepath: &str) -> u32 {
+    self.pub_display_pronouns();
     
-    let verified_id = loop {
-      let chosen_id = loop {
-        let input = loop {
-          let mut choice = String::new();
-          println!("Enter pronouns ID (or 'NEW' to create new pronouns).");
-          let read_attempt = io::stdin().read_line(&mut choice);
-          match read_attempt {
-            Ok(_) => break choice,
-            Err(e) => {
-              println!("Could not read input; try again ({}).", e);
-              continue;
-            },
-          }
-        };
-        let input = input.trim();
-        if input == "NEW" || input == "new" || input == "New" {
-          let num = self.create_pronouns_get_id(filepath);
-          break num
-        } else {
-          match input.trim().parse() {
-            Ok(num) => break num,
-            Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
-              continue;
-            },
-          }
+    let chosen_id = loop {
+      let input = loop {
+        let mut choice = String::new();
+        println!("Enter pronouns ID (or 'NEW' to create new pronouns).");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          },
         }
       };
-      match self.load_client(chosen_id, filepath) {
-        Ok(_) => break chosen_id,
+      let input = input.trim();
+      if input == "NEW" || input == "new" || input == "New" {
+        let pronouns = self.create_get_pronouns(filepath);
+        let new_id = pronouns.id;
+        self.save_pronouns(pronouns, filepath);
+        break new_id
+      }
+      let id = match input.trim().parse::<u32>() {
+        Ok(num) => num,
         Err(e) => {
-          println!("Unable to load client with id {}: {}", chosen_id, e);
+          println!("Could not read input as a number; try again ({}).", e);
           continue;
-        }
+        },
+      };
+      match self.load_pronouns(id) {
+        Ok(_) => break id,
+        Err(e) => {
+          println!("Unable to load client with id {}: {}", input, e);
+          continue;
+        },
       }
     };
-    verified_id
+    chosen_id
   }
   fn pub_display_pronouns(&self) {
     println!("{:-^30}", "-");
     println!("{:-^30}", " Pronouns ");
     println!("{:-^30}", "-");
     println!("{:-^4} | {:-^20}", "ID", "PRONOUNS");
-    match self.current_client_ids {
-      Some(_) => {
-        for p in &self.pronouns {
-          println!("{: ^4} | {: ^20}", p.id, p.short_string());
-        }
-      },
-      None => (),
+    for p in &self.pronouns {
+      println!("{: ^4} | {: ^20}", p.id, p.short_string());
     }
     println!("{:-^30}", "-");
   }
-  pub fn create_pronouns_get_id(&mut self, filepath: &str) -> u32 {
+  fn create_get_pronouns(&mut self, filepath: &str) -> Pronouns {
     
     let pronouns = loop {
       let subject = loop {
@@ -749,8 +743,9 @@ impl NoteArchive {
         }
       }
     };
-    let id = pronouns.id;
-    id
+    let new_pronouns = pronouns.clone();
+    self.save_pronouns(pronouns, filepath);
+    new_pronouns
   }
   pub fn generate_unique_new_pronouns(
     &mut self,
@@ -785,6 +780,17 @@ impl NoteArchive {
     let mut file = File::create(filepath).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
+  }
+  pub fn save_pronouns(&mut self, pronouns: Pronouns, filepath: &str) {
+    self.pronouns.push(pronouns);
+    self.write_pronouns(self.pronouns.clone(), filepath).unwrap();
+  }
+  fn load_pronouns(&mut self, id: u32) -> Result<u32, String> {
+    let pronouns: Option<&Pronouns> = self.pronouns.iter().find(|c| c.id == id);
+    match pronouns {
+      Some(p) => Ok(p.id),
+      None => Err(format!("Invalid ID: {}.", id)),
+    }
   }
 }
 
