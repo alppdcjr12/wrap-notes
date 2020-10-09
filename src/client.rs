@@ -8,6 +8,7 @@ pub struct Client {
   pub first_name: String,
   pub last_name: String,
   pub dob: NaiveDate,
+  pub pronouns: u32,
   pub collaterals: Vec<u32>,
 }
 
@@ -27,6 +28,7 @@ impl Client {
     first_name: String,
     last_name: String,
     dob: NaiveDate,
+    pronouns: u32,
     collaterals: Vec<u32>,
     ) -> Client {
     Client {
@@ -34,6 +36,7 @@ impl Client {
       first_name,
       last_name,
       dob,
+      pronouns,
       collaterals,
     }
   }
@@ -79,13 +82,14 @@ impl fmt::Display for Client {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "{} | {} | {} | {}-{}-{} | {}\n",
+      "{} | {} | {} | {}-{}-{} | {} | {}\n",
       &self.id,
       &self.first_name[..],
       &self.last_name[..],
       &self.dob.year(),
       &self.dob.month(),
       &self.dob.day(),
+      &self.pronouns,
       &self
         .collaterals
         .iter()
@@ -102,18 +106,20 @@ mod tests {
 
   #[test]
   fn new_clients() {
-    let c1 = Client::new(1, String::from("Bob"), String::from("Smith"), NaiveDate::from_ymd(2000, 1, 1), vec![]);
-    let c2 = Client::new(2, String::from("Joe"), String::from("Shmoe"), NaiveDate::from_ymd(2000, 1, 2), vec![]);
+    let c1 = Client::new(1, String::from("Bob"), String::from("Smith"), NaiveDate::from_ymd(2000, 1, 1), 2, vec![]);
+    let c2 = Client::new(2, String::from("Joe"), String::from("Shmoe"), NaiveDate::from_ymd(2000, 1, 2), 1, vec![]);
     let test_vec: Vec<u32> = vec![];
     assert_eq!(c1.id, 1);
     assert_eq!(c1.first_name, String::from("Bob"));
     assert_eq!(c1.last_name, String::from("Smith"));
     assert_eq!(c1.dob, NaiveDate::from_ymd(2000, 1, 1));
+    assert_eq!(c1.pronouns, 2);
     assert_eq!(c1.collaterals, test_vec);
     assert_eq!(c2.id, 2);
     assert_eq!(c2.first_name, String::from("Joe"));
     assert_eq!(c2.last_name, String::from("Shmoe"));
     assert_eq!(c2.dob, NaiveDate::from_ymd(2000, 1, 2));
+    assert_eq!(c2.pronouns, 1);
     assert_eq!(c2.collaterals, test_vec);
   }
 }

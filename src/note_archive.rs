@@ -1,17 +1,18 @@
+use chrono::{Local, NaiveDate, TimeZone, Utc};
 use std::fmt;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
 use std::io::{Error, ErrorKind};
-use std::io;
-use chrono::{NaiveDate, TimeZone, Utc, Local};
+use std::cell::RefCell;
 
-use crate::user::*;
 use crate::client::*;
-use crate::EmployeeRole::{FP, ICC};
 use crate::pronouns::*;
+use crate::user::*;
+use crate::EmployeeRole::{FP, ICC};
 
 pub struct NoteArchive {
   pub users: Vec<User>,
@@ -22,86 +23,143 @@ pub struct NoteArchive {
   pub current_client_id: Option<u32>,
   pub current_collateral_ids: Option<Vec<u32>>,
   pub current_collateral_id: Option<u32>,
+  user_filepath: String,
+  client_filepath: String,
+  pronouns_filepath: String,
 }
-
-pub const USR_FL: &str = "users.txt";
-pub const CLT_FL: &str = "clients.txt";
-pub const PRN_FL: &str = "pronouns.txt";
 
 impl NoteArchive {
   pub fn run(&mut self) {
-    self.load_from_files(USR_FL, CLT_FL, PRN_FL);
-    let user_id = self.choose_user(USR_FL, PRN_FL);
-    self.load_user(user_id, USR_FL).unwrap();
+    NoteArchive::remove_test_files();
+    let user_id = self.choose_user();
+    self.load_user(user_id).unwrap();
 
     loop {
-      let client_id = self.choose_client(CLT_FL, USR_FL);
-      let client = self.load_client(client_id, CLT_FL).unwrap();
+      let client_id = self.choose_client();
+      let client = self.load_client(client_id).unwrap();
+      self.write_to_files();
     }
-
   }
-  pub fn new() -> NoteArchive {
-    NoteArchive {
-      users: vec![],
-      clients: vec![],
+  pub fn new(
+    user_filepath: String,
+    client_filepath: String,
+    pronouns_filepath: String,
+  ) -> NoteArchive {
+    let mut a = NoteArchive {
+      users: Self::read_users(&user_filepath),
+      clients: Self::read_clients(&client_filepath),
       pronouns: vec![],
       current_user_id: None,
       current_client_ids: None,
       current_client_id: None,
       current_collateral_ids: None,
       current_collateral_id: None,
+      user_filepath,
+      client_filepath,
+      pronouns_filepath
+    };
+    a.read_pronouns();
+    a
+  }
+  pub fn new_test() -> NoteArchive {
+
+    let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, 1, vec![1, 2, 3, 4]);
+    let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, 1, vec![5, 6, 7, 8]);
+    let users = vec![user_1, user_2];
+    let client_1 = Client::new(1, String::from("Pete"), String::from("McLastName"), NaiveDate::from_ymd(2006, 1, 2), 1, vec![1, 2, 3, 4]);
+    let client_2 = Client::new(2, String::from("Sandy"), String::from("O'Lastnymn"), NaiveDate::from_ymd(2007, 2, 3), 1, vec![5, 6, 7, 8]);
+    let clients = vec![client_1, client_2];
+    let p1 = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
+    let p2 = Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers"));
+    let pronouns = vec![p1, p2];
+    
+    let mut notes = NoteArchive::new(
+      String::from("test_user.txt"),
+      String::from("test_client.txt"),
+      String::from("test_pronouns.txt"),
+    );
+
+    notes.users = users;
+    notes.clients = clients;
+    notes.pronouns = pronouns;
+    
+    notes.write_to_files();
+
+    notes
+  }
+  pub fn remove_test_files() {
+    if fs::metadata("test_user.txt").is_ok() {
+      fs::remove_file("test_user.txt").unwrap();
     }
+    if fs::metadata("test_client.txt").is_ok() {
+      fs::remove_file("test_client.txt").unwrap();
+    }
+    if fs::metadata("test_pronouns.txt").is_ok() {
+      fs::remove_file("test_pronouns.txt").unwrap();
+    }
+      
+  }
+  pub fn write_to_files(&mut self) {
+    self.write_users().unwrap();
+    self.write_clients().unwrap();
+    self.write_pronouns().unwrap();
   }
 
   // users
 
-  fn current_user(&mut self) -> &mut User {
+  pub fn current_user_mut(&mut self) -> &mut User {
     let user_id = match self.current_user_id {
       Some(id) => id,
       None => panic!("There is no user loaded."),
     };
-    let maybe_current: Option<&mut User> = self.users.iter_mut().find(|u| u.id == user_id );
+    let maybe_current: Option<&mut User> = self.users.iter_mut().find(|u| u.id == user_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded user ID does not match any saved users."),
+    }
+  }
+  pub fn current_user(&self) -> &User {
+    let user_id = match self.current_user_id {
+      Some(id) => id,
+      None => panic!("There is no user loaded."),
+    };
+    let maybe_current: Option<&User> = self.users.iter().find(|u| u.id == user_id);
     match maybe_current {
       Some(c) => c,
       None => panic!("The loaded user id does not match any saved users."),
     }
   }
   fn pub_display_users(&self) {
-    println!("{:-^50}", "-");
-    println!("{:-^50}", " Users ");
-    println!("{:-^50}", "-");
-    println!("{:-^6} | {:-^8} | {:-^30}", "ID", "ROLE", "NAME");
+    println!("{:-^60}", "-");
+    println!("{:-^60}", " Users ");
+    println!("{:-^60}", "-");
+    println!("{:-^10} | {:-^10} | {:-^40}", "ID", "ROLE", "NAME");
     for u in &self.users {
-      println!("{: ^6} | {: ^8} | {: ^30}", u.id, u.role.to_string(), u.full_name());
+      println!(
+        "{: ^10} | {: ^10} | {: ^40}",
+        u.id,
+        u.role.to_string(),
+        u.full_name()
+      );
     }
-    println!("{:-^50}", "-");
+    println!("{:-^60}", "-");
   }
-  fn load_from_files(
-    &mut self,
-    user_filepath: &str,
-    client_filepath: &str,
-    pronouns_filepath: &str
-  ) {
-    self.users = Self::read_users(user_filepath);
-    self.clients = Self::read_clients(client_filepath);
-    self.pronouns = Self::read_pronouns(pronouns_filepath);
-  }
-  fn load_user(&mut self, id: u32, filepath: &str) -> std::io::Result<()> {
+  pub fn load_user(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&User> = self.users.iter().find(|u| u.id == id);
     match current {
       Some(u) => {
         self.current_client_ids = Some(u.clients.clone());
         self.current_user_id = Some(u.id);
         Ok(())
-      },
-      None => {
-        Err(Error::new(ErrorKind::Other, "Failed to read user from filepath."))
       }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to read user from filepath.",
+      )),
     }
   }
-  fn choose_user(&mut self, user_filepath: &str, pronouns_filepath: &str) -> u32 {
+  fn choose_user(&mut self) -> u32 {
     self.pub_display_users();
-    
     let verified_id = loop {
       let chosen_id = loop {
         let input = loop {
@@ -113,24 +171,24 @@ impl NoteArchive {
             Err(e) => {
               println!("Could not read input; try again ({}).", e);
               continue;
-            },
+            }
           }
         };
         let input = input.trim();
         if input == "NEW" || input == "new" || input == "New" {
-          let num = self.create_user_get_id(user_filepath, pronouns_filepath);
-          break num
+          let num = self.create_user_get_id();
+          break num;
         } else {
           match input.trim().parse() {
             Ok(num) => break num,
             Err(e) => {
               println!("Could not read input as a number; try again ({}).", e);
               continue;
-            },
+            }
           }
         }
       };
-      match self.load_user(chosen_id, user_filepath) {
+      match self.load_user(chosen_id) {
         Ok(_) => break chosen_id,
         Err(e) => {
           println!("Unable to load user with id {}: {}", chosen_id, e);
@@ -140,8 +198,7 @@ impl NoteArchive {
     };
     verified_id
   }
-  fn create_user_get_id(&mut self, user_filepath: &str, pronouns_filepath: &str) -> u32 {
-    
+  fn create_user_get_id(&mut self) -> u32 {
     let user = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
@@ -152,7 +209,7 @@ impl NoteArchive {
           Err(e) => {
             println!("Invalid first name: {}", e);
             continue;
-          },
+          }
         };
       };
       let last_name = loop {
@@ -164,7 +221,7 @@ impl NoteArchive {
           Err(e) => {
             println!("Invalid last name: {}", e);
             continue;
-          },
+          }
         };
       };
       let role: EmployeeRole = loop {
@@ -179,15 +236,16 @@ impl NoteArchive {
               println!("Please choose role 'FP' or 'ICC.'");
               continue;
             }
-          } 
+          },
           Err(e) => {
             println!("Unreadable entry: {}", e);
             continue;
-          },
+          }
         };
       };
-      let pronouns = self.get_pronouns(pronouns_filepath);
-      let user_attempt = self.generate_unique_new_user(first_name, last_name, role, pronouns, user_filepath);
+      let pronouns = self.choose_pronouns();
+      let user_attempt =
+        self.generate_unique_new_user(first_name, last_name, role, pronouns);
       match user_attempt {
         Ok(user) => break user,
         Err(e) => {
@@ -197,7 +255,7 @@ impl NoteArchive {
       }
     };
     let id = user.id;
-    self.save_user(user, user_filepath);
+    self.save_user(user);
     id
   }
   pub fn generate_unique_new_user(
@@ -206,15 +264,18 @@ impl NoteArchive {
     last_name: String,
     role: EmployeeRole,
     pronouns: u32,
-    filepath: &str,
   ) -> Result<User, String> {
-    let saved_users = NoteArchive::read_users(&filepath);
-    let id: u32 = saved_users.len() as u32 + 1;
+    let id: u32 = self.users.len() as u32 + 1;
 
-    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> =
-      saved_users.iter().map(|u| (&u.first_name[..], &u.last_name[..], &u.role)).collect();
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+      .iter()
+      .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
+      .collect();
 
-    let result = if names_and_roles.iter().any(|(f, l, r)| f == &first_name && l == &last_name && *r == &role) {
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, r)| f == &first_name && l == &last_name && *r == &role)
+    {
       Err(format!(
         "There is already a {} with the name '{} {}'.",
         role, first_name, last_name
@@ -225,22 +286,20 @@ impl NoteArchive {
 
     result
   }
-  pub fn save_user(&mut self, user: User, filepath: &str) {
+  pub fn save_user(&mut self, user: User) {
     self.users.push(user);
-    self.write_users(self.users.clone(), filepath).unwrap();
   }
-  pub fn write_users(&mut self, users: Vec<User>, filepath: &str) -> std::io::Result<()> {
+  pub fn write_users(&mut self) -> std::io::Result<()> {
     let mut lines = String::from("##### users #####\n");
-    for u in users {
+    for u in &self.users {
       lines.push_str(&u.to_string());
     }
     lines.push_str("##### users #####");
-    let mut file = File::create(filepath).unwrap();
+    let mut file = File::create(self.user_filepath.clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
   pub fn read_users(filepath: &str) -> Vec<User> {
-
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -250,13 +309,11 @@ impl NoteArchive {
 
     let reader = BufReader::new(file);
 
-    let mut lines: Vec<std::io::Result<String>> = reader
-      .lines()
-      .collect();
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
       lines.remove(0).unwrap();
-      }
+    }
     if lines.len() > 0 {
       lines.remove(lines.len() - 1).unwrap();
     }
@@ -264,7 +321,11 @@ impl NoteArchive {
     let mut users: Vec<User> = vec![];
 
     for line in lines {
-      let values: Vec<String> = line.unwrap().split(" | ").map(|val| val.to_string()).collect();
+      let values: Vec<String> = line
+        .unwrap()
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
 
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
@@ -275,12 +336,14 @@ impl NoteArchive {
         _ => Err("Invalid role."),
       }
       .unwrap();
-      
       let pronouns: u32 = values[4].parse().unwrap();
 
       let clients: Vec<u32> = match &values[5][..] {
         "" => vec![],
-        _ => values[5].split("#").map(|val| val.parse().unwrap()).collect(),
+        _ => values[5]
+          .split("#")
+          .map(|val| val.parse().unwrap())
+          .collect(),
       };
 
       let u = User::new(id, first_name, last_name, role, pronouns, clients);
@@ -291,36 +354,51 @@ impl NoteArchive {
 
   // clients
   fn pub_display_clients(&self) {
-    println!("{:-^85}", "-");
-    println!("{:-^85}", " Clients ");
-    println!("{:-^85}", "-");
-    println!("{:-^4} | {:-^35} | {:-^40}", "ID", "NAME", "DOB");
+    println!("{:-^90}", "-");
+    println!("{:-^90}", " Clients ");
+    println!("{:-^90}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
     match self.current_client_ids {
       Some(_) => {
-        for c in self.clients.iter().filter(|client| self.current_client_ids.as_ref().unwrap().iter().any(|&id| id == client.id ) ) {
-          println!("{: ^4} | {: ^35} | {: <12} {: >26}", c.id, c.full_name(), c.fmt_dob(), c.fmt_date_of_birth());
+        for c in self.clients.iter().filter(|client| {
+          self
+            .current_client_ids
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|&id| id == client.id)
+        }) {
+          println!(
+            "{: ^10} | {: ^40} | {: <12} {: >26}",
+            c.id,
+            c.full_name(),
+            c.fmt_dob(),
+            c.fmt_date_of_birth()
+          );
         }
-      },
+      }
       None => (),
     }
     println!("{:-^85}", "-");
   }
-  fn load_client(&mut self, id: u32, filepath: &str) -> std::io::Result<()> {
+  fn load_client(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Client> = self.clients.iter().find(|c| c.id == id);
     match current {
       Some(c) => {
         self.current_collateral_ids = Some(c.collaterals.clone());
         self.current_client_id = Some(c.id);
         Ok(())
-      },
-      None => {
-        Err(Error::new(ErrorKind::Other, "Failed to read client from filepath."))
       }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to read client from filepath.",
+      )),
     }
   }
-  fn choose_client(&mut self, client_filepath: &str, user_filepath: &str) -> u32 {
+  fn choose_client(
+    &mut self,
+  ) -> u32 {
     self.pub_display_clients();
-    
     let verified_id = loop {
       let chosen_id = loop {
         let input = loop {
@@ -332,14 +410,14 @@ impl NoteArchive {
             Err(e) => {
               println!("Could not read input; try again ({}).", e);
               continue;
-            },
+            }
           }
         };
         let input = input.trim();
         if input == "NEW" || input == "new" || input == "New" {
-          let new_id = self.create_client_get_id(client_filepath);
+          let new_id = self.create_client_get_id();
           self.update_current_clients(new_id);
-          match self.write_users(self.users.clone(), user_filepath) {
+          match self.write_users() {
             Ok(_) => break new_id,
             Err(e) => {
               panic!("Failed to save new user to file: {}", e);
@@ -351,11 +429,11 @@ impl NoteArchive {
             Err(e) => {
               println!("Could not read input as a number; try again ({}).", e);
               continue;
-            },
+            }
           }
         }
       };
-      match self.load_client(chosen_id, client_filepath) {
+      match self.load_client(chosen_id) {
         Ok(_) => break chosen_id,
         Err(e) => {
           println!("Unable to load client with id {}: {}", chosen_id, e);
@@ -365,8 +443,7 @@ impl NoteArchive {
     };
     verified_id
   }
-  fn create_client_get_id(&mut self, filepath: &str) -> u32 {
-    
+  fn create_client_get_id(&mut self) -> u32 {
     let client = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
@@ -377,7 +454,7 @@ impl NoteArchive {
           Err(e) => {
             println!("Invalid first name: {}", e);
             continue;
-          },
+          }
         };
       };
       let last_name = loop {
@@ -389,11 +466,10 @@ impl NoteArchive {
           Err(e) => {
             println!("Invalid last name: {}", e);
             continue;
-          },
+          }
         };
       };
       let dob: NaiveDate = loop {
-
         let birth_year = loop {
           let mut birth_year_choice = String::new();
           println!("Enter client's birth year.");
@@ -403,20 +479,20 @@ impl NoteArchive {
             Err(e) => {
               println!("Invalid birth year: {}", e);
               continue;
-            },
+            }
           };
           let birth_year_input = match birth_year_attempt {
             Ok(val) => val,
             Err(e) => {
               println!("Invalid birth year: {}", e);
               continue;
-            },
+            }
           };
           if birth_year_input > 9999 || birth_year_input < 1000 {
             println!("Please enter a valid year.");
             continue;
           }
-          break birth_year_input
+          break birth_year_input;
         };
         let birth_month = loop {
           let mut birth_month_choice = String::new();
@@ -427,20 +503,20 @@ impl NoteArchive {
             Err(e) => {
               println!("Invalid birth month: {}", e);
               continue;
-            },
+            }
           };
           let birth_month_input = match birth_month_attempt {
             Ok(val) => val,
             Err(e) => {
               println!("Invalid birth month: {}", e);
               continue;
-            },
+            }
           };
           if birth_month_input > 12 || birth_month_input < 1 {
             println!("Please enter a valid month using decimal numbers 1-12.");
             continue;
           }
-          break birth_month_input
+          break birth_month_input;
         };
         let birth_day = loop {
           let mut birth_day_choice = String::new();
@@ -451,33 +527,38 @@ impl NoteArchive {
             Err(e) => {
               println!("Invalid birth day: {}", e);
               continue;
-            },
+            }
           };
           let birth_day_input = match birth_day_attempt {
             Ok(val) => val,
             Err(e) => {
               println!("Invalid birth day: {}", e);
               continue;
-            },
+            }
           };
           if birth_day_input > 31 || birth_day_input < 1 {
             println!("Please enter a valid day using decimal numbers 1-12.");
             continue;
           }
-          break birth_day_input
+          break birth_day_input;
         };
 
         match NaiveDate::from_ymd_opt(birth_year, birth_month, birth_day) {
           Some(date) => break date,
           None => {
-            println!("{}-{}-{} does not appear to be a valid date. Please try again.", birth_year, birth_month, birth_day);
+            println!(
+              "{}-{}-{} does not appear to be a valid date. Please try again.",
+              birth_year, birth_month, birth_day
+            );
             continue;
           }
         };
-
       };
 
-      let client_attempt = self.generate_unique_new_client(first_name, last_name, dob, filepath);
+      let pronouns = self.choose_pronouns();
+
+      let client_attempt =
+        self.generate_unique_new_client(first_name, last_name, dob, pronouns);
       match client_attempt {
         Ok(client) => break client,
         Err(e) => {
@@ -487,7 +568,7 @@ impl NoteArchive {
       }
     };
     let id = client.id;
-    self.save_client(client, filepath);
+    self.save_client(client);
     id
   }
   pub fn generate_unique_new_client(
@@ -495,32 +576,37 @@ impl NoteArchive {
     first_name: String,
     last_name: String,
     dob: NaiveDate,
-    filepath: &str,
+    pronouns: u32,
   ) -> Result<Client, String> {
-    let saved_clients = NoteArchive::read_clients(&filepath);
-    let id: u32 = saved_clients.len() as u32 + 1;
+    let id: u32 = self.clients.len() as u32 + 1;
 
-    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> =
-      saved_clients.iter().map(|c| (
-        &c.first_name[..],
-        &c.last_name[..],
-        &c.dob,
-      )).collect();
+    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> = self.clients
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.dob))
+      .collect();
 
-    let result = if names_and_dobs.iter()
-      .any(|(f, l, d)| f == &first_name && l == &last_name && *d == &dob) {
+    let result = if names_and_dobs
+      .iter()
+      .any(|(f, l, d)| f == &first_name && l == &last_name && *d == &dob)
+    {
       Err(format!(
         "There is already a '{} {}' with DOB '{}'.",
         first_name, last_name, dob
       ))
     } else {
-      Ok(Client::new(id, first_name, last_name, dob, vec![]))
+      Ok(Client::new(
+        id,
+        first_name,
+        last_name,
+        dob,
+        pronouns,
+        vec![],
+      ))
     };
 
     result
   }
   pub fn read_clients(filepath: &str) -> Vec<Client> {
-
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -530,13 +616,11 @@ impl NoteArchive {
 
     let reader = BufReader::new(file);
 
-    let mut lines: Vec<std::io::Result<String>> = reader
-      .lines()
-      .collect();
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
       lines.remove(0).unwrap();
-      }
+    }
     if lines.len() > 0 {
       lines.remove(lines.len() - 1).unwrap();
     }
@@ -544,8 +628,11 @@ impl NoteArchive {
     let mut clients: Vec<Client> = vec![];
 
     for line in lines {
-      let values: Vec<String> = line.unwrap()
-        .split(" | ").map(|val| val.to_string()).collect();
+      let values: Vec<String> = line
+        .unwrap()
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
 
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
@@ -553,134 +640,170 @@ impl NoteArchive {
 
       let date: Vec<i32> = match &values[3][..] {
         "" => vec![],
-        _ => values[3].split("-").map(|val| val.parse().unwrap()).collect(),
+        _ => values[3]
+          .split("-")
+          .map(|val| val.parse().unwrap())
+          .collect(),
       };
-
       let (year, month, day): (i32, u32, u32) = (date[0], date[1] as u32, date[2] as u32);
-
       let dob = NaiveDate::from_ymd(year, month, day);
-
-      let collaterals: Vec<u32> = match &values[4][..] {
+      let pronouns: u32 = values[4].parse().unwrap();
+      let collaterals: Vec<u32> = match &values[5][..] {
         "" => vec![],
-        _ => values[4].split("#").map(|val| val.parse().unwrap()).collect(),
+        _ => values[5]
+          .split("#")
+          .map(|val| val.parse().unwrap())
+          .collect(),
       };
 
-      let c = Client::new(id, first_name, last_name, dob, collaterals);
+      let c = Client::new(id, first_name, last_name, dob, pronouns, collaterals);
       clients.push(c);
     }
     clients
   }
-  pub fn write_clients(&mut self, clients: Vec<Client>, filepath: &str) -> std::io::Result<()> {
+  pub fn write_clients(&self) -> std::io::Result<()> {
     let mut lines = String::from("##### clients #####\n");
-    for c in clients {
+    for c in &self.clients {
       lines.push_str(&c.to_string()[..]);
     }
     lines.push_str("##### clients #####");
-    let mut file = File::create(filepath).unwrap();
+    let mut file = File::create(self.client_filepath.clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
-  pub fn save_client(&mut self, client: Client, filepath: &str) {
+  pub fn save_client(&mut self, client: Client) {
     self.clients.push(client);
-    self.write_clients(self.clients.clone(), filepath).unwrap();
   }
   fn update_current_clients(&mut self, id: u32) {
-    self.current_user().clients.push(id);
-    self.current_client_ids = Some(self.current_user().clients.clone());
+    self.current_user_mut().clients.push(id);
+    self.current_client_ids = Some(self.current_user_mut().clients.clone());
   }
 
   // pronouns
 
-  pub fn read_pronouns(filepath: &str) -> Vec<Pronouns> {
-
+  pub fn read_pronouns(&mut self) {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
       .create(true)
-      .open(filepath)
+      .open(self.pronouns_filepath.clone())
       .unwrap();
 
     let reader = BufReader::new(file);
 
-    let mut lines: Vec<std::io::Result<String>> = reader
-      .lines()
-      .collect();
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
       lines.remove(0).unwrap();
-      }
+    }
     if lines.len() > 0 {
       lines.remove(lines.len() - 1).unwrap();
     }
 
-    let mut pronouns: Vec<Pronouns> = vec![];
+    let mut pronouns: Vec<Pronouns> = vec![
+      Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his")),
+      Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers")),
+      Pronouns::new(3, String::from("they"), String::from("them"), String::from("their"), String::from("theirs")),
+    ];
 
     for line in lines {
-      let values: Vec<String> = line.unwrap().split(" | ").map(|val| val.to_string()).collect();
+      let values: Vec<String> = line
+        .unwrap()
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
 
-      let id: u32 = values[0].parse().unwrap();
+      let mut id: u32 = values[0].parse().unwrap();
+
+      // if any pronouns have a matching ID
+      // due to someone editing the default values,
+      // change ID to last item in vector + 1, continuing count
+
+      if pronouns.iter().any(|p| p.id == id ) {
+        let old_id = id;
+        id = pronouns[pronouns.len()-1].id + 1;
+        self.reassign_pronouns_id(old_id, id);
+      }
+
       let subject = String::from(&values[1]);
       let object = String::from(&values[2]);
       let possessive_determiner = String::from(&values[3]);
       let possessive = String::from(&values[4]);
 
       let p = Pronouns::new(id, subject, object, possessive_determiner, possessive);
-      pronouns.push(p);
+      if !pronouns.iter().any(|prn| prn == &p ) {
+        pronouns.push(p);
+      }
     }
-    pronouns
+    self.pronouns = pronouns;
   }
-  fn get_pronouns(&mut self, filepath: &str) -> u32 {
+  pub fn reassign_pronouns_id(&mut self, old_id: u32, new_id: u32) {
+    let mut i = 0;
+    while i < self.users.len()-1 {
+      let mut u = &mut self.users[i];
+      if u.pronouns == old_id {
+        u.pronouns = new_id
+      }
+      i += 1;
+    }
+  }
+  fn choose_pronouns(&mut self) -> u32 {
     self.pub_display_pronouns();
-    
     let chosen_id = loop {
       let input = loop {
         let mut choice = String::new();
-        println!("Enter pronouns ID (or 'NEW' to create new pronouns).");
+        println!(
+          "Enter pronouns ID ('NEW' to create new, 'EDIT' to change existing pronoun records)."
+        );
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice,
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
-          },
+          }
         }
       };
       let input = input.trim();
       if input == "NEW" || input == "new" || input == "New" {
-        let pronouns = self.create_get_pronouns(filepath);
+        let pronouns = self.create_get_pronouns();
+        self.pub_display_pronouns();
         let new_id = pronouns.id;
-        self.save_pronouns(pronouns, filepath);
-        break new_id
+        break new_id;
+      }
+      if input == "EDIT" || input == "edit" || input == "Edit" {
+        self.choose_edit_pronouns();
+        self.pub_display_pronouns();
+        continue;
       }
       let id = match input.trim().parse::<u32>() {
         Ok(num) => num,
         Err(e) => {
           println!("Could not read input as a number; try again ({}).", e);
           continue;
-        },
+        }
       };
       match self.load_pronouns(id) {
         Ok(_) => break id,
         Err(e) => {
           println!("Unable to load client with id {}: {}", input, e);
           continue;
-        },
+        }
       }
     };
     chosen_id
   }
   fn pub_display_pronouns(&self) {
-    println!("{:-^30}", "-");
-    println!("{:-^30}", " Pronouns ");
-    println!("{:-^30}", "-");
-    println!("{:-^4} | {:-^20}", "ID", "PRONOUNS");
+    println!("{:-^40}", "-");
+    println!("{:-^40}", " Pronouns ");
+    println!("{:-^40}", "-");
+    println!("{:-^10} | {:-^30}", "ID", "PRONOUNS");
     for p in &self.pronouns {
-      println!("{: ^4} | {: ^20}", p.id, p.short_string());
+      println!("{: ^6} | {: ^30}", p.id, p.short_string());
     }
-    println!("{:-^30}", "-");
+    println!("{:-^40}", "-");
   }
-  fn create_get_pronouns(&mut self, filepath: &str) -> Pronouns {
-    
+  fn create_get_pronouns(&mut self) -> Pronouns {
     let pronouns = loop {
       let subject = loop {
         let mut subject_choice = String::new();
@@ -692,7 +815,7 @@ impl NoteArchive {
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
-          },
+          }
         };
       };
       let object = loop {
@@ -705,36 +828,44 @@ impl NoteArchive {
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
-          },
+          }
         };
       };
       let possessive_determiner = loop {
         let mut possessive_determiner_choice = String::new();
         println!("Enter your possessive determiner ('his' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'their' in 'they/them/their/theirs').");
         println!("Example: ICC used [pronoun] personal vehicle to transport youth home.");
-        let possessive_determiner_attempt = io::stdin().read_line(&mut possessive_determiner_choice);
+        let possessive_determiner_attempt =
+          io::stdin().read_line(&mut possessive_determiner_choice);
         match possessive_determiner_attempt {
           Ok(_) => break String::from(possessive_determiner_choice.trim()),
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
-          },
+          }
         };
       };
       let possessive = loop {
         let mut possessive_choice = String::new();
         println!("Enter your possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
-        println!("Example: OPT for youth provider her contact information, and ICC provider [pronoun].");
+        println!(
+          "Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
+        );
         let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
         match possessive_attempt {
           Ok(_) => break String::from(possessive_choice.trim()),
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
-          },
+          }
         };
       };
-      let pronouns_attempt = self.generate_unique_new_pronouns(subject, object, possessive_determiner, possessive, filepath);
+      let pronouns_attempt = self.generate_unique_new_pronouns(
+        subject,
+        object,
+        possessive_determiner,
+        possessive,
+      );
       match pronouns_attempt {
         Ok(pronouns) => break pronouns,
         Err(e) => {
@@ -744,7 +875,7 @@ impl NoteArchive {
       }
     };
     let new_pronouns = pronouns.clone();
-    self.save_pronouns(pronouns, filepath);
+    self.save_pronouns(pronouns);
     new_pronouns
   }
   pub fn generate_unique_new_pronouns(
@@ -753,14 +884,12 @@ impl NoteArchive {
     object: String,
     possessive_determiner: String,
     possessive: String,
-    filepath: &str,
   ) -> Result<Pronouns, String> {
-    let saved_pronouns = NoteArchive::read_pronouns(&filepath);
-    let id: u32 = saved_pronouns.len() as u32 + 1;
+    let id: u32 = self.pronouns.len() as u32 + 1;
 
     let new_pronouns = Pronouns::new(id, subject, object, possessive_determiner, possessive);
 
-    let result = if self.pronouns.iter().any(|p| p == &new_pronouns ) {
+    let result = if self.pronouns.iter().any(|p| p == &new_pronouns) {
       Err(format!(
         "Pronouns already stored ({}).",
         new_pronouns.short_string(),
@@ -771,19 +900,19 @@ impl NoteArchive {
 
     result
   }
-  pub fn write_pronouns(&mut self, pronouns: Vec<Pronouns>, filepath: &str) -> std::io::Result<()> {
+  pub fn write_pronouns(&mut self) -> std::io::Result<()> {
+    self.delete_duplicate_pronouns();
     let mut lines = String::from("##### pronouns #####\n");
-    for p in pronouns {
+    for p in &self.pronouns {
       lines.push_str(&p.to_string()[..]);
     }
     lines.push_str("##### pronouns #####");
-    let mut file = File::create(filepath).unwrap();
+    let mut file = File::create(self.pronouns_filepath.clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
-  pub fn save_pronouns(&mut self, pronouns: Pronouns, filepath: &str) {
+  pub fn save_pronouns(&mut self, pronouns: Pronouns) {
     self.pronouns.push(pronouns);
-    self.write_pronouns(self.pronouns.clone(), filepath).unwrap();
   }
   fn load_pronouns(&mut self, id: u32) -> Result<u32, String> {
     let pronouns: Option<&Pronouns> = self.pronouns.iter().find(|c| c.id == id);
@@ -792,6 +921,223 @@ impl NoteArchive {
       None => Err(format!("Invalid ID: {}.", id)),
     }
   }
+  pub fn get_pronouns_by_id(&self, id: u32) -> Option<&Pronouns> {
+    self.pronouns.iter().find(|p| p.id == id)
+  }
+  pub fn get_pronouns_by_id_mut(&mut self, id: u32) -> Option<&mut Pronouns> {
+    self.pronouns.iter_mut().find(|p| p.id == id)
+  }
+  pub fn update_current_pronouns(&mut self, pronouns_id: u32) {
+    self.current_user_mut().pronouns = pronouns_id;
+  }
+  pub fn get_duplicate_pronoun_ids(&self) -> Vec<u32> {
+    let mut dups: Vec<u32> = vec![];
+    for pronouns in &self.pronouns {
+      if self
+        .pronouns
+        .iter()
+        .any(|p| p == pronouns && p.id != pronouns.id)
+      {
+        if dups.iter().any(|d| d == &pronouns.id) {
+          ()
+        } else {
+          dups.push(pronouns.id);
+        }
+      }
+    }
+    dups
+  }
+  pub fn delete_duplicate_pronouns(&mut self) {
+    let mut unique_pronouns: Vec<Pronouns> = vec![];
+    let dup_ids = self.get_duplicate_pronoun_ids();
+    let mut unique_ids: Vec<u32> = vec![];
+    for p in &self.pronouns {
+      if dup_ids.iter().any(|id| id == &p.id) && unique_ids.iter().any(|id| id == &p.id) {
+        ()
+      } else {
+        unique_ids.push(p.id);
+        unique_pronouns.push(p.clone());
+      }
+    }
+    self.pronouns = unique_pronouns;
+  }
+  pub fn update_pronoun_records(
+    &mut self,
+    pronoun_id: u32,
+    pronoun_to_edit: String,
+    new_pronoun: String,
+  ) {
+    match &pronoun_to_edit[..] {
+      "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
+        self
+          .get_pronouns_by_id_mut(pronoun_id)
+          .unwrap()
+          .update_subject(new_pronoun);
+      }
+      "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
+        self
+          .get_pronouns_by_id_mut(pronoun_id)
+          .unwrap()
+          .update_object(new_pronoun);
+      }
+      "posdet"
+      | "POSDET"
+      | "possessive determiner"
+      | "POSSESSIVE DETERMINER"
+      | "Possessive Determiner"
+      | "PosDet"
+      | "Possessive determiner" => {
+        self
+          .get_pronouns_by_id_mut(pronoun_id)
+          .unwrap()
+          .update_possessive_determiner(new_pronoun);
+      }
+      "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
+      | "POSSESS" => {
+        self
+          .get_pronouns_by_id_mut(pronoun_id)
+          .unwrap()
+          .update_possessive(new_pronoun);
+      }
+      _ => {
+        panic!("Invalid string passed to 'fn update_pronoun_records'");
+      }
+    }
+    if self.get_duplicate_pronoun_ids().len() > 0 {
+      println!("Warning: Duplicate pronouns will be deleted on program load.");
+    }
+  }
+  pub fn choose_edit_pronouns(&mut self) {
+    let mut final_pronouns_id;
+    let mut final_pronoun_to_edit = String::new();
+    let mut final_new_pronoun = String::new();
+    loop {
+      {
+        self.pub_display_pronouns();
+        let pronouns = loop {
+          let input = loop {
+            let mut choice = String::new();
+            println!("Enter ID of the pronouns you would like to edit.");
+            let read_attempt = io::stdin().read_line(&mut choice);
+            match read_attempt {
+              Ok(_) => break choice,
+              Err(e) => {
+                println!("Could not read input; try again ({}).", e);
+                continue;
+              }
+            }
+          };
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println!("Could not read input as a number; try again ({}).", e);
+              continue;
+            }
+          };
+          match self.get_pronouns_by_id(id) {
+            Some(p) => break p,
+            None => {
+              println!("Unable to load pronouns with ID {}.", id);
+              continue;
+            }
+          }
+        };
+        final_pronouns_id = pronouns.id;
+        println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
+        println!("'Q'/'QUIT' to exit.");
+        let mut pronoun_to_edit = String::new();
+        let input_attempt = io::stdin().read_line(&mut pronoun_to_edit);
+        match input_attempt {
+          Ok(_) => (),
+          Err(e) => {
+            println!("Failed to read input. Please try again.");
+            continue;
+          }
+        }
+        pronoun_to_edit = pronoun_to_edit.trim().to_string();
+        match &pronoun_to_edit[..] {
+          "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+            break ();
+          }
+          _ => (),
+        }
+        final_pronoun_to_edit = pronoun_to_edit.clone();
+        let new_pronoun = match &pronoun_to_edit[..] {
+          "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
+            println!("Enter new subject pronoun ('he' in 'he/him/his/his', 'she' in 'she/her/her/hers', or 'they' in 'they/them/their/theirs').");
+            println!("Example: [pronoun] attended a Care Plan Meeting.");
+            let mut subject_choice = String::new();
+            let subject_attempt = io::stdin().read_line(&mut subject_choice);
+            let p = match subject_attempt {
+              Ok(_) => String::from(subject_choice.trim()),
+              Err(e) => {
+                println!("Failed to read line: {}", e);
+                continue;
+              }
+            };
+            p
+          }
+          "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
+            println!("Enter new object pronoun ('him' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'them' in 'they/them/their/theirs').");
+            println!("Example: Guidance counselor called ICC and left a message for [pronoun].");
+            let mut object_choice = String::new();
+            let object_attempt = io::stdin().read_line(&mut object_choice);
+            let p = match object_attempt {
+              Ok(_) => String::from(object_choice.trim()),
+              Err(e) => {
+                println!("Failed to read line: {}", e);
+                continue;
+              }
+            };
+            p
+          }
+          "posdet"
+          | "POSDET"
+          | "possessive determiner"
+          | "POSSESSIVE DETERMINER"
+          | "Possessive Determiner"
+          | "PosDet"
+          | "Possessive determiner" => {
+            println!("Enter new possessive determiner ('his' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'their' in 'they/them/their/theirs').");
+            println!("Example: ICC used [pronoun] personal vehicle to transport youth home.");
+            let mut posdet_choice = String::new();
+            let posdet_attempt = io::stdin().read_line(&mut posdet_choice);
+            let p = match posdet_attempt {
+              Ok(_) => String::from(posdet_choice.trim()),
+              Err(e) => {
+                println!("Failed to read line: {}", e);
+                continue;
+              }
+            };
+            p
+          }
+          "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
+          | "POSSESS" => {
+            println!("Enter new possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
+            println!("Example: OPT for youth provided her contact information, and ICC provider [pronoun].");
+            let mut possessive_choice = String::new();
+            let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
+            let p = match possessive_attempt {
+              Ok(_) => String::from(possessive_choice.trim()),
+              Err(e) => {
+                println!("Failed to read line: {}", e);
+                continue;
+              }
+            };
+            p
+          },
+          _ => {
+            println!("Invalid entry.");
+            continue;
+          }
+        };
+        final_new_pronoun = new_pronoun.clone();
+        break;
+      }
+    }
+    self.update_pronoun_records(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
+    self.pub_display_pronouns();
+  }
 }
 
 #[cfg(test)]
@@ -799,134 +1145,124 @@ mod tests {
   use super::*;
 
   #[test]
-  fn can_open_blank_users() {
+  fn can_open_blank_files() {
     {
-      let users = NoteArchive::read_users("some_random_user_file_name.txt");
-      assert_eq!(users, vec![]);
-    }
-    fs::remove_file("some_random_user_file_name.txt").unwrap();
-  }
-  #[test]
-  fn can_open_blank_clients() {
-    {
-      let users = NoteArchive::read_clients("some_random_client_file_name.txt");
-      assert_eq!(users, vec![]);
-    }
-    fs::remove_file("some_random_client_file_name.txt").unwrap();
-  }
-  #[test]
-  fn can_open_blank_pronouns() {
-    {
-      let pronouns = NoteArchive::read_pronouns("some_random_pronoun_file_name.txt");
-      assert_eq!(pronouns, vec![]);
-    }
-    fs::remove_file("some_random_pronoun_file_name.txt").unwrap();
-  }
-  #[test]
-  fn can_load_users() {
-    {
-      let mut a1 = NoteArchive::new();
-      let test_user_1 = User::new(
-        1,
-        String::from("Bob"),
-        String::from("Smith"),
-        ICC,
-        1,
-        vec![1, 2, 3]
+      let a = NoteArchive::new(
+        String::from("some_random_blank_user_file_name.txt"),
+        String::from("some_random_blank_client_file_name.txt"),
+        String::from("some_random_blank_pronouns_file_name.txt"),
       );
-      let test_user_2 = User::new(
-        2,
-        String::from("Gerald"),
-        String::from("Ford"),
-        FP,
-        1,
-        vec![1, 2, 3]
-      );
-      a1.write_users(vec![test_user_1, test_user_2], "test_load_user.txt").unwrap();
-
-      a1.load_from_files(
-        "test_load_user.txt",
-        "placehold_load_user_client_filepath.txt",
-        "placeholder_load_user_pronouns_filepath.txt",
+      assert_eq!(a.users, vec![]);
+      assert_eq!(a.clients, vec![]);
+      assert_eq!(a.pronouns, vec![
+        Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his")),
+        Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers")),
+        Pronouns::new(3, String::from("they"), String::from("them"), String::from("their"), String::from("theirs")),
+      ]);
+    }
+    fs::remove_file("some_random_blank_user_file_name.txt").unwrap();
+    fs::remove_file("some_random_blank_client_file_name.txt").unwrap();
+    fs::remove_file("some_random_blank_pronouns_file_name.txt").unwrap();
+  }
+  #[test]
+  fn can_load_from_files() {
+    {
+      let test_user = User::new(1, String::from("Bob"), String::from("Smith"), ICC, 1, vec![1, 2, 3]);
+      let test_client = Client::new(1, String::from("Harry"), String::from("et Tubman"), NaiveDate::from_ymd(2000, 1, 1), 1, vec![1, 2, 3]);
+      let test_pronouns = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
+      
+      let mut a1 = NoteArchive::new(
+        String::from("test_load_user.txt"),
+        String::from("test_load_client.txt"),
+        String::from("test_load_pronouns.txt"),
       );
 
-      a1.load_user(2, "test_load_user.txt").unwrap();
-      assert_eq!(a1.current_user_id, Some(2));
+      a1.users = vec![test_user];
+      a1.clients = vec![test_client];
+      a1.pronouns = vec![test_pronouns];
+
+      a1.write_to_files();
+
+      a1.load_user(1).unwrap();
+      assert_eq!(a1.current_user_id, Some(1));
     }
     fs::remove_file("test_load_user.txt").unwrap();
-    fs::remove_file("placehold_load_user_client_filepath.txt").unwrap();
-    fs::remove_file("placeholder_load_user_pronouns_filepath.txt").unwrap();
-  }
-  #[test]
-  fn can_load_clients() {
-    {
-      let mut a1 = NoteArchive::new();
-      let test_user_1 = User::new(
-        1,
-        String::from("Gary"),
-        String::from("Shmonson"),
-        ICC,
-        1,
-        vec![1, 2, 3]
-      );
-      let test_user_2 = User::new(
-        2,
-        String::from("Gerald"),
-        String::from("Ford"),
-        FP,
-        2,
-        vec![7, 8, 9]
-      );
-      a1.write_users(vec![test_user_1, test_user_2], "test_load_clients_from_user.txt").unwrap();
-
-      a1.load_from_files(
-        "test_load_clients_from_user.txt",
-        "placehold_load_client_client_filepath.txt",
-        "placehold_load_client_pronouns_filepath.txt",
-      );
-
-      a1.load_user(2, "test_load_clients_from_user.txt").unwrap();
-      assert_eq!(a1.current_client_ids, Some(vec![7, 8, 9]));
-    }
-    fs::remove_file("test_load_clients_from_user.txt").unwrap();
-    fs::remove_file("placehold_load_client_client_filepath.txt").unwrap();
-    fs::remove_file("placehold_load_client_pronouns_filepath.txt").unwrap();
-  }
-  #[test]
-  fn can_load_pronouns() {
-    {
-      let mut a1 = NoteArchive::new();
-      let test_pronouns_1 = Pronouns::new(
-        1,
-        String::from("he"),
-        String::from("him"),
-        String::from("his"),
-        String::from("his"),
-      );
-      let test_pronouns_2 = Pronouns::new(
-        2,
-        String::from("she"),
-        String::from("her"),
-        String::from("her"),
-        String::from("hers"),
-      );
-
-      let t1 = test_pronouns_1.clone();
-      let t2 = test_pronouns_2.clone();
-
-      a1.write_pronouns(vec![test_pronouns_1, test_pronouns_2], "test_load_pronouns.txt").unwrap();
-
-      a1.load_from_files(
-        "placeholder_load_pronouns_user_filepath.txt",
-        "placehold_load_pronouns_client_filepath.txt",
-        "test_load_pronouns.txt",
-      );
-
-      assert_eq!(a1.pronouns, vec![t1, t2]);
-    }
-    fs::remove_file("placeholder_load_pronouns_user_filepath.txt").unwrap();
-    fs::remove_file("placehold_load_pronouns_client_filepath.txt").unwrap();
+    fs::remove_file("test_load_client.txt").unwrap();
     fs::remove_file("test_load_pronouns.txt").unwrap();
+  }
+  #[test]
+  fn creates_unique_new_instances() {
+
+    let mut notes = NoteArchive::new_test();
+
+    let new_user_attempt = notes.generate_unique_new_user(
+      String::from("Carl"),
+      String::from("Carlson"),
+      ICC,
+      1,
+    );
+    
+    let new_client_attempt = notes.generate_unique_new_client(
+      String::from("Carl"),
+      String::from("Carlson"),
+      NaiveDate::from_ymd(2008, 3, 4),
+      1,
+    );
+
+    let new_pronouns_attempt = notes.generate_unique_new_pronouns(
+      String::from("they"),
+      String::from("them"),
+      String::from("their"),
+      String::from("theirs"),
+    );
+
+    let new_user = match new_user_attempt {
+      Ok(user) => user,
+      Err(_) => panic!("Failed to generate user."),
+    };
+    let new_client = match new_client_attempt {
+      Ok(user) => user,
+      Err(_) => panic!("Failed to generate client."),
+    };
+    let new_pronouns = match new_pronouns_attempt {
+      Ok(pronouns) => pronouns,
+      Err(_) => panic!("Failed to generate pronouns."),
+    };
+
+    assert_eq!(new_user, User::new(3, String::from("Carl"), String::from("Carlson"), ICC, 1, vec![]));
+    assert_eq!(new_client, Client::new(3, String::from("Carl"), String::from("Carlson"), NaiveDate::from_ymd(2008, 3, 4), 1, vec![]));
+    assert_eq!(new_pronouns, Pronouns::new(3, String::from("they"), String::from("them"), String::from("their"), String::from("theirs")));
+  }
+
+  // pronouns
+
+  #[test]
+  fn gets_current_pronouns() {
+    let mut notes = NoteArchive::new_test();
+
+    notes.load_user(1).unwrap();
+
+    notes.update_current_pronouns(1);
+
+    let current_pronouns_id = notes.current_user().pronouns;
+
+    assert_eq!(
+      notes.get_pronouns_by_id(current_pronouns_id).unwrap().id,
+      1
+    );
+  }
+
+  #[test]
+  fn update_current_pronouns() {
+    let mut notes = NoteArchive::new_test();
+
+    notes.load_user(1).unwrap();
+
+    notes.update_current_pronouns(2);
+    assert_eq!(notes.current_user().pronouns, 2);
+
+    notes.update_current_pronouns(1);
+    assert_eq!(notes.current_user().pronouns, 1);
   }
 
 }

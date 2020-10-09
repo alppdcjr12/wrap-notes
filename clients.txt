@@ -1,3 +1,10 @@
 ##### clients #####
-1 | Charles | Quinley | 2003-6-30 | 
+1 | Chadwicksi | vonni Burvo | 2009-3-31 | 2 | 
+2 | Porky | Munchmunch | 2000-1-1 | 2 | 
+3 | Gople | Marduvian | 2005-11-29 | 3 | 
+4 | Gazorpzorp | Vance | 2011-11-25 | 4 | 
+5 | Booboo | Soggyapples | 1991-11-5 | 1 | 
+6 | Dave | Poopsicle | 2005-3-7 | 4 | 
+7 | Jack | McHandyurrdikk | 2003-8-14 | 5 | 
+8 | Jack | Cracker | 2009-8-17 | 6 | 
 ##### clients #####

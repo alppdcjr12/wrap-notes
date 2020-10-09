@@ -37,6 +37,26 @@ impl Pronouns {
   pub fn short_string(&self) -> String {
     String::from(format!("({}/{}/{}/{})", self.subject, self.object, self.possessive_determiner, self.possessive))
   }
+  pub fn pub_display_pronoun(&self) {
+    println!("{:-^100}", "-");
+    println!("{:-^100}", self.short_string());
+    println!("{:-^100}", "-");
+    println!("{:-^20} | {:-^20} | {:-^20} | {:-^20} | {:-^20}", "ID", "SUBJECT", "OBJECT", "POSSESSIVE DETERMINER", "POSSESSIVE");
+    println!("{: ^20} | {: ^20} | {: ^20} | {: ^20} | {: ^20}", self.id, self.subject, self.object, self.possessive_determiner, self.possessive);
+    println!("{:-^100}", "-");
+  }
+  pub fn update_subject(&mut self, new_subject: String) {
+    self.subject = new_subject;
+  }
+  pub fn update_object(&mut self, new_object: String) {
+    self.object = new_object;
+  }
+  pub fn update_possessive_determiner(&mut self, new_possessive_determiner: String) {
+    self.possessive_determiner = new_possessive_determiner;
+  }
+  pub fn update_possessive(&mut self, new_possessive: String) {
+    self.possessive = new_possessive;
+  }
 }
 
 impl fmt::Display for Pronouns {
