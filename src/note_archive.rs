@@ -34,11 +34,10 @@ impl NoteArchive {
     let user_id = self.choose_user();
     self.load_user(user_id).unwrap();
 
-    loop {
-      let client_id = self.choose_client();
-      let client = self.load_client(client_id).unwrap();
-      self.write_to_files();
-    }
+    self.logged_in_action();
+
+    
+
   }
   pub fn new(
     user_filepath: String,
@@ -104,6 +103,37 @@ impl NoteArchive {
     self.write_clients().unwrap();
     self.write_pronouns().unwrap();
   }
+  pub fn logged_in_action(&mut self) {
+    loop {
+
+      println!("EDIT/E to edit current user info.");
+      println!("QUIT/Q to quit.");
+      println!("Any other key to view and edit client records.");
+
+      let mut choice = String::new();
+      let choice_attempt = io::stdin().read_line(&mut choice);
+      match choice_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+        }
+      }
+      choice = choice.trim();
+      match choice {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        },
+        "edit" | "e" | "EDIT" | "E" | "Edit" => {
+          self.choose_edit_user();
+        },
+        _ => {
+          let client_id = self.choose_client();
+          let client = self.load_client(client_id).unwrap();
+        },
+      }
+      self.write_to_files();
+    }
+  }
 
   // users
 
@@ -129,7 +159,7 @@ impl NoteArchive {
       None => panic!("The loaded user id does not match any saved users."),
     }
   }
-  fn pub_display_users(&self) {
+  fn display_users(&self) {
     println!("{:-^60}", "-");
     println!("{:-^60}", " Users ");
     println!("{:-^60}", "-");
@@ -143,6 +173,22 @@ impl NoteArchive {
       );
     }
     println!("{:-^60}", "-");
+  }
+  fn display_edit_user(&self) {
+    println!("{:-^70}", "-");
+    println!("{:-^70}", " Edit user ");
+    println!("{:-^70}", "-");
+    println!("{:-^10} | {:-^20} | {:-^20} | {:-^20}", "Role", "First name", "Last name", "Pronouns");
+    println!(
+      "{: ^10} | {: ^20} | {: ^20} | {: ^20}",
+      self.current_user().role.to_string(),
+      self.current_user().first_name,
+      self.current_user().last_name,
+      self.current_user().pronouns.short_string(),
+    );
+    println!("{:-^50}", "-");
+    println!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
+    println!("'Q'/'QUIT' to exit.");
   }
   pub fn load_user(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&User> = self.users.iter().find(|u| u.id == id);
@@ -159,7 +205,7 @@ impl NoteArchive {
     }
   }
   fn choose_user(&mut self) -> u32 {
-    self.pub_display_users();
+    self.display_users();
     let verified_id = loop {
       let chosen_id = loop {
         let input = loop {
@@ -351,9 +397,158 @@ impl NoteArchive {
     }
     users
   }
+  fn change_first_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+      .iter()
+      .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
+      .collect();
+
+    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (new_name, &self.current_user().last_name, &self.current_user().role);
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, r)| f == &cf && l == &cl && r == &cr)
+    {
+      Err(format!(
+        "There is already a {} with the name '{} {}'.",
+        cr, cf, cl
+      ))
+    } else {
+      self.current_user_mut().first_name = String::from(new_name);
+      Ok(())
+    };
+    
+    result
+  }
+  fn change_last_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+      .iter()
+      .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
+      .collect();
+
+    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (&self.current_user().first_name, new_name, &self.current_user().role);
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, r)| f == &cf && l == &cl && r == &cr)
+    {
+      Err(format!(
+        "There is already a {} with the name '{} {}'.",
+        cr, cf, cl
+      ))
+    } else {
+      self.current_user_mut().first_name = String::from(new_name);
+      Ok(())
+    };
+    
+    result
+  }
+  fn change_role(&mut self, new_role: &EmployeeRole) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+      .iter()
+      .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
+      .collect();
+
+    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (&self.current_user().first_name, &self.current_user().last_name, new_role);
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, r)| f == &cf && l == &cl && r == &cr)
+    {
+      Err(format!(
+        "There is already a {} with the name '{} {}'.",
+        cr, cf, cl
+      ))
+    } else {
+      self.current_user_mut().role = new_role.clone();
+      Ok(())
+    };
+    
+    result
+  }
+  fn choose_edit_user(&mut self) {
+    loop {
+      self.display_edit_user();
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      field_to_edit = field_to_edit.trim().to_string();
+      match &field_to_edit[..] {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        }
+        _ => (),
+      }
+      match &field_to_edit[..] {
+        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name" | "FIRST NAME" | "First Name"=> {
+          println!("Enter new first name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => {
+              match self.change_first_name(name_choice.trim()) {
+                Ok(_) => {
+                  ()
+                },
+                Err(e) => {
+                  println!("Error: {}", e);
+                },
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              continue;
+            },
+          }
+        },
+        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME" | "Last Name" => {
+          println!("Enter new last name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => {
+              match self.change_last_name(name_choice.trim()) {
+                Ok(_) => {
+                  ()
+                },
+                Err(e) => {
+                  println!("Error: {}", e);
+                },
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              continue;
+            },
+          }
+        },
+        "ROLE" | "Role" | "role" | "r" | "R" => {
+            match self.current_user().role {
+              ICC => {
+                self.change_role(&FP);
+              },
+              FP => {
+                self.change_role(&ICC);
+              },
+            }
+          }
+        },
+        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+          self.current_user_mut().pronouns = self.choose_pronouns();
+        },
+        _ => println!("Invalid entry.")
+      }
+    }
+  }
 
   // clients
-  fn pub_display_clients(&self) {
+  fn display_clients(&self) {
     println!("{:-^90}", "-");
     println!("{:-^90}", " Clients ");
     println!("{:-^90}", "-");
@@ -398,7 +593,7 @@ impl NoteArchive {
   fn choose_client(
     &mut self,
   ) -> u32 {
-    self.pub_display_clients();
+    self.display_clients();
     let verified_id = loop {
       let chosen_id = loop {
         let input = loop {
@@ -414,7 +609,7 @@ impl NoteArchive {
           }
         };
         let input = input.trim();
-        if input == "NEW" || input == "new" || input == "New" {
+        if input == "NEW" || input == "new" || input == "New" || input == "n" || input == "N" {
           let new_id = self.create_client_get_id();
           self.update_current_clients(new_id);
           match self.write_users() {
@@ -748,12 +943,12 @@ impl NoteArchive {
     }
   }
   fn choose_pronouns(&mut self) -> u32 {
-    self.pub_display_pronouns();
+    self.display_pronouns();
     let chosen_id = loop {
       let input = loop {
         let mut choice = String::new();
         println!(
-          "Enter pronouns ID ('NEW' to create new, 'EDIT' to change existing pronoun records)."
+          "Enter pronouns ID or command ('NEW' to create new; 'EDIT' to change records for all users)."
         );
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -767,13 +962,13 @@ impl NoteArchive {
       let input = input.trim();
       if input == "NEW" || input == "new" || input == "New" {
         let pronouns = self.create_get_pronouns();
-        self.pub_display_pronouns();
+        self.display_pronouns();
         let new_id = pronouns.id;
         break new_id;
       }
       if input == "EDIT" || input == "edit" || input == "Edit" {
         self.choose_edit_pronouns();
-        self.pub_display_pronouns();
+        self.display_pronouns();
         continue;
       }
       let id = match input.trim().parse::<u32>() {
@@ -793,7 +988,7 @@ impl NoteArchive {
     };
     chosen_id
   }
-  fn pub_display_pronouns(&self) {
+  fn display_pronouns(&self) {
     println!("{:-^40}", "-");
     println!("{:-^40}", " Pronouns ");
     println!("{:-^40}", "-");
@@ -961,7 +1156,7 @@ impl NoteArchive {
     }
     self.pronouns = unique_pronouns;
   }
-  pub fn update_pronoun_records(
+  pub fn update_pronouns_record(
     &mut self,
     pronoun_id: u32,
     pronoun_to_edit: String,
@@ -1000,7 +1195,7 @@ impl NoteArchive {
           .update_possessive(new_pronoun);
       }
       _ => {
-        panic!("Invalid string passed to 'fn update_pronoun_records'");
+        panic!("Invalid string passed to 'fn update_pronouns_records'");
       }
     }
     if self.get_duplicate_pronoun_ids().len() > 0 {
@@ -1013,7 +1208,7 @@ impl NoteArchive {
     let mut final_new_pronoun = String::new();
     loop {
       {
-        self.pub_display_pronouns();
+        self.display_pronouns();
         let pronouns = loop {
           let input = loop {
             let mut choice = String::new();
@@ -1135,8 +1330,8 @@ impl NoteArchive {
         break;
       }
     }
-    self.update_pronoun_records(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
-    self.pub_display_pronouns();
+    self.update_pronouns_record(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
+    self.display_pronouns();
   }
 }
 
