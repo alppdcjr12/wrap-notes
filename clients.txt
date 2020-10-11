@@ -1,10 +1,7 @@
 ##### clients #####
 1 | Chadwicksi | vonni Burvo | 2009-3-31 | 2 | 
-2 | Porky | Munchmunch | 2000-1-1 | 2 | 
-3 | Gople | Marduvian | 2005-11-29 | 3 | 
-4 | Gazorpzorp | Vance | 2011-11-25 | 4 | 
-5 | Booboo | Soggyapples | 1991-11-5 | 1 | 
-6 | Dave | Poopsicle | 2005-3-7 | 4 | 
-7 | Jack | McHandyurrdikk | 2003-8-14 | 5 | 
-8 | Jack | Cracker | 2009-8-17 | 6 | 
+2 | Jack | Smith | 2000-1-1 | 3 | 
+3 | R | S | 2005-6-12 | 1 | 
+4 | John | Shmitty | 2003-2-7 | 2 | 
+5 | Paul | Smith | 2003-12-5 | 1 | 
 ##### clients #####

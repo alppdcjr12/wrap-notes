@@ -7,7 +7,7 @@ use std::io;
 use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
 use std::io::{Error, ErrorKind};
-use std::cell::RefCell;
+use std::{thread, time};
 
 use crate::client::*;
 use crate::pronouns::*;
@@ -32,12 +32,9 @@ impl NoteArchive {
   pub fn run(&mut self) {
     NoteArchive::remove_test_files();
     let user_id = self.choose_user();
-    self.load_user(user_id).unwrap();
+    self.write_to_files();
 
     self.logged_in_action();
-
-    
-
   }
   pub fn new(
     user_filepath: String,
@@ -55,23 +52,61 @@ impl NoteArchive {
       current_collateral_id: None,
       user_filepath,
       client_filepath,
-      pronouns_filepath
+      pronouns_filepath,
     };
     a.read_pronouns();
     a
   }
   pub fn new_test() -> NoteArchive {
-
-    let user_1 = User::new(1, String::from("Pete"), String::from("Peteson"), ICC, 1, vec![1, 2, 3, 4]);
-    let user_2 = User::new(2, String::from("Sandy"), String::from("Sandyson"), FP, 1, vec![5, 6, 7, 8]);
+    let user_1 = User::new(
+      1,
+      String::from("Pete"),
+      String::from("Peteson"),
+      ICC,
+      1,
+      vec![1, 2, 3, 4],
+    );
+    let user_2 = User::new(
+      2,
+      String::from("Sandy"),
+      String::from("Sandyson"),
+      FP,
+      1,
+      vec![5, 6, 7, 8],
+    );
     let users = vec![user_1, user_2];
-    let client_1 = Client::new(1, String::from("Pete"), String::from("McLastName"), NaiveDate::from_ymd(2006, 1, 2), 1, vec![1, 2, 3, 4]);
-    let client_2 = Client::new(2, String::from("Sandy"), String::from("O'Lastnymn"), NaiveDate::from_ymd(2007, 2, 3), 1, vec![5, 6, 7, 8]);
+    let client_1 = Client::new(
+      1,
+      String::from("Pete"),
+      String::from("McLastName"),
+      NaiveDate::from_ymd(2006, 1, 2),
+      1,
+      vec![1, 2, 3, 4],
+    );
+    let client_2 = Client::new(
+      2,
+      String::from("Sandy"),
+      String::from("O'Lastnymn"),
+      NaiveDate::from_ymd(2007, 2, 3),
+      1,
+      vec![5, 6, 7, 8],
+    );
     let clients = vec![client_1, client_2];
-    let p1 = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
-    let p2 = Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers"));
+    let p1 = Pronouns::new(
+      1,
+      String::from("he"),
+      String::from("him"),
+      String::from("his"),
+      String::from("his"),
+    );
+    let p2 = Pronouns::new(
+      2,
+      String::from("she"),
+      String::from("her"),
+      String::from("her"),
+      String::from("hers"),
+    );
     let pronouns = vec![p1, p2];
-    
     let mut notes = NoteArchive::new(
       String::from("test_user.txt"),
       String::from("test_client.txt"),
@@ -81,7 +116,6 @@ impl NoteArchive {
     notes.users = users;
     notes.clients = clients;
     notes.pronouns = pronouns;
-    
     notes.write_to_files();
 
     notes
@@ -96,19 +130,39 @@ impl NoteArchive {
     if fs::metadata("test_pronouns.txt").is_ok() {
       fs::remove_file("test_pronouns.txt").unwrap();
     }
-      
   }
   pub fn write_to_files(&mut self) {
     self.write_users().unwrap();
     self.write_clients().unwrap();
     self.write_pronouns().unwrap();
   }
+  pub fn display_actions(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^58}", "-");
+    println!("{:-^58}", " Mission control ");
+    println!("{:-^58}", "-");
+    println!("{:-^15} | {:-^40}", " Command ", " Function ");
+    println!("{:-^58}", "-");
+
+    // once for each command
+
+    println!(
+      "{: >15} | {: <40}",
+      " CLIENT / C ", " View/edit client records "
+    );
+    println!(
+      "{: >15} | {: <40}",
+      " EDIT / E ", " Edit current user info "
+    );
+    println!("{: >15} | {: <40}", " PRNS / P ", " View/edit pronoun records ");
+    println!("{: >15} | {: <40}", " DELETE / D ", " Delete current user ");
+    println!("{: >15} | {: <40}", " QUIT / Q ", " End program ");
+
+    println!("{:-^58}", "-");
+  }
   pub fn logged_in_action(&mut self) {
     loop {
-
-      println!("EDIT/E to edit current user info.");
-      println!("QUIT/Q to quit.");
-      println!("Any other key to view and edit client records.");
+      self.display_actions();
 
       let mut choice = String::new();
       let choice_attempt = io::stdin().read_line(&mut choice);
@@ -118,17 +172,34 @@ impl NoteArchive {
           println!("Failed to read input. Please try again.");
         }
       }
-      choice = choice.trim();
-      match choice {
+      choice = choice.trim().to_string();
+      match &choice[..] {
         "quit" | "q" | "QUIT" | "Q" | "Quit" => {
           break ();
         },
         "edit" | "e" | "EDIT" | "E" | "Edit" => {
           self.choose_edit_user();
         },
-        _ => {
-          let client_id = self.choose_client();
+        "DELETE" => {
+          self.choose_delete_user();
+        },
+        "client" | "c" | "CLIENT" | "C" | "Client" => {
+          let client_id = self.choose_clients();
           let client = self.load_client(client_id).unwrap();
+          self.choose_client();
+        },
+        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+          let chosen_pronoun = self.choose_pronouns_option();
+          match chosen_pronoun {
+            Some(prn) => {
+              self.view_pronoun(chosen_pronoun.unwrap());
+            },
+            None => continue,
+          }
+        },
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
         },
       }
       self.write_to_files();
@@ -160,10 +231,11 @@ impl NoteArchive {
     }
   }
   fn display_users(&self) {
-    println!("{:-^60}", "-");
-    println!("{:-^60}", " Users ");
-    println!("{:-^60}", "-");
-    println!("{:-^10} | {:-^10} | {:-^40}", "ID", "ROLE", "NAME");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^66}", "-");
+    println!("{:-^66}", " Users ");
+    println!("{:-^66}", "-");
+    println!("{:-^10} | {:-^10} | {:-^40}", "ID", "Role", "Name");
     for u in &self.users {
       println!(
         "{: ^10} | {: ^10} | {: ^40}",
@@ -172,23 +244,30 @@ impl NoteArchive {
         u.full_name()
       );
     }
-    println!("{:-^60}", "-");
+    println!("{:-^66}", "-");
   }
   fn display_edit_user(&self) {
-    println!("{:-^70}", "-");
-    println!("{:-^70}", " Edit user ");
-    println!("{:-^70}", "-");
-    println!("{:-^10} | {:-^20} | {:-^20} | {:-^20}", "Role", "First name", "Last name", "Pronouns");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^90}", "-");
+    println!("{:-^90}", " Edit user ");
+    println!("{:-^90}", "-");
     println!(
-      "{: ^10} | {: ^20} | {: ^20} | {: ^20}",
+      "{:-^10} | {:-^20} | {:-^20} | {:-^30}",
+      "Role", "First name", "Last name", "Pronouns"
+    );
+    println!(
+      "{: ^10} | {: ^20} | {: ^20} | {: ^30}",
       self.current_user().role.to_string(),
       self.current_user().first_name,
       self.current_user().last_name,
-      self.current_user().pronouns.short_string(),
+      self
+        .get_pronouns_by_id(self.current_user().pronouns)
+        .unwrap()
+        .short_string(),
     );
-    println!("{:-^50}", "-");
+    println!("{:-^90}", "-");
     println!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
-    println!("'Q'/'QUIT' to exit.");
+    println!("'Q'/'QUIT' to return to previous menu.");
   }
   pub fn load_user(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&User> = self.users.iter().find(|u| u.id == id);
@@ -221,17 +300,18 @@ impl NoteArchive {
           }
         };
         let input = input.trim();
-        if input == "NEW" || input == "new" || input == "New" {
-          let num = self.create_user_get_id();
-          break num;
-        } else {
-          match input.trim().parse() {
+        match input {
+          "NEW" | "new" | "New" => {
+            let num = self.create_user_get_id();
+            break num;
+          }
+          _ => match input.parse() {
             Ok(num) => break num,
             Err(e) => {
               println!("Could not read input as a number; try again ({}).", e);
               continue;
             }
-          }
+          },
         }
       };
       match self.load_user(chosen_id) {
@@ -290,8 +370,7 @@ impl NoteArchive {
         };
       };
       let pronouns = self.choose_pronouns();
-      let user_attempt =
-        self.generate_unique_new_user(first_name, last_name, role, pronouns);
+      let user_attempt = self.generate_unique_new_user(first_name, last_name, role, pronouns);
       match user_attempt {
         Ok(user) => break user,
         Err(e) => {
@@ -313,7 +392,8 @@ impl NoteArchive {
   ) -> Result<User, String> {
     let id: u32 = self.users.len() as u32 + 1;
 
-    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self
+      .users
       .iter()
       .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
       .collect();
@@ -397,13 +477,18 @@ impl NoteArchive {
     }
     users
   }
-  fn change_first_name(&mut self, new_name: &str) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+  fn change_user_first_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self
+      .users
       .iter()
       .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
       .collect();
 
-    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (new_name, &self.current_user().last_name, &self.current_user().role);
+    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (
+      new_name,
+      &self.current_user().last_name,
+      &self.current_user().role,
+    );
 
     let result = if names_and_roles
       .iter()
@@ -417,16 +502,20 @@ impl NoteArchive {
       self.current_user_mut().first_name = String::from(new_name);
       Ok(())
     };
-    
     result
   }
-  fn change_last_name(&mut self, new_name: &str) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+  fn change_user_last_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self
+      .users
       .iter()
       .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
       .collect();
 
-    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (&self.current_user().first_name, new_name, &self.current_user().role);
+    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (
+      &self.current_user().first_name,
+      new_name,
+      &self.current_user().role,
+    );
 
     let result = if names_and_roles
       .iter()
@@ -437,19 +526,23 @@ impl NoteArchive {
         cr, cf, cl
       ))
     } else {
-      self.current_user_mut().first_name = String::from(new_name);
+      self.current_user_mut().last_name = String::from(new_name);
       Ok(())
     };
-    
     result
   }
   fn change_role(&mut self, new_role: &EmployeeRole) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self.users
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self
+      .users
       .iter()
       .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
       .collect();
 
-    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (&self.current_user().first_name, &self.current_user().last_name, new_role);
+    let (cf, cl, cr): (&str, &str, &EmployeeRole) = (
+      &self.current_user().first_name,
+      &self.current_user().last_name,
+      new_role,
+    );
 
     let result = if names_and_roles
       .iter()
@@ -463,7 +556,6 @@ impl NoteArchive {
       self.current_user_mut().role = new_role.clone();
       Ok(())
     };
-    
     result
   }
   fn choose_edit_user(&mut self) {
@@ -486,72 +578,168 @@ impl NoteArchive {
         _ => (),
       }
       match &field_to_edit[..] {
-        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name" | "FIRST NAME" | "First Name"=> {
+        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name"
+        | "FIRST NAME" | "First Name" => {
           println!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
-            Ok(_) => {
-              match self.change_first_name(name_choice.trim()) {
-                Ok(_) => {
-                  ()
-                },
-                Err(e) => {
-                  println!("Error: {}", e);
-                },
+            Ok(_) => match self.change_user_first_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
               }
             },
             Err(e) => {
               println!("Error: {}", e);
               continue;
-            },
+            }
           }
-        },
-        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME" | "Last Name" => {
+        }
+        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
+        | "Last Name" => {
           println!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
-            Ok(_) => {
-              match self.change_last_name(name_choice.trim()) {
-                Ok(_) => {
-                  ()
-                },
-                Err(e) => {
-                  println!("Error: {}", e);
-                },
+            Ok(_) => match self.change_user_last_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
               }
             },
             Err(e) => {
               println!("Error: {}", e);
               continue;
-            },
-          }
-        },
-        "ROLE" | "Role" | "role" | "r" | "R" => {
-            match self.current_user().role {
-              ICC => {
-                self.change_role(&FP);
-              },
-              FP => {
-                self.change_role(&ICC);
-              },
             }
+          }
+        }
+        "ROLE" | "Role" | "role" | "r" | "R" => match self.current_user().role {
+          ICC => {
+            self.change_role(&FP).unwrap();
+          }
+          FP => {
+            self.change_role(&ICC).unwrap();
           }
         },
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
           self.current_user_mut().pronouns = self.choose_pronouns();
-        },
-        _ => println!("Invalid entry.")
+        }
+        _ => println!("Invalid entry."),
       }
+    }
+  }
+  fn choose_delete_user(&mut self) {
+    loop {
+      self.display_delete_user();
+      let mut choice = String::new();
+      let input_attempt = io::stdin().read_line(&mut choice);
+      match input_attempt {
+        Ok(_) => choice = choice.trim().to_string(),
+        Err(e) => {
+          println!("Failed to read input: {}", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      }
+      match &choice[..] {
+        "DELETE" | "delete" | "Delete" | "D" | "d" => {
+          self.display_delete_user();
+          println!("Are you sure you want to delete this user? 'YES'/'Y' to confirm.");
+          let mut confirm = String::new();
+          let input_attempt = io::stdin().read_line(&mut confirm);
+          let command = match input_attempt {
+            Ok(_) => confirm.trim().to_string(),
+            Err(e) => {
+              println!("Failed to read input: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          };
+          match &command[..] {
+            "YES" | "yes" | "Yes" | "Y" | "y" => {
+              self.delete_current_user();
+            }
+            _ => {
+              continue;
+            }
+          }
+        }
+        "QUIT" | "quit" | "Q" | "q" => break,
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
+      }
+    }
+  }
+  fn display_delete_user(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^79}", "-");
+    println!("{:-^79}", " Delete user ");
+    println!("{:-^79}", "-");
+    println!(
+      "{:-^10} | {:-^20} | {:-^20} | {:-^20}",
+      "Role", "First name", "Last name", "Client records",
+    );
+    println!(
+      "{: ^10} | {: ^20} | {: ^20} | {: ^20}",
+      self.current_user().role.to_string(),
+      self.current_user().first_name,
+      self.current_user().last_name,
+      &self.current_client_ids.as_ref().unwrap().len(),
+    );
+    println!("{:-^79}", "-");
+    println!("'DELETE'/'D' to delete this record.");
+    println!("'QUIT'/'Q' to return to previous menu.");
+  }
+  fn delete_current_user(&mut self) {
+    let id = self.current_user_id.unwrap();
+    self.users.retain(|u| u.id != id);
+    self.reindex_users();
+    self.current_user_id = None;
+    self.current_client_ids = None;
+    self.current_client_id = None;
+    self.current_collateral_ids = None;
+    self.current_collateral_id = None;
+    self.choose_user();
+  }
+  fn reindex_users(&mut self) {
+    let mut i: u32 = 1;
+    for mut u in &mut self.users {
+      u.id = i;
+      i += 1;
     }
   }
 
   // clients
+  pub fn current_client_mut(&mut self) -> &mut Client {
+    let client_id = match self.current_client_id {
+      Some(id) => id,
+      None => panic!("There is no current client selected."),
+    };
+    let maybe_current: Option<&mut Client> = self.clients.iter_mut().find(|c| c.id == client_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded client ID does not match any saved clients."),
+    }
+  }
+  pub fn current_client(&self) -> &Client {
+    let client_id = match self.current_client_id {
+      Some(id) => id,
+      None => panic!("There is no current client selected."),
+    };
+    let maybe_current: Option<&Client> = self.clients.iter().find(|c| c.id == client_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded user id does not match any saved users."),
+    }
+  }
   fn display_clients(&self) {
-    println!("{:-^90}", "-");
-    println!("{:-^90}", " Clients ");
-    println!("{:-^90}", "-");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^96}", "-");
+    println!("{:-^96}", " Clients ");
+    println!("{:-^96}", "-");
     println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
     match self.current_client_ids {
       Some(_) => {
@@ -574,7 +762,31 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^85}", "-");
+    println!("{:-^96}", "-");
+    println!("Enter client ID ('NEW' to create new).");
+  }
+  fn display_client(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^119}", "-");
+    println!("{:-^119}", " Edit client ");
+    println!("{:-^119}", "-");
+    println!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-^40}",
+      "First name", "Last name", "Pronouns", "DOB"
+    );
+    println!(
+      "{: ^20} | {: ^20} | {: ^30} | {: <12} {: >26}",
+      self.current_client().first_name,
+      self.current_client().last_name,
+      self
+        .get_pronouns_by_id(self.current_client().pronouns)
+        .unwrap()
+        .short_string(),
+      self.current_client().fmt_dob(),
+      self.current_client().fmt_date_of_birth(),
+    );
+    println!("{:-^119}", "-");
+    println!("'EDIT' to edit; 'DELETE' to delete.")
   }
   fn load_client(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Client> = self.clients.iter().find(|c| c.id == id);
@@ -590,15 +802,12 @@ impl NoteArchive {
       )),
     }
   }
-  fn choose_client(
-    &mut self,
-  ) -> u32 {
-    self.display_clients();
+  fn choose_clients(&mut self) -> u32 {
     let verified_id = loop {
       let chosen_id = loop {
         let input = loop {
+          self.display_clients();
           let mut choice = String::new();
-          println!("Enter client ID (or 'NEW' to create a new client).");
           let read_attempt = io::stdin().read_line(&mut choice);
           match read_attempt {
             Ok(_) => break choice,
@@ -609,23 +818,19 @@ impl NoteArchive {
           }
         };
         let input = input.trim();
-        if input == "NEW" || input == "new" || input == "New" || input == "n" || input == "N" {
-          let new_id = self.create_client_get_id();
-          self.update_current_clients(new_id);
-          match self.write_users() {
-            Ok(_) => break new_id,
-            Err(e) => {
-              panic!("Failed to save new user to file: {}", e);
-            }
+        match input {
+          "NEW" | "new" | "New" | "n" | "N" => {
+            let new_id = self.create_client_get_id();
+            self.update_current_clients(new_id);
+            break new_id;
           }
-        } else {
-          match input.trim().parse() {
+          _ => match input.parse() {
             Ok(num) => break num,
             Err(e) => {
               println!("Could not read input as a number; try again ({}).", e);
               continue;
             }
-          }
+          },
         }
       };
       match self.load_client(chosen_id) {
@@ -637,6 +842,34 @@ impl NoteArchive {
       }
     };
     verified_id
+  }
+  fn choose_client(&mut self) {
+    loop {
+      self.display_client();
+      let mut choice = String::new();
+      let read_attempt = io::stdin().read_line(&mut choice);
+      let input = match read_attempt {
+        Ok(_) => choice,
+        Err(e) => {
+          println!("Could not read input; try again ({}).", e);
+          continue;
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break;
+        }
+        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+          self.choose_delete_client();
+          break;
+        }
+        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+          self.choose_edit_client();
+        }
+        _ => println!("Invalid command."),
+      }
+    }
   }
   fn create_client_get_id(&mut self) -> u32 {
     let client = loop {
@@ -752,8 +985,7 @@ impl NoteArchive {
 
       let pronouns = self.choose_pronouns();
 
-      let client_attempt =
-        self.generate_unique_new_client(first_name, last_name, dob, pronouns);
+      let client_attempt = self.generate_unique_new_client(first_name, last_name, dob, pronouns);
       match client_attempt {
         Ok(client) => break client,
         Err(e) => {
@@ -775,7 +1007,8 @@ impl NoteArchive {
   ) -> Result<Client, String> {
     let id: u32 = self.clients.len() as u32 + 1;
 
-    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> = self.clients
+    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> = self
+      .clients
       .iter()
       .map(|c| (&c.first_name[..], &c.last_name[..], &c.dob))
       .collect();
@@ -873,6 +1106,216 @@ impl NoteArchive {
     self.current_user_mut().clients.push(id);
     self.current_client_ids = Some(self.current_user_mut().clients.clone());
   }
+  fn choose_edit_client(&mut self) {
+    loop {
+      self.display_client();
+      println!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
+      println!("'Q'/'QUIT' to return to previous menu.");
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      field_to_edit = field_to_edit.trim().to_string();
+      match &field_to_edit[..] {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        }
+        _ => (),
+      }
+      match &field_to_edit[..] {
+        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name"
+        | "FIRST NAME" | "First Name" => {
+          println!("Enter new first name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => match self.change_client_first_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              continue;
+            }
+          }
+        }
+        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
+        | "Last Name" => {
+          println!("Enter new last name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => match self.change_client_last_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
+                thread::sleep(time::Duration::from_secs(1));
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        }
+        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+          self.current_client_mut().pronouns = self.choose_pronouns();
+        }
+        _ => {
+          println!("Invalid entry.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
+      }
+    }
+  }
+  fn change_client_first_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> = self
+      .clients
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.dob))
+      .collect();
+
+    let (cf, cl, cd): (&str, &str, &NaiveDate) = (
+      new_name,
+      &self.current_client().last_name,
+      &self.current_client().dob,
+    );
+
+    let result = if names_and_dobs
+      .iter()
+      .any(|(f, l, d)| f == &cf && l == &cl && d == &cd)
+    {
+      Err(format!(
+        "There is already a '{} {}' with DOB '{}'.",
+        cf, cl, cd
+      ))
+    } else {
+      self.current_client_mut().first_name = String::from(new_name);
+      Ok(())
+    };
+    result
+  }
+  fn change_client_last_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> = self
+      .clients
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.dob))
+      .collect();
+
+    let (cf, cl, cd): (&str, &str, &NaiveDate) = (
+      &self.current_client().first_name,
+      new_name,
+      &self.current_client().dob,
+    );
+
+    let result = if names_and_dobs
+      .iter()
+      .any(|(f, l, d)| f == &cf && l == &cl && d == &cd)
+    {
+      Err(format!(
+        "There is already a '{} {}' with DOB '{}'.",
+        cf, cl, cd
+      ))
+    } else {
+      self.current_client_mut().last_name = String::from(new_name);
+      Ok(())
+    };
+    result
+  }
+  fn choose_delete_client(&mut self) {
+    loop {
+      self.display_delete_client();
+      let mut choice = String::new();
+      let input_attempt = io::stdin().read_line(&mut choice);
+      match input_attempt {
+        Ok(_) => choice = choice.trim().to_string(),
+        Err(e) => {
+          println!("Failed to read input: {}", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      }
+      match &choice[..] {
+        "DELETE" => {
+          self.display_delete_client();
+          println!("Are you sure you want to delete this client? 'YES'/'Y' to confirm.");
+          let mut confirm = String::new();
+          let input_attempt = io::stdin().read_line(&mut confirm);
+          let command = match input_attempt {
+            Ok(_) => confirm.trim().to_string(),
+            Err(e) => {
+              println!("Failed to read input: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          };
+          match &command[..] {
+            "YES" | "yes" | "Yes" | "Y" | "y" => {
+              self.delete_current_client();
+            }
+            _ => {
+              continue;
+            }
+          }
+        }
+        "QUIT" | "quit" | "Q" | "q" => break,
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
+      }
+    }
+  }
+  fn display_delete_client(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^79}", "-");
+    println!("{:-^79}", " DELETE CLIENT ");
+    println!("{:-^79}", "-");
+    println!(
+      "{:-^20} | {:-^20} | {:-^40} | {:-^10}",
+      "First name", "Last name", "DOB", "Collateral records",
+    );
+    println!(
+      "{: ^20} | {: ^20} | {: <12} {: >26} | {: ^10}",
+      self.current_client().first_name,
+      self.current_client().last_name,
+      self.current_client().fmt_dob(),
+      self.current_client().fmt_date_of_birth(),
+      &self.current_collateral_ids.as_ref().unwrap().len(),
+    );
+    println!("{:-^79}", "-");
+    println!("'DELETE' to delete this record.");
+    println!("'QUIT'/'Q' to return to previous menu.");
+  }
+  fn delete_current_client(&mut self) {
+    let id = self.current_client_id.unwrap();
+    self.clients.retain(|c| c.id != id);
+    self.reindex_clients();
+    self.current_client_id = None;
+    self.current_collateral_ids = None;
+    self.current_collateral_id = None;
+  }
+  fn reindex_clients(&mut self) {
+    let mut i: u32 = 1;
+    for mut c in &mut self.clients {
+      for u in &mut self.users {
+        for c_id in &mut u.clients {
+          if c_id == &c.id {
+            *c_id = i;
+          }
+        }
+      }
+      c.id = i;
+      i += 1;
+    }
+  }
 
   // pronouns
 
@@ -896,9 +1339,27 @@ impl NoteArchive {
     }
 
     let mut pronouns: Vec<Pronouns> = vec![
-      Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his")),
-      Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers")),
-      Pronouns::new(3, String::from("they"), String::from("them"), String::from("their"), String::from("theirs")),
+      Pronouns::new(
+        1,
+        String::from("he"),
+        String::from("him"),
+        String::from("his"),
+        String::from("his"),
+      ),
+      Pronouns::new(
+        2,
+        String::from("she"),
+        String::from("her"),
+        String::from("her"),
+        String::from("hers"),
+      ),
+      Pronouns::new(
+        3,
+        String::from("they"),
+        String::from("them"),
+        String::from("their"),
+        String::from("theirs"),
+      ),
     ];
 
     for line in lines {
@@ -914,9 +1375,9 @@ impl NoteArchive {
       // due to someone editing the default values,
       // change ID to last item in vector + 1, continuing count
 
-      if pronouns.iter().any(|p| p.id == id ) {
+      if pronouns.iter().any(|p| p.id == id) {
         let old_id = id;
-        id = pronouns[pronouns.len()-1].id + 1;
+        id = pronouns[pronouns.len() - 1].id + 1;
         self.reassign_pronouns_id(old_id, id);
       }
 
@@ -926,7 +1387,7 @@ impl NoteArchive {
       let possessive = String::from(&values[4]);
 
       let p = Pronouns::new(id, subject, object, possessive_determiner, possessive);
-      if !pronouns.iter().any(|prn| prn == &p ) {
+      if !pronouns.iter().any(|prn| prn == &p) {
         pronouns.push(p);
       }
     }
@@ -934,7 +1395,7 @@ impl NoteArchive {
   }
   pub fn reassign_pronouns_id(&mut self, old_id: u32, new_id: u32) {
     let mut i = 0;
-    while i < self.users.len()-1 {
+    while i < self.users.len() - 1 {
       let mut u = &mut self.users[i];
       if u.pronouns == old_id {
         u.pronouns = new_id
@@ -943,60 +1404,145 @@ impl NoteArchive {
     }
   }
   fn choose_pronouns(&mut self) -> u32 {
-    self.display_pronouns();
     let chosen_id = loop {
+      self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
         println!(
-          "Enter pronouns ID or command ('NEW' to create new; 'EDIT' to change records for all users)."
+          "Enter pronouns ID or command ('NEW'; 'EDIT' to alter record for all users)."
         );
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice,
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
             continue;
           }
         }
       };
       let input = input.trim();
-      if input == "NEW" || input == "new" || input == "New" {
-        let pronouns = self.create_get_pronouns();
-        self.display_pronouns();
-        let new_id = pronouns.id;
-        break new_id;
-      }
-      if input == "EDIT" || input == "edit" || input == "Edit" {
-        self.choose_edit_pronouns();
-        self.display_pronouns();
-        continue;
-      }
-      let id = match input.trim().parse::<u32>() {
-        Ok(num) => num,
-        Err(e) => {
-          println!("Could not read input as a number; try again ({}).", e);
+
+      match input {
+        "NEW" | "new" | "New" => {
+          let pronouns = self.create_get_pronouns();
+          self.display_pronouns();
+          println!("Pronouns records updated.");
+          thread::sleep(time::Duration::from_secs(2));
+          let new_id = pronouns.id;
+          break new_id;
+        },
+        "EDIT" | "edit" | "Edit" => {
+          self.choose_edit_pronouns();
+          self.display_pronouns();
+          println!("Pronouns records updated.");
+          thread::sleep(time::Duration::from_secs(2));
           continue;
-        }
-      };
-      match self.load_pronouns(id) {
-        Ok(_) => break id,
-        Err(e) => {
-          println!("Unable to load client with id {}: {}", input, e);
-          continue;
-        }
+        },
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println!("Could not read input as a number; try again ({}).", e);
+              continue;
+            }
+          };
+          match self.load_pronouns(id) {
+            Ok(_) => break id,
+            Err(e) => {
+              println!("Unable to load pronouns with id {}: {}", input, e);
+              continue;
+            }
+          }
+        },
       }
     };
     chosen_id
   }
+  fn choose_pronouns_option(&mut self) -> Option<u32> {
+    let id_option = loop {
+      self.display_pronouns();
+      let input = loop {
+        let mut choice = String::new();
+        println!(
+          "Enter pronouns ID or command ('NEW'; 'EDIT' to alter record for all users; 'DELETE')."
+        );
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+
+      match input {
+        "NEW" | "new" | "New" => {
+          let pronouns = self.create_get_pronouns();
+          self.display_pronouns();
+          println!("Pronoun records updated.");
+          thread::sleep(time::Duration::from_secs(2));
+          let new_id = pronouns.id;
+          continue;
+        },
+        "EDIT" | "edit" | "Edit" => {
+          self.choose_edit_pronouns();
+          self.display_pronouns();
+          println!("Pronoun records updated.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        },
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break None;
+        },
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println!("Could not read input as a number; try again ({}).", e);
+              continue;
+            }
+          };
+          match self.load_pronouns(id) {
+            Ok(_) => break Some(id),
+            Err(e) => {
+              println!("Unable to load pronouns with id {}: {}", input, e);
+              continue;
+            }
+          }
+        },
+      }
+    };
+    id_option
+  }
   fn display_pronouns(&self) {
-    println!("{:-^40}", "-");
-    println!("{:-^40}", " Pronouns ");
-    println!("{:-^40}", "-");
-    println!("{:-^10} | {:-^30}", "ID", "PRONOUNS");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^44}", "-");
+    println!("{:-^44}", " Pronouns ");
+    println!("{:-^44}", "-");
+    println!("{:-^10} | {:-^31}", "ID", "Pronouns");
     for p in &self.pronouns {
-      println!("{: ^6} | {: ^30}", p.id, p.short_string());
+      println!("{: ^10} | {: ^31}", p.id, p.short_string());
     }
-    println!("{:-^40}", "-");
+    println!("{:-^44}", "-");
+  }
+  fn display_view_pronoun(&self, prns_id: u32) {
+    let prns = self.get_pronouns_by_id(prns_id).unwrap();
+    let mut title = String::from(" ");
+    title.push_str(&prns.short_string()[..]);
+    title.push_str(" ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^49}", "-");
+    println!("{:-^49}", " Edit pronouns ");
+    println!("{:-^49}", title);
+    println!("{:-^49}", "-");
+    println!("{:-^10} | {:-^10} | {:-^10} | {:-^10}", "Subject", "Object", "Pos. Det.", "Pos.");
+    println!("{: ^10} | {: ^10} | {: ^10} | {: ^10}", prns.subject, prns.object, prns.possessive_determiner, prns.possessive);
+    println!("{:-^49}", "-");
+
   }
   fn create_get_pronouns(&mut self) -> Pronouns {
     let pronouns = loop {
@@ -1055,12 +1601,8 @@ impl NoteArchive {
           }
         };
       };
-      let pronouns_attempt = self.generate_unique_new_pronouns(
-        subject,
-        object,
-        possessive_determiner,
-        possessive,
-      );
+      let pronouns_attempt =
+        self.generate_unique_new_pronouns(subject, object, possessive_determiner, possessive);
       match pronouns_attempt {
         Ok(pronouns) => break pronouns,
         Err(e) => {
@@ -1168,13 +1710,13 @@ impl NoteArchive {
           .get_pronouns_by_id_mut(pronoun_id)
           .unwrap()
           .update_subject(new_pronoun);
-      }
+      },
       "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
         self
           .get_pronouns_by_id_mut(pronoun_id)
           .unwrap()
           .update_object(new_pronoun);
-      }
+      },
       "posdet"
       | "POSDET"
       | "possessive determiner"
@@ -1186,17 +1728,17 @@ impl NoteArchive {
           .get_pronouns_by_id_mut(pronoun_id)
           .unwrap()
           .update_possessive_determiner(new_pronoun);
-      }
+      },
       "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
       | "POSSESS" => {
         self
           .get_pronouns_by_id_mut(pronoun_id)
           .unwrap()
           .update_possessive(new_pronoun);
-      }
+      },
       _ => {
         panic!("Invalid string passed to 'fn update_pronouns_records'");
-      }
+      },
     }
     if self.get_duplicate_pronoun_ids().len() > 0 {
       println!("Warning: Duplicate pronouns will be deleted on program load.");
@@ -1271,7 +1813,7 @@ impl NoteArchive {
               }
             };
             p
-          }
+          },
           "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
             println!("Enter new object pronoun ('him' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'them' in 'they/them/their/theirs').");
             println!("Example: Guidance counselor called ICC and left a message for [pronoun].");
@@ -1285,7 +1827,7 @@ impl NoteArchive {
               }
             };
             p
-          }
+          },
           "posdet"
           | "POSDET"
           | "possessive determiner"
@@ -1305,11 +1847,11 @@ impl NoteArchive {
               }
             };
             p
-          }
+          },
           "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
           | "POSSESS" => {
             println!("Enter new possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
-            println!("Example: OPT for youth provided her contact information, and ICC provider [pronoun].");
+            println!("Example: OPT for youth provided her contact information, and ICC provided [pronoun].");
             let mut possessive_choice = String::new();
             let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
             let p = match possessive_attempt {
@@ -1333,6 +1875,100 @@ impl NoteArchive {
     self.update_pronouns_record(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
     self.display_pronouns();
   }
+  fn view_pronoun(&mut self, prns_id: u32) {
+    loop {
+      self.display_view_pronoun(prns_id);
+      let mut decision = String::new();
+      let input_attempt = io::stdin().read_line(&mut decision);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      decision = decision.trim().to_string();
+      match &decision[..] {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => break,
+        "delete" | "DELETE" | "Delete" => {
+          self.delete_pronouns(prns_id);
+          self.display_pronouns();
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        },
+        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+          println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
+          println!("'Q'/'QUIT' to exit.");
+          let mut pronoun_to_edit = String::new();
+          let field_input = io::stdin().read_line(&mut pronoun_to_edit);
+          match field_input {
+            Ok(_) => (),
+            Err(e) => {
+              println!("Failed to read input. Please try again.");
+              continue;
+            }
+          }
+          pronoun_to_edit = pronoun_to_edit.trim().to_string();
+          match &pronoun_to_edit[..] {
+            "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+              break ();
+            },
+            "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
+              println!("Enter new subject pronoun ('he' in 'he/him/his/his', 'she' in 'she/her/her/hers', or 'they' in 'they/them/their/theirs').");
+              println!("Example: [pronoun] attended a Care Plan Meeting.");
+            },
+            "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
+              println!("Enter new object pronoun ('him' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'them' in 'they/them/their/theirs').");
+              println!("Example: Guidance counselor called ICC and left a message for [pronoun].");
+            },
+            "posdet"
+            | "POSDET"
+            | "possessive determiner"
+            | "POSSESSIVE DETERMINER"
+            | "Possessive Determiner"
+            | "PosDet"
+            | "Possessive determiner" => {
+              println!("Enter new possessive determiner ('his' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'their' in 'they/them/their/theirs').");
+              println!("Example: ICC used [pronoun] personal vehicle to transport youth home.");
+            },
+            "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
+            | "POSSESS" => {
+              println!("Enter new possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
+              println!("Example: OPT for youth provided her contact information, and ICC provided [pronoun].");
+            },
+            _ => {
+              println!("Invalid command.");
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
+          let mut choice = String::new();
+          let attempt = io::stdin().read_line(&mut choice);
+          let new_prn = match attempt {
+            Ok(_) => String::from(choice.trim()),
+            Err(e) => {
+              println!("Failed to read line: {}", e);
+              continue;
+            }
+          };
+          self.update_pronouns_record(prns_id, pronoun_to_edit, new_prn);
+          self.display_pronouns();
+          thread::sleep(time::Duration::from_secs(1));
+        },
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        },
+      }
+    }
+  }
+  fn delete_pronouns(&mut self, prns_id: u32) {
+    self.pronouns.retain(|p| p.id != prns_id);
+    if self.current_user().pronouns == prns_id {
+      self.current_user_mut().pronouns = self.choose_pronouns();
+    }
+  }
 }
 
 #[cfg(test)]
@@ -1349,11 +1985,32 @@ mod tests {
       );
       assert_eq!(a.users, vec![]);
       assert_eq!(a.clients, vec![]);
-      assert_eq!(a.pronouns, vec![
-        Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his")),
-        Pronouns::new(2, String::from("she"), String::from("her"), String::from("her"), String::from("hers")),
-        Pronouns::new(3, String::from("they"), String::from("them"), String::from("their"), String::from("theirs")),
-      ]);
+      assert_eq!(
+        a.pronouns,
+        vec![
+          Pronouns::new(
+            1,
+            String::from("he"),
+            String::from("him"),
+            String::from("his"),
+            String::from("his")
+          ),
+          Pronouns::new(
+            2,
+            String::from("she"),
+            String::from("her"),
+            String::from("her"),
+            String::from("hers")
+          ),
+          Pronouns::new(
+            3,
+            String::from("they"),
+            String::from("them"),
+            String::from("their"),
+            String::from("theirs")
+          ),
+        ]
+      );
     }
     fs::remove_file("some_random_blank_user_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_client_file_name.txt").unwrap();
@@ -1362,10 +2019,29 @@ mod tests {
   #[test]
   fn can_load_from_files() {
     {
-      let test_user = User::new(1, String::from("Bob"), String::from("Smith"), ICC, 1, vec![1, 2, 3]);
-      let test_client = Client::new(1, String::from("Harry"), String::from("et Tubman"), NaiveDate::from_ymd(2000, 1, 1), 1, vec![1, 2, 3]);
-      let test_pronouns = Pronouns::new(1, String::from("he"), String::from("him"), String::from("his"), String::from("his"));
-      
+      let test_user = User::new(
+        1,
+        String::from("Bob"),
+        String::from("Smith"),
+        ICC,
+        1,
+        vec![1, 2, 3],
+      );
+      let test_client = Client::new(
+        1,
+        String::from("Harry"),
+        String::from("et Tubman"),
+        NaiveDate::from_ymd(2000, 1, 1),
+        1,
+        vec![1, 2, 3],
+      );
+      let test_pronouns = Pronouns::new(
+        1,
+        String::from("he"),
+        String::from("him"),
+        String::from("his"),
+        String::from("his"),
+      );
       let mut a1 = NoteArchive::new(
         String::from("test_load_user.txt"),
         String::from("test_load_client.txt"),
@@ -1387,16 +2063,10 @@ mod tests {
   }
   #[test]
   fn creates_unique_new_instances() {
-
     let mut notes = NoteArchive::new_test();
 
-    let new_user_attempt = notes.generate_unique_new_user(
-      String::from("Carl"),
-      String::from("Carlson"),
-      ICC,
-      1,
-    );
-    
+    let new_user_attempt =
+      notes.generate_unique_new_user(String::from("Carl"), String::from("Carlson"), ICC, 1);
     let new_client_attempt = notes.generate_unique_new_client(
       String::from("Carl"),
       String::from("Carlson"),
@@ -1424,9 +2094,38 @@ mod tests {
       Err(_) => panic!("Failed to generate pronouns."),
     };
 
-    assert_eq!(new_user, User::new(3, String::from("Carl"), String::from("Carlson"), ICC, 1, vec![]));
-    assert_eq!(new_client, Client::new(3, String::from("Carl"), String::from("Carlson"), NaiveDate::from_ymd(2008, 3, 4), 1, vec![]));
-    assert_eq!(new_pronouns, Pronouns::new(3, String::from("they"), String::from("them"), String::from("their"), String::from("theirs")));
+    assert_eq!(
+      new_user,
+      User::new(
+        3,
+        String::from("Carl"),
+        String::from("Carlson"),
+        ICC,
+        1,
+        vec![]
+      )
+    );
+    assert_eq!(
+      new_client,
+      Client::new(
+        3,
+        String::from("Carl"),
+        String::from("Carlson"),
+        NaiveDate::from_ymd(2008, 3, 4),
+        1,
+        vec![]
+      )
+    );
+    assert_eq!(
+      new_pronouns,
+      Pronouns::new(
+        3,
+        String::from("they"),
+        String::from("them"),
+        String::from("their"),
+        String::from("theirs")
+      )
+    );
   }
 
   // pronouns
@@ -1441,10 +2140,7 @@ mod tests {
 
     let current_pronouns_id = notes.current_user().pronouns;
 
-    assert_eq!(
-      notes.get_pronouns_by_id(current_pronouns_id).unwrap().id,
-      1
-    );
+    assert_eq!(notes.get_pronouns_by_id(current_pronouns_id).unwrap().id, 1);
   }
 
   #[test]
@@ -1459,5 +2155,4 @@ mod tests {
     notes.update_current_pronouns(1);
     assert_eq!(notes.current_user().pronouns, 1);
   }
-
 }

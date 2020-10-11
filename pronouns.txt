@@ -2,7 +2,4 @@
 1 | he | him | his | his
 2 | she | her | her | hers
 3 | they | them | their | theirs
-4 | he | doorknob | his | his
-5 | the | this | thee | umpteenth
-6 | dis | dat | dees | derr
 ##### pronouns #####
