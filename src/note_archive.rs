@@ -180,13 +180,12 @@ impl NoteArchive {
         "edit" | "e" | "EDIT" | "E" | "Edit" => {
           self.choose_edit_user();
         },
-        "DELETE" => {
+        "delete" | "d" | "DELETE" | "D" | "Delete" => {
           self.choose_delete_user();
+          self.choose_user();
         },
         "client" | "c" | "CLIENT" | "C" | "Client" => {
-          let client_id = self.choose_clients();
-          let client = self.load_client(client_id).unwrap();
-          self.choose_client();
+          self.choose_clients();
         },
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
           let chosen_pronoun = self.choose_pronouns_option();
@@ -194,7 +193,7 @@ impl NoteArchive {
             Some(prn) => {
               self.view_pronoun(chosen_pronoun.unwrap());
             },
-            None => continue,
+            None => (),
           }
         },
         _ => {
@@ -247,6 +246,11 @@ impl NoteArchive {
     println!("{:-^66}", "-");
   }
   fn display_edit_user(&self) {
+    let pronouns_option = self.get_pronouns_by_id(self.current_user().pronouns);
+    let display_pronouns = match pronouns_option {
+      Some(p) => p.short_string(),
+      None => String::from("-----"),
+    };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^90}", "-");
     println!("{:-^90}", " Edit user ");
@@ -260,10 +264,7 @@ impl NoteArchive {
       self.current_user().role.to_string(),
       self.current_user().first_name,
       self.current_user().last_name,
-      self
-        .get_pronouns_by_id(self.current_user().pronouns)
-        .unwrap()
-        .short_string(),
+      display_pronouns,
     );
     println!("{:-^90}", "-");
     println!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
@@ -275,6 +276,15 @@ impl NoteArchive {
       Some(u) => {
         self.current_client_ids = Some(u.clients.clone());
         self.current_user_id = Some(u.id);
+        match self.load_pronouns(self.current_user().pronouns) {
+          Ok(_) => (),
+          Err(_) => {
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            println!("Pronoun record not found. Please select pronouns again.");
+            thread::sleep(time::Duration::from_secs(2));
+            self.current_user_mut().pronouns = self.choose_pronouns();
+          }
+        }
         Ok(())
       }
       None => Err(Error::new(
@@ -301,7 +311,7 @@ impl NoteArchive {
         };
         let input = input.trim();
         match input {
-          "NEW" | "new" | "New" => {
+          "NEW" | "new" | "New" | "N" | "n" => {
             let num = self.create_user_get_id();
             break num;
           }
@@ -632,6 +642,9 @@ impl NoteArchive {
   fn choose_delete_user(&mut self) {
     loop {
       self.display_delete_user();
+      println!("Are you sure you want to delete this user?");
+      println!("'YES'/'Y' to confirm.");
+      println!("'QUIT'/'Q' to return to previous menu.");
       let mut choice = String::new();
       let input_attempt = io::stdin().read_line(&mut choice);
       match input_attempt {
@@ -643,33 +656,16 @@ impl NoteArchive {
         }
       }
       match &choice[..] {
-        "DELETE" | "delete" | "Delete" | "D" | "d" => {
-          self.display_delete_user();
-          println!("Are you sure you want to delete this user? 'YES'/'Y' to confirm.");
-          let mut confirm = String::new();
-          let input_attempt = io::stdin().read_line(&mut confirm);
-          let command = match input_attempt {
-            Ok(_) => confirm.trim().to_string(),
-            Err(e) => {
-              println!("Failed to read input: {}", e);
-              thread::sleep(time::Duration::from_secs(1));
-              continue;
-            }
-          };
-          match &command[..] {
-            "YES" | "yes" | "Yes" | "Y" | "y" => {
-              self.delete_current_user();
-            }
-            _ => {
-              continue;
-            }
-          }
-        }
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          self.delete_current_user();
+          break;
+        },
         "QUIT" | "quit" | "Q" | "q" => break,
         _ => {
           println!("Invalid command.");
           thread::sleep(time::Duration::from_secs(1));
-        }
+          break;
+        },
       }
     }
   }
@@ -690,8 +686,6 @@ impl NoteArchive {
       &self.current_client_ids.as_ref().unwrap().len(),
     );
     println!("{:-^79}", "-");
-    println!("'DELETE'/'D' to delete this record.");
-    println!("'QUIT'/'Q' to return to previous menu.");
   }
   fn delete_current_user(&mut self) {
     let id = self.current_user_id.unwrap();
@@ -702,7 +696,7 @@ impl NoteArchive {
     self.current_client_id = None;
     self.current_collateral_ids = None;
     self.current_collateral_id = None;
-    self.choose_user();
+
   }
   fn reindex_users(&mut self) {
     let mut i: u32 = 1;
@@ -713,7 +707,7 @@ impl NoteArchive {
   }
 
   // clients
-  pub fn current_client_mut(&mut self) -> &mut Client {
+  fn current_client_mut(&mut self) -> &mut Client {
     let client_id = match self.current_client_id {
       Some(id) => id,
       None => panic!("There is no current client selected."),
@@ -724,7 +718,7 @@ impl NoteArchive {
       None => panic!("The loaded client ID does not match any saved clients."),
     }
   }
-  pub fn current_client(&self) -> &Client {
+  fn current_client(&self) -> &Client {
     let client_id = match self.current_client_id {
       Some(id) => id,
       None => panic!("There is no current client selected."),
@@ -763,12 +757,17 @@ impl NoteArchive {
       None => (),
     }
     println!("{:-^96}", "-");
-    println!("Enter client ID ('NEW' to create new).");
+    println!("| {: ^40} | {: ^25} | {: ^25} | ", "Enter ID to choose client.", "NEW / N: new client", "QUIT / Q: quit menu");
   }
   fn display_client(&self) {
+      let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
+    let display_pronouns = match pronouns_option {
+      Some(p) => p.short_string(),
+      None => String::from("-----"),
+    };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^119}", "-");
-    println!("{:-^119}", " Edit client ");
+    println!("{:-^119}", " View client record ");
     println!("{:-^119}", "-");
     println!(
       "{:-^20} | {:-^20} | {:-^30} | {:-^40}",
@@ -778,15 +777,13 @@ impl NoteArchive {
       "{: ^20} | {: ^20} | {: ^30} | {: <12} {: >26}",
       self.current_client().first_name,
       self.current_client().last_name,
-      self
-        .get_pronouns_by_id(self.current_client().pronouns)
-        .unwrap()
-        .short_string(),
+      display_pronouns,
       self.current_client().fmt_dob(),
       self.current_client().fmt_date_of_birth(),
     );
     println!("{:-^119}", "-");
-    println!("'EDIT' to edit; 'DELETE' to delete.")
+    println!("| {: ^25} | {: ^25} | {: ^25} | ", "EDIT / E: edit client", "DELETE: delete client", "QUIT / Q: quit menu");
+    println!("{:-^119}", "-");
   }
   fn load_client(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Client> = self.clients.iter().find(|c| c.id == id);
@@ -802,46 +799,48 @@ impl NoteArchive {
       )),
     }
   }
-  fn choose_clients(&mut self) -> u32 {
-    let verified_id = loop {
-      let chosen_id = loop {
-        let input = loop {
-          self.display_clients();
-          let mut choice = String::new();
-          let read_attempt = io::stdin().read_line(&mut choice);
-          match read_attempt {
-            Ok(_) => break choice,
-            Err(e) => {
-              println!("Could not read input; try again ({}).", e);
-              continue;
-            }
+  fn choose_clients(&mut self) {
+    loop {
+      let input = loop {
+        self.display_clients();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
           }
-        };
-        let input = input.trim();
-        match input {
-          "NEW" | "new" | "New" | "n" | "N" => {
-            let new_id = self.create_client_get_id();
-            self.update_current_clients(new_id);
-            break new_id;
-          }
-          _ => match input.parse() {
-            Ok(num) => break num,
-            Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
-              continue;
-            }
-          },
         }
       };
-      match self.load_client(chosen_id) {
-        Ok(_) => break chosen_id,
-        Err(e) => {
-          println!("Unable to load client with id {}: {}", chosen_id, e);
+      let input = input.trim();
+      match input {
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let new_id = self.create_client_get_id();
+          self.update_current_clients(new_id);
           continue;
-        }
+        },
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            match self.load_client(num) {
+              Ok(_) => self.choose_client(),
+              Err(e) => {
+                println!("Unable to load client with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
       }
-    };
-    verified_id
+    }
   }
   fn choose_client(&mut self) {
     loop {
@@ -1109,7 +1108,7 @@ impl NoteArchive {
   fn choose_edit_client(&mut self) {
     loop {
       self.display_client();
-      println!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
+      println!("Choose field to edit (FIRST, LAST, PRNS).");
       println!("'Q'/'QUIT' to return to previous menu.");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
@@ -1232,67 +1231,46 @@ impl NoteArchive {
   fn choose_delete_client(&mut self) {
     loop {
       self.display_delete_client();
-      let mut choice = String::new();
-      let input_attempt = io::stdin().read_line(&mut choice);
-      match input_attempt {
-        Ok(_) => choice = choice.trim().to_string(),
+      println!("Are you sure you want to delete this client? 'YES'/'Y' to confirm.");
+      let mut confirm = String::new();
+      let input_attempt = io::stdin().read_line(&mut confirm);
+      let command = match input_attempt {
+        Ok(_) => confirm.trim().to_string(),
         Err(e) => {
           println!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
-      }
-      match &choice[..] {
-        "DELETE" => {
-          self.display_delete_client();
-          println!("Are you sure you want to delete this client? 'YES'/'Y' to confirm.");
-          let mut confirm = String::new();
-          let input_attempt = io::stdin().read_line(&mut confirm);
-          let command = match input_attempt {
-            Ok(_) => confirm.trim().to_string(),
-            Err(e) => {
-              println!("Failed to read input: {}", e);
-              thread::sleep(time::Duration::from_secs(1));
-              continue;
-            }
-          };
-          match &command[..] {
-            "YES" | "yes" | "Yes" | "Y" | "y" => {
-              self.delete_current_client();
-            }
-            _ => {
-              continue;
-            }
-          }
+      };
+      match &command[..] {
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          self.delete_current_client();
+          break;
         }
-        "QUIT" | "quit" | "Q" | "q" => break,
         _ => {
-          println!("Invalid command.");
-          thread::sleep(time::Duration::from_secs(1));
+          continue;
         }
       }
     }
   }
   fn display_delete_client(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^79}", "-");
-    println!("{:-^79}", " DELETE CLIENT ");
-    println!("{:-^79}", "-");
+    println!("{:-^114}", "-");
+    println!("{:-^114}", " DELETE CLIENT ");
+    println!("{:-^114}", "-");
     println!(
-      "{:-^20} | {:-^20} | {:-^40} | {:-^10}",
+      "{:-^20} | {:-^20} | {:-^40} | {:-^25}",
       "First name", "Last name", "DOB", "Collateral records",
     );
     println!(
-      "{: ^20} | {: ^20} | {: <12} {: >26} | {: ^10}",
+      "{: ^20} | {: ^20} | {: <12} {: >26} | {: ^25}",
       self.current_client().first_name,
       self.current_client().last_name,
       self.current_client().fmt_dob(),
       self.current_client().fmt_date_of_birth(),
       &self.current_collateral_ids.as_ref().unwrap().len(),
     );
-    println!("{:-^79}", "-");
-    println!("'DELETE' to delete this record.");
-    println!("'QUIT'/'Q' to return to previous menu.");
+    println!("{:-^114}", "-");
   }
   fn delete_current_client(&mut self) {
     let id = self.current_client_id.unwrap();
@@ -1409,7 +1387,11 @@ impl NoteArchive {
       let input = loop {
         let mut choice = String::new();
         println!(
-          "Enter pronouns ID or command ('NEW'; 'EDIT' to alter record for all users)."
+          "| {: ^40} | {: ^25} | {: ^25} | {: ^25}",
+          "Enter ID to choose pronouns.",
+          "EDIT / E: edit pronouns",
+          "DELETE: delete pronouns",
+          "QUIT / Q: quit pronouns menu"
         );
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -1424,7 +1406,7 @@ impl NoteArchive {
       let input = input.trim();
 
       match input {
-        "NEW" | "new" | "New" => {
+        "NEW" | "new" | "New" | "N" | "n" => {
           let pronouns = self.create_get_pronouns();
           self.display_pronouns();
           println!("Pronouns records updated.");
@@ -1432,8 +1414,15 @@ impl NoteArchive {
           let new_id = pronouns.id;
           break new_id;
         },
-        "EDIT" | "edit" | "Edit" => {
+        "EDIT" | "edit" | "Edit" | "E" | "e" => {
           self.choose_edit_pronouns();
+          self.display_pronouns();
+          println!("Pronouns records updated.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        },
+        "DELETE" | "delete" | "Delete" | "D" | "d" => {
+          self.choose_delete_pronouns();
           self.display_pronouns();
           println!("Pronouns records updated.");
           thread::sleep(time::Duration::from_secs(2));
@@ -1444,6 +1433,7 @@ impl NoteArchive {
             Ok(num) => num,
             Err(e) => {
               println!("Could not read input as a number; try again ({}).", e);
+              thread::sleep(time::Duration::from_secs(1));
               continue;
             }
           };
@@ -1451,6 +1441,7 @@ impl NoteArchive {
             Ok(_) => break id,
             Err(e) => {
               println!("Unable to load pronouns with id {}: {}", input, e);
+              thread::sleep(time::Duration::from_secs(1));
               continue;
             }
           }
@@ -1464,9 +1455,7 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!(
-          "Enter pronouns ID or command ('NEW'; 'EDIT' to alter record for all users; 'DELETE')."
-        );
+        println!("| {: ^25} | {: ^25} | {: ^25} | {: ^25} | ", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice,
@@ -1486,14 +1475,21 @@ impl NoteArchive {
           println!("Pronoun records updated.");
           thread::sleep(time::Duration::from_secs(2));
           let new_id = pronouns.id;
-          continue;
+          break Some(new_id);
         },
         "EDIT" | "edit" | "Edit" => {
           self.choose_edit_pronouns();
           self.display_pronouns();
           println!("Pronoun records updated.");
           thread::sleep(time::Duration::from_secs(2));
-          continue;
+          break None;
+        },
+        "DELETE" | "delete" | "D" | "d" => {
+          self.choose_delete_pronouns();
+          self.display_pronouns();
+          println!("Pronoun records updated.");
+          thread::sleep(time::Duration::from_secs(2));
+          break None;
         },
         "QUIT" | "quit" | "Quit" | "Q" | "q" => {
           break None;
@@ -1535,13 +1531,13 @@ impl NoteArchive {
     title.push_str(&prns.short_string()[..]);
     title.push_str(" ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^49}", "-");
-    println!("{:-^49}", " Edit pronouns ");
-    println!("{:-^49}", title);
-    println!("{:-^49}", "-");
-    println!("{:-^10} | {:-^10} | {:-^10} | {:-^10}", "Subject", "Object", "Pos. Det.", "Pos.");
-    println!("{: ^10} | {: ^10} | {: ^10} | {: ^10}", prns.subject, prns.object, prns.possessive_determiner, prns.possessive);
-    println!("{:-^49}", "-");
+    println!("{:-^69}", "-");
+    println!("{:-^69}", " Edit pronouns ");
+    println!("{:-^69}", title);
+    println!("{:-^69}", "-");
+    println!("{:-^15} | {:-^15} | {:-^15} | {:-^15}", "Subject", "Object", "Pos. Det.", "Pos.");
+    println!("{: ^15} | {: ^15} | {: ^15} | {: ^15}", prns.subject, prns.object, prns.possessive_determiner, prns.possessive);
+    println!("{:-^69}", "-");
 
   }
   fn create_get_pronouns(&mut self) -> Pronouns {
@@ -1744,7 +1740,7 @@ impl NoteArchive {
       println!("Warning: Duplicate pronouns will be deleted on program load.");
     }
   }
-  pub fn choose_edit_pronouns(&mut self) {
+  fn choose_edit_pronouns(&mut self) {
     let mut final_pronouns_id;
     let mut final_pronoun_to_edit = String::new();
     let mut final_new_pronoun = String::new();
@@ -1873,11 +1869,76 @@ impl NoteArchive {
       }
     }
     self.update_pronouns_record(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
-    self.display_pronouns();
+  }
+  fn choose_delete_pronouns(&mut self) {
+    loop {
+      self.display_pronouns();
+      let input = loop {
+        let mut choice = String::new();
+        println!("Enter ID of pronouns you would like to delete.");
+        println!("'QUIT' / 'Q' to cancel.");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+    
+      match input {
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break;
+        },
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println!("Could not read input as a number; try again ({}).", e);
+              continue;
+            }
+          };
+          match self.load_pronouns(id) {
+            Ok(_) => {
+              self.display_view_pronoun(id);
+              println!("Are you sure you want to delete this set of pronouns?");
+              println!("'YES'/'Y' to confirm.");
+              let mut confirm = String::new();
+              let input_attempt = io::stdin().read_line(&mut confirm);
+              let command = match input_attempt {
+                Ok(_) => confirm.trim().to_string(),
+                Err(e) => {
+                  println!("Failed to read input: {}", e);
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              };
+              match &command[..] {
+                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                  self.delete_pronouns(id);
+                  break;
+                },
+                _ => {
+                  continue;
+                },
+              }
+            },
+            Err(e) => {
+              println!("Unable to load pronouns with id {}: {}", input, e);
+              continue;
+            },
+          }
+        },
+      }
+    }
   }
   fn view_pronoun(&mut self, prns_id: u32) {
     loop {
       self.display_view_pronoun(prns_id);
+      println!("| {: ^25} | {: ^25} | {: ^25} | ", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
       let mut decision = String::new();
       let input_attempt = io::stdin().read_line(&mut decision);
       match input_attempt {
@@ -1965,8 +2026,16 @@ impl NoteArchive {
   }
   fn delete_pronouns(&mut self, prns_id: u32) {
     self.pronouns.retain(|p| p.id != prns_id);
-    if self.current_user().pronouns == prns_id {
-      self.current_user_mut().pronouns = self.choose_pronouns();
+    match self.current_user_id {
+      Some(id) => {
+        if self.current_user().pronouns == prns_id {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          println!("Please select new pronouns before continuing.");
+          thread::sleep(time::Duration::from_secs(1));
+          self.current_user_mut().pronouns = self.choose_pronouns();
+        }
+      },
+      None => (),
     }
   }
 }
