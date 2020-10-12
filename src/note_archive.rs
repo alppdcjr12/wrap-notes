@@ -31,7 +31,8 @@ pub struct NoteArchive {
 impl NoteArchive {
   pub fn run(&mut self) {
     NoteArchive::remove_test_files();
-    let user_id = self.choose_user();
+    thread::sleep(time::Duration::from_secs(3));
+    self.choose_user();
     self.write_to_files();
 
     self.logged_in_action();
@@ -139,6 +140,8 @@ impl NoteArchive {
   pub fn display_actions(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^58}", "-");
+    let heading_with_spaces = format!(" {} ", self.current_user().name_and_title()); 
+    println!("{:-^58}", heading_with_spaces);
     println!("{:-^58}", " Mission control ");
     println!("{:-^58}", "-");
     println!("{:-^15} | {:-^40}", " Command ", " Function ");
@@ -155,6 +158,7 @@ impl NoteArchive {
       " EDIT / E ", " Edit current user info "
     );
     println!("{: >15} | {: <40}", " PRNS / P ", " View/edit pronoun records ");
+    println!("{: >15} | {: <40}", " USER / U ", " Switch user ");
     println!("{: >15} | {: <40}", " DELETE / D ", " Delete current user ");
     println!("{: >15} | {: <40}", " QUIT / Q ", " End program ");
 
@@ -186,6 +190,9 @@ impl NoteArchive {
         },
         "client" | "c" | "CLIENT" | "C" | "Client" => {
           self.choose_clients();
+        },
+        "user" | "u" | "USER" | "U" | "User" => {
+          self.choose_user();
         },
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
           let chosen_pronoun = self.choose_pronouns_option();
@@ -274,13 +281,14 @@ impl NoteArchive {
     let current: Option<&User> = self.users.iter().find(|u| u.id == id);
     match current {
       Some(u) => {
+        let prns_id = u.pronouns;
         self.current_client_ids = Some(u.clients.clone());
         self.current_user_id = Some(u.id);
-        match self.load_pronouns(self.current_user().pronouns) {
+        match self.load_pronouns(prns_id) {
           Ok(_) => (),
-          Err(_) => {
+          Err(e) => {
             print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-            println!("Pronoun record not found. Please select pronouns again.");
+            println!("Error: {} Pronoun record not found. Please select pronouns again.", e);
             thread::sleep(time::Duration::from_secs(2));
             self.current_user_mut().pronouns = self.choose_pronouns();
           }
@@ -299,13 +307,13 @@ impl NoteArchive {
       let chosen_id = loop {
         let input = loop {
           let mut choice = String::new();
-          println!("Enter user ID (or 'NEW' to create a new user).");
+          println!("| {} | {}", "Enter ID to choose user.", "NEW / N: new user");
           let read_attempt = io::stdin().read_line(&mut choice);
           match read_attempt {
             Ok(_) => break choice,
             Err(e) => {
               println!("Could not read input; try again ({}).", e);
-              continue;
+            continue;
             }
           }
         };
@@ -477,11 +485,12 @@ impl NoteArchive {
       let clients: Vec<u32> = match &values[5][..] {
         "" => vec![],
         _ => values[5]
-          .split("#")
-          .map(|val| val.parse().unwrap())
+        .split("#")
+        .map(|val| val.parse().unwrap())
           .collect(),
       };
 
+      
       let u = User::new(id, first_name, last_name, role, pronouns, clients);
       users.push(u);
     }
@@ -643,8 +652,7 @@ impl NoteArchive {
     loop {
       self.display_delete_user();
       println!("Are you sure you want to delete this user?");
-      println!("'YES'/'Y' to confirm.");
-      println!("'QUIT'/'Q' to return to previous menu.");
+      println!("| {} | {}", "YES / Y: confirm", "QUIT / Q: cancel");
       let mut choice = String::new();
       let input_attempt = io::stdin().read_line(&mut choice);
       match input_attempt {
@@ -757,7 +765,7 @@ impl NoteArchive {
       None => (),
     }
     println!("{:-^96}", "-");
-    println!("| {: ^40} | {: ^25} | {: ^25} | ", "Enter ID to choose client.", "NEW / N: new client", "QUIT / Q: quit menu");
+    println!("| {} | {} | {}", "Enter ID to choose client.", "NEW / N: new client", "QUIT / Q: quit menu");
   }
   fn display_client(&self) {
       let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
@@ -782,7 +790,7 @@ impl NoteArchive {
       self.current_client().fmt_date_of_birth(),
     );
     println!("{:-^119}", "-");
-    println!("| {: ^25} | {: ^25} | {: ^25} | ", "EDIT / E: edit client", "DELETE: delete client", "QUIT / Q: quit menu");
+    println!("| {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "QUIT / Q: quit menu");
     println!("{:-^119}", "-");
   }
   fn load_client(&mut self, id: u32) -> std::io::Result<()> {
@@ -1108,8 +1116,7 @@ impl NoteArchive {
   fn choose_edit_client(&mut self) {
     loop {
       self.display_client();
-      println!("Choose field to edit (FIRST, LAST, PRNS).");
-      println!("'Q'/'QUIT' to return to previous menu.");
+      println!("| {} | {} | {} | {}", "FIRST / F: edit first name", "LAST / L: edit surname", "PRNS / P: edit pronouns", "QUIT / Q: cancel");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
@@ -1231,7 +1238,8 @@ impl NoteArchive {
   fn choose_delete_client(&mut self) {
     loop {
       self.display_delete_client();
-      println!("Are you sure you want to delete this client? 'YES'/'Y' to confirm.");
+      println!("Are you sure you want to delete this client?");
+      println!("| {} | {}", "YES / Y: confirm", "Any key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
@@ -1347,26 +1355,34 @@ impl NoteArchive {
         .map(|val| val.to_string())
         .collect();
 
-      let mut id: u32 = values[0].parse().unwrap();
+      let saved_id: u32 = values[0].parse().unwrap();
 
       // if any pronouns have a matching ID
       // due to someone editing the default values,
       // change ID to last item in vector + 1, continuing count
-
-      if pronouns.iter().any(|p| p.id == id) {
-        let old_id = id;
-        id = pronouns[pronouns.len() - 1].id + 1;
-        self.reassign_pronouns_id(old_id, id);
-      }
 
       let subject = String::from(&values[1]);
       let object = String::from(&values[2]);
       let possessive_determiner = String::from(&values[3]);
       let possessive = String::from(&values[4]);
 
-      let p = Pronouns::new(id, subject, object, possessive_determiner, possessive);
+      let next_id = pronouns[pronouns.len() - 1].id + 1;
+      
+      let s2 = subject.clone();
+      let o2 = object.clone();
+      let pd2 = possessive_determiner.clone();
+      let p2 = possessive.clone();
+
+      let p = Pronouns::new(next_id, subject, object, possessive_determiner, possessive);
+      
       if !pronouns.iter().any(|prn| prn == &p) {
-        pronouns.push(p);
+        if pronouns.iter().any(|p| p.id == saved_id) {
+          self.reassign_pronouns_id(saved_id, next_id);
+          pronouns.push(p);
+        } else {
+          let p = Pronouns::new(saved_id, s2, o2, pd2, p2);
+          pronouns.push(p);
+        }
       }
     }
     self.pronouns = pronouns;
@@ -1387,11 +1403,10 @@ impl NoteArchive {
       let input = loop {
         let mut choice = String::new();
         println!(
-          "| {: ^40} | {: ^25} | {: ^25} | {: ^25}",
+          "| {} | {} | {}",
           "Enter ID to choose pronouns.",
           "EDIT / E: edit pronouns",
           "DELETE: delete pronouns",
-          "QUIT / Q: quit pronouns menu"
         );
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -1407,25 +1422,21 @@ impl NoteArchive {
 
       match input {
         "NEW" | "new" | "New" | "N" | "n" => {
-          let pronouns = self.create_get_pronouns();
-          self.display_pronouns();
-          println!("Pronouns records updated.");
-          thread::sleep(time::Duration::from_secs(2));
-          let new_id = pronouns.id;
-          break new_id;
+          let pronouns_option = self.create_get_pronouns();
+          match pronouns_option {
+            Some(p) => {
+              let new_id = p.id;
+              break new_id;
+            },
+            None => continue,
+          }
         },
         "EDIT" | "edit" | "Edit" | "E" | "e" => {
           self.choose_edit_pronouns();
-          self.display_pronouns();
-          println!("Pronouns records updated.");
-          thread::sleep(time::Duration::from_secs(2));
           continue;
         },
         "DELETE" | "delete" | "Delete" | "D" | "d" => {
           self.choose_delete_pronouns();
-          self.display_pronouns();
-          println!("Pronouns records updated.");
-          thread::sleep(time::Duration::from_secs(2));
           continue;
         },
         _ => {
@@ -1455,7 +1466,7 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!("| {: ^25} | {: ^25} | {: ^25} | {: ^25} | ", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
+        println!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice,
@@ -1469,27 +1480,23 @@ impl NoteArchive {
       let input = input.trim();
 
       match input {
-        "NEW" | "new" | "New" => {
-          let pronouns = self.create_get_pronouns();
-          self.display_pronouns();
-          println!("Pronoun records updated.");
-          thread::sleep(time::Duration::from_secs(2));
-          let new_id = pronouns.id;
-          break Some(new_id);
+        "NEW" | "new" | "New" | "N" | "n" => {
+          let pronouns_option = self.create_get_pronouns();
+          match pronouns_option {
+            Some(p) => {
+              let new_id = p.id;
+              break Some(new_id);
+            },
+            None => continue,
+          }
         },
-        "EDIT" | "edit" | "Edit" => {
+        "EDIT" | "edit" | "Edit" | "E" | "e" => {
           self.choose_edit_pronouns();
-          self.display_pronouns();
-          println!("Pronoun records updated.");
-          thread::sleep(time::Duration::from_secs(2));
-          break None;
+          continue;
         },
         "DELETE" | "delete" | "D" | "d" => {
           self.choose_delete_pronouns();
-          self.display_pronouns();
-          println!("Pronoun records updated.");
-          thread::sleep(time::Duration::from_secs(2));
-          break None;
+          continue;
         },
         "QUIT" | "quit" | "Quit" | "Q" | "q" => {
           break None;
@@ -1538,17 +1545,29 @@ impl NoteArchive {
     println!("{:-^15} | {:-^15} | {:-^15} | {:-^15}", "Subject", "Object", "Pos. Det.", "Pos.");
     println!("{: ^15} | {: ^15} | {: ^15} | {: ^15}", prns.subject, prns.object, prns.possessive_determiner, prns.possessive);
     println!("{:-^69}", "-");
-
   }
-  fn create_get_pronouns(&mut self) -> Pronouns {
-    let pronouns = loop {
+  fn display_pronoun_examples(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^109}", "-");
+    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "Subject pronoun", "Object pronoun", "Possessive determiner", "Possessive pronoun");
+    println!("{:-^109}", "-");
+    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "he", "him", "his", "his");
+    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "she", "her", "her", "hers");
+    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "they", "them", "their", "theirs");
+    println!("{:-^109}", "-");
+  }
+  fn create_get_pronouns(&mut self) -> Option<Pronouns> {
+    let pronouns_option = 'pronouns: loop {
+      self.display_pronoun_examples();
       let subject = loop {
         let mut subject_choice = String::new();
-        println!("Enter your subject pronoun ('he' in 'he/him/his/his', 'she' in 'she/her/her/hers', or 'they' in 'they/them/their/theirs').");
-        println!("Example: [pronoun] attended a Care Plan Meeting.");
+        println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
         let subject_attempt = io::stdin().read_line(&mut subject_choice);
         match subject_attempt {
-          Ok(_) => break String::from(subject_choice.trim()),
+          Ok(_) => match subject_choice.trim() {
+            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+            _ => break String::from(subject_choice.trim()),
+          }
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
@@ -1557,11 +1576,15 @@ impl NoteArchive {
       };
       let object = loop {
         let mut object_choice = String::new();
-        println!("Enter your object pronoun ('him' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'them' in 'they/them/their/theirs').");
-        println!("Example: Guidance counselor called ICC and left a message for [pronoun].");
+        println!(
+          "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
+        );
         let object_attempt = io::stdin().read_line(&mut object_choice);
         match object_attempt {
-          Ok(_) => break String::from(object_choice.trim()),
+          Ok(_) => match object_choice.trim() {
+            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+            _ => break String::from(object_choice.trim()),
+          }
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
@@ -1570,12 +1593,16 @@ impl NoteArchive {
       };
       let possessive_determiner = loop {
         let mut possessive_determiner_choice = String::new();
-        println!("Enter your possessive determiner ('his' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'their' in 'they/them/their/theirs').");
-        println!("Example: ICC used [pronoun] personal vehicle to transport youth home.");
+        println!(
+          "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
+        );
         let possessive_determiner_attempt =
           io::stdin().read_line(&mut possessive_determiner_choice);
         match possessive_determiner_attempt {
-          Ok(_) => break String::from(possessive_determiner_choice.trim()),
+          Ok(_) => match possessive_determiner_choice.trim() {
+            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+            _ => break String::from(possessive_determiner_choice.trim()),
+          }
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
@@ -1584,13 +1611,15 @@ impl NoteArchive {
       };
       let possessive = loop {
         let mut possessive_choice = String::new();
-        println!("Enter your possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
         println!(
-          "Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
+          "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
         );
         let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
         match possessive_attempt {
-          Ok(_) => break String::from(possessive_choice.trim()),
+          Ok(_) => match possessive_choice.trim() {
+            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+            _ => break String::from(possessive_choice.trim()),
+          },
           Err(e) => {
             println!("Failed to read line: {}", e);
             continue;
@@ -1600,16 +1629,25 @@ impl NoteArchive {
       let pronouns_attempt =
         self.generate_unique_new_pronouns(subject, object, possessive_determiner, possessive);
       match pronouns_attempt {
-        Ok(pronouns) => break pronouns,
+        Ok(pronouns) => break Some(pronouns),
         Err(e) => {
           println!("Pronouns could not be generated: {}.", e);
-          continue;
+          thread::sleep(time::Duration::from_secs(1));
+          break None;
         }
       }
     };
-    let new_pronouns = pronouns.clone();
-    self.save_pronouns(pronouns);
-    new_pronouns
+    match pronouns_option {
+      Some(p) => {
+        let new_pronouns = p.clone();
+        self.save_pronouns(p);
+        self.display_pronouns();
+        println!("Pronouns records updated.");
+        thread::sleep(time::Duration::from_secs(1));
+        Some(new_pronouns)
+      }
+      None => None,
+    }
   }
   pub fn generate_unique_new_pronouns(
     &mut self,
@@ -1648,7 +1686,7 @@ impl NoteArchive {
     self.pronouns.push(pronouns);
   }
   fn load_pronouns(&mut self, id: u32) -> Result<u32, String> {
-    let pronouns: Option<&Pronouns> = self.pronouns.iter().find(|c| c.id == id);
+    let pronouns: Option<&Pronouns> = self.pronouns.iter().find(|p| p.id == id);
     match pronouns {
       Some(p) => Ok(p.id),
       None => Err(format!("Invalid ID: {}.", id)),
@@ -1741,16 +1779,16 @@ impl NoteArchive {
     }
   }
   fn choose_edit_pronouns(&mut self) {
-    let mut final_pronouns_id;
-    let mut final_pronoun_to_edit = String::new();
-    let mut final_new_pronoun = String::new();
-    loop {
+    'choose_edit_pronouns: loop {
+      let final_pronouns_id;
+      let final_pronoun_to_edit: String;
+      let final_new_pronoun: String;
       {
         self.display_pronouns();
         let pronouns = loop {
           let input = loop {
             let mut choice = String::new();
-            println!("Enter ID of the pronouns you would like to edit.");
+            println!("Enter ID to edit.");
             let read_attempt = io::stdin().read_line(&mut choice);
             match read_attempt {
               Ok(_) => break choice,
@@ -1760,24 +1798,29 @@ impl NoteArchive {
               }
             }
           };
-          let id = match input.trim().parse::<u32>() {
-            Ok(num) => num,
-            Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
-              continue;
-            }
-          };
-          match self.get_pronouns_by_id(id) {
-            Some(p) => break p,
-            None => {
-              println!("Unable to load pronouns with ID {}.", id);
-              continue;
+          match &input.trim().to_string()[..] {
+            "QUIT" | "quit" | "Q" | "q" => break 'choose_edit_pronouns,
+            _ => {
+              let id = match input.trim().parse::<u32>() {
+                Ok(num) => num,
+                Err(e) => {
+                  println!("Could not read input as a number; try again ({}).", e);
+                  continue;
+                }
+              };
+              match self.get_pronouns_by_id(id) {
+                Some(p) => break p,
+                None => {
+                  println!("Unable to load pronouns with ID {}.", id);
+                  continue;
+                }
+              }
             }
           }
         };
         final_pronouns_id = pronouns.id;
         println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
-        println!("'Q'/'QUIT' to exit.");
+        println!("'Q'/'QUIT' to cancel.");
         let mut pronoun_to_edit = String::new();
         let input_attempt = io::stdin().read_line(&mut pronoun_to_edit);
         match input_attempt {
@@ -1790,15 +1833,14 @@ impl NoteArchive {
         pronoun_to_edit = pronoun_to_edit.trim().to_string();
         match &pronoun_to_edit[..] {
           "quit" | "q" | "QUIT" | "Q" | "Quit" => {
-            break ();
+            continue;
           }
           _ => (),
         }
         final_pronoun_to_edit = pronoun_to_edit.clone();
         let new_pronoun = match &pronoun_to_edit[..] {
           "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
-            println!("Enter new subject pronoun ('he' in 'he/him/his/his', 'she' in 'she/her/her/hers', or 'they' in 'they/them/their/theirs').");
-            println!("Example: [pronoun] attended a Care Plan Meeting.");
+            println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
             let mut subject_choice = String::new();
             let subject_attempt = io::stdin().read_line(&mut subject_choice);
             let p = match subject_attempt {
@@ -1811,8 +1853,9 @@ impl NoteArchive {
             p
           },
           "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
-            println!("Enter new object pronoun ('him' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'them' in 'they/them/their/theirs').");
-            println!("Example: Guidance counselor called ICC and left a message for [pronoun].");
+            println!(
+              "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
+            );
             let mut object_choice = String::new();
             let object_attempt = io::stdin().read_line(&mut object_choice);
             let p = match object_attempt {
@@ -1831,8 +1874,9 @@ impl NoteArchive {
           | "Possessive Determiner"
           | "PosDet"
           | "Possessive determiner" => {
-            println!("Enter new possessive determiner ('his' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'their' in 'they/them/their/theirs').");
-            println!("Example: ICC used [pronoun] personal vehicle to transport youth home.");
+            println!(
+              "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
+            );
             let mut posdet_choice = String::new();
             let posdet_attempt = io::stdin().read_line(&mut posdet_choice);
             let p = match posdet_attempt {
@@ -1846,8 +1890,9 @@ impl NoteArchive {
           },
           "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
           | "POSSESS" => {
-            println!("Enter new possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
-            println!("Example: OPT for youth provided her contact information, and ICC provided [pronoun].");
+            println!(
+              "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
+            );
             let mut possessive_choice = String::new();
             let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
             let p = match possessive_attempt {
@@ -1865,18 +1910,16 @@ impl NoteArchive {
           }
         };
         final_new_pronoun = new_pronoun.clone();
-        break;
       }
+      self.update_pronouns_record(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
     }
-    self.update_pronouns_record(final_pronouns_id, final_pronoun_to_edit, final_new_pronoun);
   }
   fn choose_delete_pronouns(&mut self) {
     loop {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!("Enter ID of pronouns you would like to delete.");
-        println!("'QUIT' / 'Q' to cancel.");
+        println!("| {} | {}", "Enter ID to delete.", "QUIT / Q: cancel");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice,
@@ -1919,7 +1962,7 @@ impl NoteArchive {
               match &command[..] {
                 "YES" | "yes" | "Yes" | "Y" | "y" => {
                   self.delete_pronouns(id);
-                  break;
+                  continue;
                 },
                 _ => {
                   continue;
@@ -1938,7 +1981,7 @@ impl NoteArchive {
   fn view_pronoun(&mut self, prns_id: u32) {
     loop {
       self.display_view_pronoun(prns_id);
-      println!("| {: ^25} | {: ^25} | {: ^25} | ", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
+      println!("| {} | {} | {}", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
       let mut decision = String::new();
       let input_attempt = io::stdin().read_line(&mut decision);
       match input_attempt {
@@ -1959,7 +2002,7 @@ impl NoteArchive {
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
           println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
-          println!("'Q'/'QUIT' to exit.");
+          println!("'Q'/'QUIT' to cancel.");
           let mut pronoun_to_edit = String::new();
           let field_input = io::stdin().read_line(&mut pronoun_to_edit);
           match field_input {
@@ -1972,15 +2015,15 @@ impl NoteArchive {
           pronoun_to_edit = pronoun_to_edit.trim().to_string();
           match &pronoun_to_edit[..] {
             "quit" | "q" | "QUIT" | "Q" | "Quit" => {
-              break ();
+              continue;
             },
             "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
-              println!("Enter new subject pronoun ('he' in 'he/him/his/his', 'she' in 'she/her/her/hers', or 'they' in 'they/them/their/theirs').");
-              println!("Example: [pronoun] attended a Care Plan Meeting.");
+              println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
             },
             "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
-              println!("Enter new object pronoun ('him' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'them' in 'they/them/their/theirs').");
-              println!("Example: Guidance counselor called ICC and left a message for [pronoun].");
+              println!(
+                "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
+              );
             },
             "posdet"
             | "POSDET"
@@ -1989,13 +2032,15 @@ impl NoteArchive {
             | "Possessive Determiner"
             | "PosDet"
             | "Possessive determiner" => {
-              println!("Enter new possessive determiner ('his' in 'he/him/his/his', 'her' in 'she/her/her/hers', or 'their' in 'they/them/their/theirs').");
-              println!("Example: ICC used [pronoun] personal vehicle to transport youth home.");
+              println!(
+                "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
+              );
             },
             "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
             | "POSSESS" => {
-              println!("Enter new possessive pronoun ('his' in 'he/him/his/his', 'hers' in 'she/her/her/hers', or 'theirs' in 'they/them/their/theirs').");
-              println!("Example: OPT for youth provided her contact information, and ICC provided [pronoun].");
+              println!(
+                "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
+              );
             },
             _ => {
               println!("Invalid command.");
@@ -2033,6 +2078,7 @@ impl NoteArchive {
           println!("Please select new pronouns before continuing.");
           thread::sleep(time::Duration::from_secs(1));
           self.current_user_mut().pronouns = self.choose_pronouns();
+          self.write_to_files();
         }
       },
       None => (),

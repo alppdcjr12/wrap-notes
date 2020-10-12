@@ -72,6 +72,15 @@ impl User {
     name.push_str(&self.last_name);
     name
   }
+  pub fn name_and_title(&self) -> String {
+    let mut name = String::new();
+    name.push_str(&self.first_name);
+    name.push_str(" ");
+    name.push_str(&self.last_name);
+    name.push_str(", ");
+    name.push_str(&self.role.to_string());
+    name
+  }
 }
 
 impl fmt::Display for User {
