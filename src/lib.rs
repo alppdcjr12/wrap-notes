@@ -12,5 +12,11 @@ pub use note_archive::*;
 pub mod client;
 pub use client::*;
 
+pub mod collateral;
+pub use collateral::*;
+
 pub mod pronouns;
 pub use pronouns::*;
+
+pub mod utils;
+pub use utils::*;

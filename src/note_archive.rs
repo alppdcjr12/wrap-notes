@@ -10,13 +10,16 @@ use std::io::{Error, ErrorKind};
 use std::{thread, time};
 
 use crate::client::*;
+use crate::collateral::*;
 use crate::pronouns::*;
 use crate::user::*;
 use crate::EmployeeRole::{FP, ICC};
+use crate::utils::*;
 
 pub struct NoteArchive {
   pub users: Vec<User>,
   pub clients: Vec<Client>,
+  pub collaterals: Vec<Collateral>,
   pub pronouns: Vec<Pronouns>,
   pub current_user_id: Option<u32>,
   pub current_client_ids: Option<Vec<u32>>,
@@ -25,6 +28,7 @@ pub struct NoteArchive {
   pub current_collateral_id: Option<u32>,
   user_filepath: String,
   client_filepath: String,
+  collateral_filepath: String,
   pronouns_filepath: String,
 }
 
@@ -40,11 +44,13 @@ impl NoteArchive {
   pub fn new(
     user_filepath: String,
     client_filepath: String,
+    collateral_filepath: String,
     pronouns_filepath: String,
   ) -> NoteArchive {
     let mut a = NoteArchive {
       users: Self::read_users(&user_filepath),
       clients: Self::read_clients(&client_filepath),
+      collaterals: Self::read_collaterals(&collateral_filepath),
       pronouns: vec![],
       current_user_id: None,
       current_client_ids: None,
@@ -53,6 +59,7 @@ impl NoteArchive {
       current_collateral_id: None,
       user_filepath,
       client_filepath,
+      collateral_filepath,
       pronouns_filepath,
     };
     a.read_pronouns();
@@ -93,6 +100,23 @@ impl NoteArchive {
       vec![5, 6, 7, 8],
     );
     let clients = vec![client_1, client_2];
+    let collateral_1 = Collateral::new(
+      1,
+      String::from("Jerry"),
+      String::from("Smith"),
+      String::from("TM"),
+      String::from("Kaleidoscope Family Solutions"),
+      2,
+    );
+    let collateral_2 = Collateral::new(
+      2,
+      String::from("Barry"),
+      String::from("Plith"),
+      String::from("OPT"),
+      String::from("Family Solutions, Inc."),
+      1,
+    );
+    let collaterals = vec![collateral_1, collateral_2];
     let p1 = Pronouns::new(
       1,
       String::from("he"),
@@ -111,11 +135,13 @@ impl NoteArchive {
     let mut notes = NoteArchive::new(
       String::from("test_user.txt"),
       String::from("test_client.txt"),
+      String::from("test_collateral.txt"),
       String::from("test_pronouns.txt"),
     );
 
     notes.users = users;
     notes.clients = clients;
+    notes.collaterals = collaterals;
     notes.pronouns = pronouns;
     notes.write_to_files();
 
@@ -128,6 +154,9 @@ impl NoteArchive {
     if fs::metadata("test_client.txt").is_ok() {
       fs::remove_file("test_client.txt").unwrap();
     }
+    if fs::metadata("test_collateral.txt").is_ok() {
+      fs::remove_file("test_collateral.txt").unwrap();
+    }
     if fs::metadata("test_pronouns.txt").is_ok() {
       fs::remove_file("test_pronouns.txt").unwrap();
     }
@@ -135,6 +164,7 @@ impl NoteArchive {
   pub fn write_to_files(&mut self) {
     self.write_users().unwrap();
     self.write_clients().unwrap();
+    self.write_collaterals().unwrap();
     self.write_pronouns().unwrap();
   }
   pub fn display_actions(&self) {
@@ -152,6 +182,10 @@ impl NoteArchive {
     println!(
       "{: >15} | {: <40}",
       " CLIENT / C ", " View/edit client records "
+    );
+    println!(
+      "{: >15} | {: <40}",
+      " COL / CO ", " View/edit collateral records "
     );
     println!(
       "{: >15} | {: <40}",
@@ -191,6 +225,9 @@ impl NoteArchive {
         "client" | "c" | "CLIENT" | "C" | "Client" => {
           self.choose_clients();
         },
+        "collateral" | "co" | "COLLATERAL" | "CO" | "Collateral" | "Co" | "collat" | "COLLAT" | "Collat" | "COL" | "col" | "Col" => {
+          self.choose_collaterals();
+        },
         "user" | "u" | "USER" | "U" | "User" => {
           self.choose_user();
         },
@@ -198,7 +235,7 @@ impl NoteArchive {
           let chosen_pronoun = self.choose_pronouns_option();
           match chosen_pronoun {
             Some(prn) => {
-              self.view_pronoun(chosen_pronoun.unwrap());
+              self.view_pronoun(prn);
             },
             None => (),
           }
@@ -734,7 +771,7 @@ impl NoteArchive {
     let maybe_current: Option<&Client> = self.clients.iter().find(|c| c.id == client_id);
     match maybe_current {
       Some(c) => c,
-      None => panic!("The loaded user id does not match any saved users."),
+      None => panic!("The loaded client id does not match any saved clients."),
     }
   }
   fn display_clients(&self) {
@@ -765,7 +802,40 @@ impl NoteArchive {
       None => (),
     }
     println!("{:-^96}", "-");
-    println!("| {} | {} | {}", "Enter ID to choose client.", "NEW / N: new client", "QUIT / Q: quit menu");
+    println!("| {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "QUIT / Q: quit menu");
+  }
+  fn display_add_client(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^96}", "-");
+    println!("{:-^96}", " Clients ");
+    println!("{:-^96}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
+    match &self.current_client_ids {
+      Some(c_ids) => {
+        for c in self.clients.iter().filter(|client| !self.current_client_ids.as_ref().unwrap().iter().any(|&id| id == client.id)) {
+          println!(
+            "{: ^10} | {: ^40} | {: <12} {: >26}",
+            c.id,
+            c.full_name(),
+            c.fmt_dob(),
+            c.fmt_date_of_birth()
+          );
+        }
+      },
+      None => {
+        for c in self.clients.iter() {
+          println!(
+            "{: ^10} | {: ^40} | {: <12} {: >26}",
+            c.id,
+            c.full_name(),
+            c.fmt_dob(),
+            c.fmt_date_of_birth()
+          );
+        }
+      },
+    }
+    println!("{:-^96}", "-");
+    println!("| {} | {}", "Enter ID to add client .", "QUIT / Q: quit menu");
   }
   fn display_client(&self) {
       let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
@@ -807,6 +877,52 @@ impl NoteArchive {
       )),
     }
   }
+  fn add_client(&mut self) {
+    loop {
+      self.display_add_client();
+      let input = loop {
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break;
+        },
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let new_id = self.create_client_get_id();
+          self.update_current_clients(new_id);
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            match self.load_client(num) {
+              Ok(_) => {
+                self.current_user_mut().clients.push(num);
+                self.update_current_clients(num);
+                break;
+              }
+              Err(e) => {
+                println!("Unable to load client with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Failed to read input as a number.");
+            continue;
+          }
+        }
+      }
+    }
+  }
   fn choose_clients(&mut self) {
     loop {
       let input = loop {
@@ -826,6 +942,10 @@ impl NoteArchive {
         "NEW" | "new" | "New" | "n" | "N" => {
           let new_id = self.create_client_get_id();
           self.update_current_clients(new_id);
+          continue;
+        },
+        "ADD" | "add" | "Add" | "a" | "A" => {
+          self.add_client();
           continue;
         },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
@@ -849,6 +969,85 @@ impl NoteArchive {
         },
       }
     }
+  }
+  fn display_specify_clients(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^96}", "-");
+    println!("{:-^96}", " Choose client for collateral ");
+    println!("{:-^96}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
+    match self.current_client_ids {
+      Some(_) => {
+        for c in self.clients.iter().filter(|client| {
+          self
+            .current_client_ids
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|&id| id == client.id)
+        }) {
+          println!(
+            "{: ^10} | {: ^40} | {: <12} {: >26}",
+            c.id,
+            c.full_name(),
+            c.fmt_dob(),
+            c.fmt_date_of_birth()
+          );
+        }
+      }
+      None => (),
+    }
+    println!("{:-^96}", "-");
+    println!("| {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "QUIT / Q: quit menu");
+  }
+  fn specify_client(&mut self) -> u32 {
+    let id: u32 = loop {
+      let input = loop {
+        self.display_specify_clients();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let new_id = self.create_client_get_id();
+          self.update_current_clients(new_id);
+          continue;
+        },
+        "ADD" | "add" | "Add" | "a" | "A" => {
+          self.add_client();
+          continue;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            match self.load_client(num) {
+              Ok(_) => {
+                self.current_client_id = None;
+                break num
+              }
+              Err(e) => {
+                println!("Unable to load client with id {}: {}", num, e);
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    };
+    id
   }
   fn choose_client(&mut self) {
     loop {
@@ -1302,6 +1501,788 @@ impl NoteArchive {
       i += 1;
     }
   }
+  fn get_client_by_id(&self, id: u32) -> &Client {
+    self.clients.iter().find(|c| c.id == id).unwrap()
+  }
+  fn get_client_by_id_mut(&mut self, id: u32) -> &mut Client {
+    self.clients.iter_mut().find(|c| c.id == id).unwrap()
+  }
+
+  // collaterals
+  fn current_collateral_mut(&mut self) -> &mut Collateral {
+    let collateral_id = match self.current_collateral_id {
+      Some(id) => id,
+      None => panic!("There is no current collateral selected."),
+    };
+    let maybe_current: Option<&mut Collateral> = self.collaterals.iter_mut().find(|c| c.id == collateral_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded collateral ID does not match any saved collaterals."),
+    }
+  }
+  fn current_collateral(&self) -> &Collateral {
+    let collateral_id = match self.current_collateral_id {
+      Some(id) => id,
+      None => panic!("There is no current collateral selected."),
+    };
+    let maybe_current: Option<&Collateral> = self.collaterals.iter().find(|c| c.id == collateral_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded collateral id does not match any saved collaterals."),
+    }
+  }
+  fn current_user_collaterals(&self) -> Vec<&Collateral> {
+    let mut co_ids: Vec<u32> = vec![];
+    for client_id in &self.current_user().clients {
+      let cols = &self.get_client_by_id(*client_id).collaterals;
+      for c in cols {
+        if !co_ids.iter().any(|cid| cid == c) {
+          co_ids.push(*c);
+        }
+      }
+    }
+    let collats: Vec<&Collateral> = co_ids.iter().map(|id| self.get_collateral_by_id(*id).unwrap()).collect();
+    collats
+  }
+  fn current_user_collateral_ids(&self) -> Vec<u32> {
+    let mut co_ids: Vec<u32> = vec![];
+    for client_id in &self.current_user().clients {
+      let cols = &self.get_client_by_id(*client_id).collaterals;
+      for c in cols {
+        if !co_ids.iter().any(|cid| cid == c) {
+          co_ids.push(*c);
+        }
+      }
+    }
+    co_ids
+  }
+  fn display_client_collaterals(&self) {
+    let mut heading = self.current_client().first_name.clone();
+    heading.push_str(" ");
+    heading.push_str(&self.current_client().last_name);
+    heading.push_str("'s Collaterals");
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^149}", "-");
+    println!("{:-^149}", heading);
+    println!("{:-^149}", "-");
+    println!("{:-^10} | {:-^40} | {:-^30} | {:-<60}", "ID", "Name", "Role/Title", "Institution");
+    match self.current_collateral_ids {
+      Some(_) => {
+        for c in self.collaterals.iter().filter(|collateral| {
+          self
+            .current_collateral_ids
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|&id| id == collateral.id)
+        }) {
+          println!(
+            "{: ^10} | {: ^40} | {: ^30} | {: >60}",
+            c.id,
+            c.full_name(),
+            c.title,
+            c.institution,
+          );
+        }
+      }
+      None => (),
+    }
+    println!("{:-^96}", "-");
+    println!("| {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
+  }
+  fn display_user_collaterals(&self) {
+    let heading = format!(
+      "{} {}, {} - All collateral records",
+      self.current_user().first_name,  
+      self.current_user().last_name,  
+      self.current_user().role,
+    );
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^149}", "-");
+    println!("{:-^149}", heading);
+    println!("{:-^149}", "-");
+    println!("{:-^10} | {:-^40} | {:-^30} | {:-<60}", "ID", "Name", "Role/Title", "Institution");
+
+    for co in self.current_user_collaterals() {
+      println!(
+        "{: ^10} | {: ^40} | {: ^30} |{: >60}",
+        co.id,
+        co.full_name(),
+        co.title,
+        co.institution,
+      );
+    }
+    println!("{:-^149}", "-");
+    println!("| {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
+  }
+  fn display_collateral(&self) {
+    let pronouns_id = self.current_collateral().pronouns;
+    let pronouns_option = self.get_pronouns_by_id(pronouns_id);
+    let display_pronouns = match pronouns_option {
+      Some(p) => p.short_string(),
+      None => String::from("-----"),
+    };
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^162}", "-");
+    println!("{:-^162}", " View collateral record ");
+    println!("{:-^162}", "-");
+    println!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-<50}",
+      "First name", "Last name", "Pronouns", "Role/Title", "Institution"
+    );
+    println!(
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: <50}",
+      self.current_collateral().first_name,
+      self.current_collateral().last_name,
+      display_pronouns,
+      self.current_collateral().title,
+      self.current_collateral().institution,
+    );
+    println!("{:-^162}", "-");
+    println!("| {} | {} | {}", "EDIT / E: edit collateral", "DELETE: delete collateral", "QUIT / Q: quit menu");
+    println!("{:-^162}", "-");
+  }
+  fn display_edit_collateral(&self) {
+    let pronouns_id = self.current_collateral().pronouns;
+    let pronouns_option = self.get_pronouns_by_id(pronouns_id);
+    let display_pronouns = match pronouns_option {
+      Some(p) => p.short_string(),
+      None => String::from("-----"),
+    };
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^162}", "-");
+    println!("{:-^162}", " View collateral record ");
+    println!("{:-^162}", "-");
+    println!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-<50}",
+      "First name", "Last name", "Pronouns", "Role/Title", "Institution"
+    );
+    println!(
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: <50}",
+      self.current_collateral().first_name,
+      self.current_collateral().last_name,
+      display_pronouns,
+      self.current_collateral().title,
+      self.current_collateral().institution,
+    );
+    println!("{:-^162}", "-");
+      println!(
+        "| {} | {} | {} | {} | {} | {}",
+        "FIRST / F: edit first name",
+        "LAST / L: edit surname",
+        "TITLE / T: edit title/role",
+        "INST / I: edit institution",
+        "PRNS / P: edit pronouns",
+        "QUIT / Q: cancel");
+    println!("{:-^162}", "-");
+  }
+  fn load_collateral(&mut self, id: u32) -> std::io::Result<()> {
+    let current: Option<&Collateral> = self.collaterals.iter().find(|c| c.id == id);
+    match current {
+      Some(c) => {
+        self.current_collateral_id = Some(c.id);
+        Ok(())
+      }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to find collateral.",
+      )),
+    }
+  }
+  fn choose_client_collaterals(&mut self) {
+    loop {
+      let input = loop {
+        self.display_client_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let new_id = self.create_collateral_get_id();
+          self.update_current_collaterals(new_id);
+          continue;
+        },
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.current_collateral_ids.as_ref().unwrap().iter().any(|n| n == &num) {
+              println!("Please select one of the listed IDs.");
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+            match self.load_collateral(num) {
+              Ok(_) => self.choose_collateral(),
+              Err(e) => {
+                println!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_collaterals(&mut self) {
+    loop {
+      let input = loop {
+        self.display_user_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let new_id = self.create_collateral_get_id();
+          continue;
+        },
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.current_user_collateral_ids().iter().any(|n| n == &num) {
+            println!("Please select one of the listed IDs.");
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+            match self.load_collateral(num) {
+              Ok(_) => self.choose_collateral(),
+              Err(e) => {
+                println!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_collateral(&mut self) {
+    loop {
+      self.display_collateral();
+      let mut choice = String::new();
+      let read_attempt = io::stdin().read_line(&mut choice);
+      let input = match read_attempt {
+        Ok(_) => choice,
+        Err(e) => {
+          println!("Could not read input; try again ({}).", e);
+          continue;
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break;
+        }
+        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+          self.choose_delete_collateral();
+          break;
+        }
+        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+          self.choose_edit_collateral();
+        }
+        _ => println!("Invalid command."),
+      }
+    }
+  }
+  fn create_collateral_get_id(&mut self) -> u32 {
+    let collateral = loop {
+      let first_name = loop {
+        let mut first_name_choice = String::new();
+        println!("Enter collateral's first name.");
+        let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
+        match first_name_attempt {
+          Ok(_) => break String::from(first_name_choice.trim()),
+          Err(e) => {
+            println!("Invalid first name: {}", e);
+            continue;
+          }
+        };
+      };
+      let last_name = loop {
+        let mut last_name_choice = String::new();
+        println!("Enter collateral's last name.");
+        let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
+        match last_name_attempt {
+          Ok(_) => break String::from(last_name_choice.trim()),
+          Err(e) => {
+            println!("Invalid last name: {}", e);
+            continue;
+          }
+        };
+      };
+      let title = loop {
+        let mut title_choice = String::new();
+        println!("Enter collateral's title.");
+        let title_attempt = io::stdin().read_line(&mut title_choice);
+        match title_attempt {
+          Ok(_) => break String::from(title_choice.trim()),
+          Err(e) => {
+            println!("Invalid title: {}", e);
+            continue;
+          }
+        };
+      };
+      let institution = loop {
+        let mut institution_choice = String::new();
+        println!("Enter collateral's institution.");
+        let institution_attempt = io::stdin().read_line(&mut institution_choice);
+        match institution_attempt {
+          Ok(_) => break String::from(institution_choice.trim()),
+          Err(e) => {
+            println!("Invalid institution: {}", e);
+            continue;
+          }
+        };
+      };
+
+      let pronouns = self.choose_pronouns();
+
+      let collateral_attempt = self.generate_unique_new_collateral(first_name, last_name, title, institution, pronouns);
+      match collateral_attempt {
+        Ok(collateral) => break collateral,
+        Err(e) => {
+          println!("Collateral could not be generated: {}.", e);
+          continue;
+        }
+      }
+    };
+    let id = collateral.id;
+    self.save_collateral(collateral);
+    match self.current_client_id {
+      Some(_) => self.current_client_mut().collaterals.push(id),
+      None => {
+        let c_id = self.specify_client();
+        self.get_client_by_id_mut(c_id).collaterals.push(id);
+      }
+    }
+    id
+  }
+  pub fn generate_unique_new_collateral(
+    &mut self,
+    first_name: String,
+    last_name: String,
+    title: String,
+    institution: String,
+    pronouns: u32,
+  ) -> Result<Collateral, String> {
+    let id: u32 = self.collaterals.len() as u32 + 1;
+
+    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+      .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .collect();
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &first_name && l == &last_name && t == &title && i == &institution)
+    {
+      Err(format!(
+        "There is already a {} at {} named '{} {}.'",
+        title, institution, first_name, last_name
+      ))
+    } else {
+      Ok(Collateral::new(
+        id,
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+      ))
+    };
+
+    result
+  }
+  pub fn read_collaterals(filepath: &str) -> Vec<Collateral> {
+    let file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .open(filepath)
+      .unwrap();
+
+    let reader = BufReader::new(file);
+
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
+
+    if lines.len() > 0 {
+      lines.remove(0).unwrap();
+    }
+    if lines.len() > 0 {
+      lines.remove(lines.len() - 1).unwrap();
+    }
+
+    let mut collaterals: Vec<Collateral> = vec![];
+
+    for line in lines {
+      let values: Vec<String> = line
+        .unwrap()
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
+
+      let id: u32 = values[0].parse().unwrap();
+      let first_name = String::from(&values[1]);
+      let last_name = String::from(&values[2]);
+      let title = String::from(&values[3]);
+      let institution = String::from(&values[4]);
+      let pronouns: u32 = values[5].parse().unwrap();
+
+      let c = Collateral::new(id, first_name, last_name, title, institution, pronouns);
+      collaterals.push(c);
+    }
+    collaterals
+  }
+  pub fn write_collaterals(&self) -> std::io::Result<()> {
+    let mut lines = String::from("##### collaterals #####\n");
+    for c in &self.collaterals {
+      lines.push_str(&c.to_string()[..]);
+    }
+    lines.push_str("##### collaterals #####");
+    let mut file = File::create(self.collateral_filepath.clone()).unwrap();
+    file.write_all(lines.as_bytes()).unwrap();
+    Ok(())
+  }
+  pub fn save_collateral(&mut self, collateral: Collateral) {
+    self.collaterals.push(collateral);
+  }
+  fn update_current_collaterals(&mut self, id: u32) {
+    self.current_client_mut().collaterals.push(id);
+    self.current_collateral_ids = Some(self.current_client_mut().collaterals.clone());
+  }
+  fn choose_edit_collateral(&mut self) {
+    loop {
+      self.display_edit_collateral();
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      field_to_edit = field_to_edit.trim().to_string();
+      match &field_to_edit[..] {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        }
+        _ => (),
+      }
+      match &field_to_edit[..] {
+        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name"
+        | "FIRST NAME" | "First Name" => {
+          println!("Enter new first name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => match self.change_collateral_first_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              continue;
+            }
+          }
+        }
+        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
+        | "Last Name" => {
+          println!("Enter new last name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => match self.change_collateral_last_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
+                thread::sleep(time::Duration::from_secs(1));
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        }
+        "TITLE" | "title" | "Title" | "t" | "T" => {
+          println!("Enter new title:");
+          let mut title_choice = String::new();
+          let title_attempt = io::stdin().read_line(&mut title_choice);
+          match title_attempt {
+            Ok(_) => match self.change_collateral_title(title_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
+                thread::sleep(time::Duration::from_secs(1));
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        }
+        "INSITUTION" | "Institution" | "institution" | "inst" | "INST" | "Inst" | "I" | "i" => {
+          println!("Enter new institution:");
+          let mut inst_choice = String::new();
+          let inst_attempt = io::stdin().read_line(&mut inst_choice);
+          match inst_attempt {
+            Ok(_) => match self.change_collateral_institution(inst_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Error: {}", e);
+                thread::sleep(time::Duration::from_secs(1));
+              }
+            },
+            Err(e) => {
+              println!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        }
+        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+          self.current_collateral_mut().pronouns = self.choose_pronouns();
+        }
+        _ => {
+          println!("Invalid entry.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
+      }
+    }
+  }
+  fn change_collateral_first_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+      .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
+      new_name,
+      &self.current_collateral().last_name,
+      &self.current_collateral().title,
+      &self.current_collateral().institution,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      Err(format!(
+        "There is already a {} at {} named '{} {}.'",
+        ct, ci, cf, cl
+      ))
+    } else {
+      self.current_collateral_mut().first_name = String::from(new_name);
+      Ok(())
+    };
+    result
+  }
+  fn change_collateral_last_name(&mut self, new_name: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+      .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
+      &self.current_collateral().first_name,
+      new_name,
+      &self.current_collateral().title,
+      &self.current_collateral().institution,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      Err(format!(
+        "There is already a {} at {} named '{} {}.'",
+        ct, ci, cf, cl
+      ))
+    } else {
+      self.current_collateral_mut().last_name = String::from(new_name);
+      Ok(())
+    };
+    result
+  }
+  fn change_collateral_title(&mut self, new_title: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+      .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
+      &self.current_collateral().first_name,
+      &self.current_collateral().last_name,
+      new_title,
+      &self.current_collateral().institution,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      Err(format!(
+        "There is already a {} at {} named '{} {}.'",
+        ct, ci, cf, cl
+      ))
+    } else {
+      self.current_collateral_mut().title = String::from(new_title);
+      Ok(())
+    };
+    result
+  }
+  fn change_collateral_institution(&mut self, new_inst: &str) -> Result<(), String> {
+    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+      .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
+      &self.current_collateral().first_name,
+      &self.current_collateral().last_name,
+      &self.current_collateral().title,
+      new_inst,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      Err(format!(
+        "There is already a {} at {} named '{} {}.'",
+        ct, ci, cf, cl
+      ))
+    } else {
+      self.current_collateral_mut().institution = String::from(new_inst);
+      Ok(())
+    };
+    result
+  }
+  fn choose_delete_collateral(&mut self) {
+    loop {
+      self.display_delete_collateral();
+      println!("Are you sure you want to delete this collateral?");
+      println!("| {} | {}", "YES / Y: confirm", "Any key to cancel");
+      let mut confirm = String::new();
+      let input_attempt = io::stdin().read_line(&mut confirm);
+      let command = match input_attempt {
+        Ok(_) => confirm.trim().to_string(),
+        Err(e) => {
+          println!("Failed to read input: {}", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      };
+      match &command[..] {
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          self.delete_current_collateral();
+          break;
+        }
+        _ => {
+          continue;
+        }
+      }
+    }
+  }
+  fn get_clients_by_collateral_id(&self, id: u32) -> Vec<&Client> {
+    let c_ids: Vec<&Client> = self.clients
+      .iter()
+      .filter(|c|
+        c.collaterals
+          .iter()
+          .any(|co_id|
+            co_id == &id))
+      .collect();
+    
+    c_ids
+  }
+  fn display_delete_collateral(&self) {
+    let clients = self.get_clients_by_collateral_id(self.current_collateral().id);
+    let client_names: Vec<String> = clients.iter().map(|c| format!("{} {}", c.first_name, c.last_name)).collect();
+    let all_client_names = client_names.join(" ");
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^119}", "-");
+    println!("{:-^119}", " DELETE COLLATERAL ");
+    println!("{:-^119}", "-");
+    println!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-<60}",
+      "First name", "Last name", "Client(s)", "Role/Title", "Institution"
+    );
+    println!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-<60} | {:-<60}",
+      self.current_collateral().first_name,
+      self.current_collateral().last_name,
+      self.current_collateral().title,
+      self.current_collateral().institution,
+      all_client_names,
+    );
+    println!("{:-^119}", "-");
+  }
+  fn delete_current_collateral(&mut self) {
+    let id = self.current_collateral_id.unwrap();
+    self.collaterals.retain(|c| c.id != id);
+    self.reindex_collaterals();
+    self.current_collateral_id = None;
+  }
+  fn reindex_collaterals(&mut self) {
+    let mut i: u32 = 1;
+    for mut co in &mut self.collaterals {
+      for cl in &mut self.clients {
+        for co_id in &mut cl.collaterals {
+          if co_id == &co.id {
+            *co_id = i;
+          }
+        }
+      }
+      co.id = i;
+      i += 1;
+    }
+  }
+  fn get_collateral_by_id(&self, id: u32) -> Option<&Collateral> {
+    self.collaterals.iter().find(|p| p.id == id)
+  }
+  pub fn get_collateral_by_id_mut(&mut self, id: u32) -> Option<&mut Collateral> {
+    self.collaterals.iter_mut().find(|p| p.id == id)
+  }
 
   // pronouns
 
@@ -1658,7 +2639,13 @@ impl NoteArchive {
   ) -> Result<Pronouns, String> {
     let id: u32 = self.pronouns.len() as u32 + 1;
 
-    let new_pronouns = Pronouns::new(id, subject, object, possessive_determiner, possessive);
+    let new_pronouns = Pronouns::new(
+      id,
+      subject.to_lowercase(),
+      object.to_lowercase(),
+      possessive_determiner.to_lowercase(),
+      possessive.to_lowercase(),
+    );
 
     let result = if self.pronouns.iter().any(|p| p == &new_pronouns) {
       Err(format!(
@@ -2096,6 +3083,7 @@ mod tests {
       let a = NoteArchive::new(
         String::from("some_random_blank_user_file_name.txt"),
         String::from("some_random_blank_client_file_name.txt"),
+        String::from("some_random_blank_collateral_file_name.txt"),
         String::from("some_random_blank_pronouns_file_name.txt"),
       );
       assert_eq!(a.users, vec![]);
@@ -2160,6 +3148,7 @@ mod tests {
       let mut a1 = NoteArchive::new(
         String::from("test_load_user.txt"),
         String::from("test_load_client.txt"),
+        String::from("test_load_collateral.txt"),
         String::from("test_load_pronouns.txt"),
       );
 
@@ -2259,7 +3248,7 @@ mod tests {
   }
 
   #[test]
-  fn update_current_pronouns() {
+  fn updates_current_pronouns() {
     let mut notes = NoteArchive::new_test();
 
     notes.load_user(1).unwrap();
