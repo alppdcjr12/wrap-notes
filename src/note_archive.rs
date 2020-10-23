@@ -775,9 +775,12 @@ impl NoteArchive {
     }
   }
   fn display_clients(&self) {
+    let mut heading = String::from(" ");
+    heading.push_str(&self.current_user().full_name()[..]);
+    heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^96}", "-");
-    println!("{:-^96}", " Clients ");
+    println!("{:-^96}", heading);
     println!("{:-^96}", "-");
     println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
     match self.current_client_ids {
@@ -835,7 +838,7 @@ impl NoteArchive {
       },
     }
     println!("{:-^96}", "-");
-    println!("| {} | {}", "Enter ID to add client .", "QUIT / Q: quit menu");
+    println!("| {} | {}", "Enter ID to add client.", "QUIT / Q: quit menu");
   }
   fn display_client(&self) {
       let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
@@ -859,8 +862,6 @@ impl NoteArchive {
       self.current_client().fmt_dob(),
       self.current_client().fmt_date_of_birth(),
     );
-    println!("{:-^119}", "-");
-    println!("| {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "QUIT / Q: quit menu");
     println!("{:-^119}", "-");
   }
   fn load_client(&mut self, id: u32) -> std::io::Result<()> {
@@ -903,15 +904,24 @@ impl NoteArchive {
         },
         _ => match input.parse() {
           Ok(num) => {
-            match self.load_client(num) {
-              Ok(_) => {
-                self.current_user_mut().clients.push(num);
-                self.update_current_clients(num);
-                break;
-              }
-              Err(e) => {
-                println!("Unable to load client with id {}: {}", num, e);
-                continue;
+            if !self.clients.iter()
+              .filter(|c| !self.current_client_ids.as_ref().unwrap().iter().any(|c_id| &c.id == c_id ))
+              .map(|c| c.id )
+              .any(|id| id == num) {
+              println!("Please select from the available choices.");
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            } else {
+              match self.load_client(num) {
+                Ok(_) => {
+                  self.current_user_mut().clients.push(num);
+                  self.update_current_clients(num);
+                  break;
+                }
+                Err(e) => {
+                  println!("Unable to load client with id {}: {}", num, e);
+                  continue;
+                }
               }
             }
           },
@@ -953,10 +963,20 @@ impl NoteArchive {
         },
         _ => match input.parse() {
           Ok(num) => {
+            if !self.current_client_ids
+              .as_ref()
+              .unwrap()
+              .iter()
+              .any(|&id| id == num) {
+                println!("Please choose from among the listed clients, or add a client from another user.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+            }
             match self.load_client(num) {
               Ok(_) => self.choose_client(),
               Err(e) => {
                 println!("Unable to load client with id {}: {}", num, e);
+                thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
@@ -1027,17 +1047,27 @@ impl NoteArchive {
         },
         _ => match input.parse() {
           Ok(num) => {
-            match self.load_client(num) {
-              Ok(_) => {
-                self.current_client_id = None;
-                break num
-              }
-              Err(e) => {
-                println!("Unable to load client with id {}: {}", num, e);
-                thread::sleep(time::Duration::from_secs(1));
+            if !self.current_client_ids
+              .as_ref()
+              .unwrap()
+              .iter()
+              .any(|id| id == &num) {
+                println!("Please choose from among the listed clients.");
+                thread::sleep(time::Duration::from_secs(2));
                 continue;
+              } else {
+                match self.load_client(num) {
+                  Ok(_) => {
+                    self.current_client_id = None;
+                    break num
+                  }
+                  Err(e) => {
+                    println!("Unable to load client with id {}: {}", num, e);
+                    thread::sleep(time::Duration::from_secs(1));
+                    continue;
+                  }
+                }
               }
-            }
           },
           Err(e) => {
             println!("Could not read input as a number; try again ({}).", e);
@@ -1052,6 +1082,7 @@ impl NoteArchive {
   fn choose_client(&mut self) {
     loop {
       self.display_client();
+      println!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / COL: view/edic client collaterals", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -1072,6 +1103,9 @@ impl NoteArchive {
         }
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
           self.choose_edit_client();
+        }
+        "COLLATERAL" | "collateral" | "Collateral" | "COLLAT" | "collat" | "Collat" | "COL" | "col" | "Col" => {
+          self.choose_client_collaterals();
         }
         _ => println!("Invalid command."),
       }
@@ -1563,10 +1597,10 @@ impl NoteArchive {
     heading.push_str("'s Collaterals");
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^149}", "-");
-    println!("{:-^149}", heading);
-    println!("{:-^149}", "-");
-    println!("{:-^10} | {:-^40} | {:-^30} | {:-<60}", "ID", "Name", "Role/Title", "Institution");
+    println!("{:-^159}", "-");
+    println!("{:-^159}", heading);
+    println!("{:-^159}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40} | {:-^60}", "ID", "Name", "Role/Title", "Institution");
     match self.current_collateral_ids {
       Some(_) => {
         for c in self.collaterals.iter().filter(|collateral| {
@@ -1578,7 +1612,7 @@ impl NoteArchive {
             .any(|&id| id == collateral.id)
         }) {
           println!(
-            "{: ^10} | {: ^40} | {: ^30} | {: >60}",
+            "{: ^10} | {: ^40} | {: ^40} | {: ^60}",
             c.id,
             c.full_name(),
             c.title,
@@ -1588,7 +1622,7 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^96}", "-");
+    println!("{:-^159}", "-");
     println!("| {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
   }
   fn display_user_collaterals(&self) {
@@ -1603,11 +1637,11 @@ impl NoteArchive {
     println!("{:-^149}", "-");
     println!("{:-^149}", heading);
     println!("{:-^149}", "-");
-    println!("{:-^10} | {:-^40} | {:-^30} | {:-<60}", "ID", "Name", "Role/Title", "Institution");
+    println!("{:-^10} | {:-^40} | {:-^40} | {:-^50}", "ID", "Name", "Role/Title", "Institution");
 
     for co in self.current_user_collaterals() {
       println!(
-        "{: ^10} | {: ^40} | {: ^30} |{: >60}",
+        "{: ^10} | {: ^40} | {: ^40} | {: ^50}",
         co.id,
         co.full_name(),
         co.title,
@@ -1629,11 +1663,11 @@ impl NoteArchive {
     println!("{:-^162}", " View collateral record ");
     println!("{:-^162}", "-");
     println!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-<50}",
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50}",
       "First name", "Last name", "Pronouns", "Role/Title", "Institution"
     );
     println!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: <50}",
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50}",
       self.current_collateral().first_name,
       self.current_collateral().last_name,
       display_pronouns,
@@ -1656,11 +1690,11 @@ impl NoteArchive {
     println!("{:-^162}", " View collateral record ");
     println!("{:-^162}", "-");
     println!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-<50}",
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50}",
       "First name", "Last name", "Pronouns", "Role/Title", "Institution"
     );
     println!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: <50}",
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50}",
       self.current_collateral().first_name,
       self.current_collateral().last_name,
       display_pronouns,
@@ -1805,12 +1839,14 @@ impl NoteArchive {
         }
         "DELETE" | "delete" | "Delete" | "d" | "D" => {
           self.choose_delete_collateral();
-          break;
         }
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
           self.choose_edit_collateral();
         }
-        _ => println!("Invalid command."),
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
       }
     }
   }
@@ -2217,7 +2253,7 @@ impl NoteArchive {
           break;
         }
         _ => {
-          continue;
+          break;
         }
       }
     }
@@ -2237,25 +2273,24 @@ impl NoteArchive {
   fn display_delete_collateral(&self) {
     let clients = self.get_clients_by_collateral_id(self.current_collateral().id);
     let client_names: Vec<String> = clients.iter().map(|c| format!("{} {}", c.first_name, c.last_name)).collect();
-    let all_client_names = client_names.join(" ");
+    let all_client_names = client_names.join(", ");
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^119}", "-");
-    println!("{:-^119}", " DELETE COLLATERAL ");
-    println!("{:-^119}", "-");
+    println!("{:-^162}", "-");
+    println!("{:-^162}", " DELETE COLLATERAL ");
+    println!("{:-^162}", "-");
     println!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-<60}",
-      "First name", "Last name", "Client(s)", "Role/Title", "Institution"
+      "{:-^30} | | {:-^30} | {:-^30} | {:-^40}",
+      "Name", "Role/Title", "Institution", "Client(s)"
     );
     println!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-<60} | {:-<60}",
-      self.current_collateral().first_name,
-      self.current_collateral().last_name,
+      "{: ^30} | {: ^30} | {: ^30} | {: ^40}",
+      self.current_collateral().full_name(),
       self.current_collateral().title,
       self.current_collateral().institution,
       all_client_names,
     );
-    println!("{:-^119}", "-");
+    println!("{:-^162}", "-");
   }
   fn delete_current_collateral(&mut self) {
     let id = self.current_collateral_id.unwrap();

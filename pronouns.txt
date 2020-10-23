@@ -3,4 +3,5 @@
 2 | she | her | her | hers
 3 | they | them | their | theirs
 4 | thehasdf | kiki | gorilla | Quetzlcoatl
+5 | qua | que | quay | aquopsop
 ##### pronouns #####

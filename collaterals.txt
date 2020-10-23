@@ -1,2 +1,5 @@
 ##### collaterals #####
+1 | Jork | Turkey | OPT | Brandeis University | 2
+2 | Vigo | Mortenson | Aragorn | Strider | 3
+3 | Begark | Monty | Father | Fun | 3
 ##### collaterals #####
