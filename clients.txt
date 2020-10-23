@@ -5,5 +5,5 @@
 4 | Paul | Smith | 2003-12-5 | 1 | 
 5 | F | G | 1990-9-28 | 1 | 
 6 | Gorky | Benedicto | 2006-3-20 | 2 | 1
-7 | Yark | Monty | 2001-11-30 | 3 | 3#3
+7 | Yark | Monty | 2001-11-30 | 3 | 3
 ##### clients #####
