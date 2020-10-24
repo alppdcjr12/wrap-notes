@@ -5,6 +5,7 @@
 pub mod user;
 pub use user::*;
 pub use crate::EmployeeRole::{FP, ICC};
+pub use crate::SupportType::{Natural, Formal};
 
 pub mod note_archive;
 pub use note_archive::*;

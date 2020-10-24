@@ -16,6 +16,39 @@ use crate::user::*;
 use crate::EmployeeRole::{FP, ICC};
 use crate::utils::*;
 
+const FAMILY_ROLES: [&'static str; 104] = [
+  "family", "parent", "nuclear family", "nuclear family member", "family member", "immediate family", "spouse", "husband", "wife",
+  "father", "mother", "step-father", "step father", "stepfather", "step-mother", "step mother", "stepmother", "step-mother", "legal guardian",
+  "child", "son", "daughter", "step-son", "step son", "stepson", "step-daughter", "stepdaughter", "step daughter", "sibling", "brother", "sister",
+  "extended family", "grandparent", "grandfather", "grandmother", "grandson", "granddaughter", "uncle", "aunt", "cousin", "nephew", "niece",
+  "family-in-law", "family in law", "father-in-law", "father in law", "mother-in-law", "mother in law", "brother in law", "sister in law", "kin",
+  "kinship caregiver", "family member", "partner", "adoptive mother", "adoptive father", "birth mother", "birth father", "guardian", "adopted child",
+  "adopted son", "adopted daughter", "adoptive sister", "adoptive sibling", "step sibling", "step-sibling", "stepsibling", "adoptive brother",
+  "adopted brother", "adopted sister", "foster sister", "foster brother", "foster mother", "foster mom", "foster dad", "foster father",
+  "former foster mom", "former foster mother", "former foster father", "former foster dad", "former foster brother", "former foster sister",
+  "grandma", "grandpa", "first cousin", "second cousin", "grandchild", "adoptive grandchild", "adopted grandchild", "adopted grandson",
+  "adoptive grandson", "adoptive granddaughter", "adopted granddaughter", "adoptive uncle", "adoptive aunt", "half brother", "half sister",
+  "biological mother", "biological father", "biological mom", "biological dad", "adoptive first couse", "adoptive second cousin", "adoptive cousin"
+];
+
+const FORMAL_ROLES: [&'static str; 40] = [
+  "intensive care coordinator", "icc", "family partner", "fp", "in home therapist", "in-home therapist", "iht",
+  "in home behavioral therapist", "in-home behavioral therapist", "ihbt", "therapeutic mentor", "tm", "ot", "occupational therapist",
+  "psychiatrist", "outpatient therapist", "opt", "guidance counselor", "school social worker", "social worker", "dcf worker",
+  "guardian ad litem", "asentria worker", "mentor", "therapist", "behavioral therapist", "parole officer", "primary care physician",
+  "pcp", "therapeutic training and support", "therapeutic training & support", "tt&s", "tt and s", "dmh worker", "clinician",
+  "teacher", "special education teacher", "school guidance counselor", "lifeset worker", "lifeset mentor"
+];
+
+const INDIRECT_ROLES: [&'static str; 22] = [
+  "director", "clinical director", "principal", "assistant director", "assistant clinical director", "director of special education",
+  "clinical supervisor", "director of social and emotional learning", "assistant director of special education",
+  "crisis support worker", "crisis clinician", "crisis response clinician", "mci worker", "mci clinician", "mobile crisis intervention",
+  "emergency services clinician", "emergency services", "crisis assessment clinician",
+  "mobile crisis intervention clinician", "mobile crisis intervention worker", "crisis support clinician", "crisis response worker",
+  "mobile crisis clinician"
+];
+
 pub struct NoteArchive {
   pub users: Vec<User>,
   pub clients: Vec<Client>,
@@ -689,7 +722,7 @@ impl NoteArchive {
     loop {
       self.display_delete_user();
       println!("Are you sure you want to delete this user?");
-      println!("| {} | {}", "YES / Y: confirm", "QUIT / Q: cancel");
+      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut choice = String::new();
       let input_attempt = io::stdin().read_line(&mut choice);
       match input_attempt {
@@ -705,10 +738,7 @@ impl NoteArchive {
           self.delete_current_user();
           break;
         },
-        "QUIT" | "quit" | "Q" | "q" => break,
         _ => {
-          println!("Invalid command.");
-          thread::sleep(time::Duration::from_secs(1));
           break;
         },
       }
@@ -805,7 +835,40 @@ impl NoteArchive {
       None => (),
     }
     println!("{:-^96}", "-");
-    println!("| {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "QUIT / Q: quit menu");
+    println!("| {} | {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records", "QUIT / Q: quit menu");
+  }
+  fn display_edit_clients(&self) {
+    let mut heading = String::from(" Edit ");
+    heading.push_str(&self.current_user().full_name()[..]);
+    heading.push_str("'s clients ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^96}", "-");
+    println!("{:-^96}", heading);
+    println!("{:-^96}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
+    match self.current_client_ids {
+      Some(_) => {
+        for c in self.clients.iter().filter(|client| {
+          self
+            .current_client_ids
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|&id| id == client.id)
+        }) {
+          println!(
+            "{: ^10} | {: ^40} | {: <12} {: >26}",
+            c.id,
+            c.full_name(),
+            c.fmt_dob(),
+            c.fmt_date_of_birth()
+          );
+        }
+      }
+      None => (),
+    }
+    println!("{:-^96}", "-");
+    println!("| {} | {}", "Choose client by ID.", "QUIT / Q: quit menu");
   }
   fn display_add_client(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -958,6 +1021,10 @@ impl NoteArchive {
           self.add_client();
           continue;
         },
+        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+          self.choose_edit_clients();
+          continue;
+        },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
           break;
         },
@@ -987,6 +1054,52 @@ impl NoteArchive {
             continue;
           }
         },
+      }
+    }
+  }
+  fn choose_edit_clients(&mut self) {
+    loop {
+      let input = loop {
+        self.display_edit_clients();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break;
+        },
+        _ => {
+          match input.parse() {
+            Ok(num) => {
+              if !self.current_client_ids.as_ref().unwrap().iter().any(|c_id| c_id == &num) {
+                println!("Please choose from among the listed IDs.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              }
+              match self.load_client(num) {
+                Ok(_) => self.choose_client(),
+                Err(e) => {
+                  println!("Failed to load client with ID {}: {}", num, e);
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              }
+            },
+            Err(e) => {
+              println!("Failed to read input '{}' as a number: {}", input, e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
+        }
       }
     }
   }
@@ -1349,7 +1462,7 @@ impl NoteArchive {
   fn choose_edit_client(&mut self) {
     loop {
       self.display_client();
-      println!("| {} | {} | {} | {}", "FIRST / F: edit first name", "LAST / L: edit surname", "PRNS / P: edit pronouns", "QUIT / Q: cancel");
+      println!("| {} | {} | {} | {}", "FIRST / F: edit first name", "LAST / L: edit surname", "PRNS / P: edit pronouns", "QUIT / Q: quit menu");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
@@ -1472,7 +1585,7 @@ impl NoteArchive {
     loop {
       self.display_delete_client();
       println!("Are you sure you want to delete this client?");
-      println!("| {} | {}", "YES / Y: confirm", "Any key to cancel");
+      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
@@ -1489,7 +1602,7 @@ impl NoteArchive {
           break;
         }
         _ => {
-          continue;
+          break;
         }
       }
     }
@@ -1623,7 +1736,42 @@ impl NoteArchive {
       None => (),
     }
     println!("{:-^159}", "-");
-    println!("| {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
+    println!("| {} | {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "EDIT / E: edit", "QUIT / Q: quit menu");
+  }
+  fn display_edit_client_collaterals(&self) {
+    let mut heading = self.current_client().first_name.clone();
+    heading.push_str(" Edit ");
+    heading.push_str(&self.current_client().last_name);
+    heading.push_str("'s Collateral records");
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^159}", "-");
+    println!("{:-^159}", heading);
+    println!("{:-^159}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40} | {:-^60}", "ID", "Name", "Role/Title", "Institution");
+    match self.current_collateral_ids {
+      Some(_) => {
+        for c in self.collaterals.iter().filter(|collateral| {
+          self
+            .current_collateral_ids
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|&id| id == collateral.id)
+        }) {
+          println!(
+            "{: ^10} | {: ^40} | {: ^40} | {: ^60}",
+            c.id,
+            c.full_name(),
+            c.title,
+            c.institution,
+          );
+        }
+      }
+      None => (),
+    }
+    println!("{:-^159}", "-");
+    println!("| {} | {}", "Enter ID of collateral record to edit.", "QUIT / Q: quit menu");
   }
   fn display_user_collaterals(&self) {
     let heading = format!(
@@ -1649,7 +1797,33 @@ impl NoteArchive {
       );
     }
     println!("{:-^149}", "-");
-    println!("| {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
+    println!("| {} | {} | {} | {}", "Enter ID to choose collateral.", "EDIT / E: edit", "NEW / N: new collateral", "QUIT / Q: quit menu");
+  }
+  fn display_edit_user_collaterals(&self) {
+    let heading = format!(
+      "{} {}, {} - All collateral records",
+      self.current_user().first_name,  
+      self.current_user().last_name,  
+      self.current_user().role,
+    );
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^149}", "-");
+    println!("{:-^149}", heading);
+    println!("{:-^149}", "-");
+    println!("{:-^10} | {:-^40} | {:-^40} | {:-^50}", "ID", "Name", "Role/Title", "Institution");
+
+    for co in self.current_user_collaterals() {
+      println!(
+        "{: ^10} | {: ^40} | {: ^40} | {: ^50}",
+        co.id,
+        co.full_name(),
+        co.title,
+        co.institution,
+      );
+    }
+    println!("{:-^149}", "-");
+    println!("| {} | {}", "Enter ID of collateral to edit.", "QUIT / Q: quit menu");
   }
   fn display_collateral(&self) {
     let pronouns_id = self.current_collateral().pronouns;
@@ -1709,7 +1883,7 @@ impl NoteArchive {
         "TITLE / T: edit title/role",
         "INST / I: edit institution",
         "PRNS / P: edit pronouns",
-        "QUIT / Q: cancel");
+        "QUIT / Q: quit menu");
     println!("{:-^162}", "-");
   }
   fn load_collateral(&mut self, id: u32) -> std::io::Result<()> {
@@ -1746,6 +1920,10 @@ impl NoteArchive {
           self.update_current_collaterals(new_id);
           continue;
         },
+        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+          self.choose_edit_client_collaterals();
+          continue;
+        },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
           break;
         },
@@ -1758,6 +1936,49 @@ impl NoteArchive {
             }
             match self.load_collateral(num) {
               Ok(_) => self.choose_collateral(),
+              Err(e) => {
+                println!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_edit_client_collaterals(&mut self) {
+    loop {
+      let input = loop {
+        self.display_edit_client_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.current_collateral_ids.as_ref().unwrap().iter().any(|n| n == &num) {
+              println!("Please select one of the listed IDs.");
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+            match self.load_collateral(num) {
+              Ok(_) => self.choose_edit_collateral(),
               Err(e) => {
                 println!("Unable to load collateral with id {}: {}", num, e);
                 continue;
@@ -1793,6 +2014,10 @@ impl NoteArchive {
           let new_id = self.create_collateral_get_id();
           continue;
         },
+        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+          self.choose_edit_collaterals();
+          continue;
+        },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
           break;
         },
@@ -1805,6 +2030,49 @@ impl NoteArchive {
           }
             match self.load_collateral(num) {
               Ok(_) => self.choose_collateral(),
+              Err(e) => {
+                println!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_edit_collaterals(&mut self) {
+    loop {
+      let input = loop {
+        self.display_edit_user_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.current_user_collateral_ids().iter().any(|n| n == &num) {
+            println!("Please select one of the listed IDs.");
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+            match self.load_collateral(num) {
+              Ok(_) => self.choose_edit_collateral(),
               Err(e) => {
                 println!("Unable to load collateral with id {}: {}", num, e);
                 continue;
@@ -1988,14 +2256,29 @@ impl NoteArchive {
         .map(|val| val.to_string())
         .collect();
 
+      &self.pronouns,
+      sup_type,
+      indirect,
+
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
       let last_name = String::from(&values[2]);
       let title = String::from(&values[3]);
-      let institution = String::from(&values[4]);
+      let institution = match &values[4][..] {
+        "--NONE--" => None,
+        _ => Some(String::from(&values[4])),
+      };
       let pronouns: u32 = values[5].parse().unwrap();
+      let support_type = match &values[6] {
+        "Natural" => Natural,
+        "Formal" => Formal,
+      };
+      let indirect_support = match values[7] {
+        "true" => true,
+        "false", => false,
+      };
 
-      let c = Collateral::new(id, first_name, last_name, title, institution, pronouns);
+      let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
       collaterals.push(c);
     }
     collaterals
@@ -2236,7 +2519,7 @@ impl NoteArchive {
     loop {
       self.display_delete_collateral();
       println!("Are you sure you want to delete this collateral?");
-      println!("| {} | {}", "YES / Y: confirm", "Any key to cancel");
+      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
@@ -2842,7 +3125,7 @@ impl NoteArchive {
         };
         final_pronouns_id = pronouns.id;
         println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
-        println!("'Q'/'QUIT' to cancel.");
+        println!("'Q'/'QUIT' to quit menu.");
         let mut pronoun_to_edit = String::new();
         let input_attempt = io::stdin().read_line(&mut pronoun_to_edit);
         match input_attempt {
@@ -2987,7 +3270,7 @@ impl NoteArchive {
                   continue;
                 },
                 _ => {
-                  continue;
+                  break;
                 },
               }
             },
@@ -3024,7 +3307,7 @@ impl NoteArchive {
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
           println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
-          println!("'Q'/'QUIT' to cancel.");
+          println!("'Q'/'QUIT' to quit menu.");
           let mut pronoun_to_edit = String::new();
           let field_input = io::stdin().read_line(&mut pronoun_to_edit);
           match field_input {
