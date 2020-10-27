@@ -1708,6 +1708,28 @@ impl NoteArchive {
     }
     co_ids
   }
+  fn collateral_clients_string(&self, co_id: u32) -> String {
+    let clients = self.get_clients_by_collateral_id(co_id);
+
+    if clients.len() > 1 {
+      let mut display_clients_string = clients
+        .iter()
+        .enumerate()
+        .filter(|&(i, _)| i < clients.len()-1 )
+        .map(|(_, c)| c.full_name() )
+        .collect::<Vec<String>>()
+        .join(", ");
+  
+      display_clients_string.push_str(" and ");
+  
+      display_clients_string.push_str(&clients[clients.len()-1].full_name()[..]);
+  
+      display_clients_string
+    } else {
+      clients[0].full_name()
+    }
+
+  }
   fn display_client_collaterals(&self) {
     let mut heading = self.current_client().first_name.clone();
     heading.push_str(" ");
@@ -1784,19 +1806,21 @@ impl NoteArchive {
     );
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^113}", "-");
-    println!("{:-^113}", heading);
-    println!("{:-^113}", "-");
-    println!("{:-^10} | {:-<100}", " ID ", "Info ");
+    println!("{:-^146}", "-");
+    println!("{:-^146}", heading);
+    println!("{:-^146}", "-");
+    println!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", " Clients ");
 
     for co in self.current_user_collaterals() {
+
       println!(
-        "{: ^10} | {: <100}",
+        "{: ^10} | {: <100} | {: <30}",
         co.id,
         co.full_name_and_title(),
+        self.collateral_clients_string(co.id),
       );
     }
-    println!("{:-^113}", "-");
+    println!("{:-^146}", "-");
     println!("| {} | {} | {} | {}", "Enter ID to choose collateral.", "EDIT / E: edit", "NEW / N: new collateral", "QUIT / Q: quit menu");
   }
   fn display_edit_user_collaterals(&self) {
@@ -1809,19 +1833,21 @@ impl NoteArchive {
     );
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^113}", "-");
-    println!("{:-^113}", heading);
-    println!("{:-^113}", "-");
-    println!("{:-^10} | {:-<100}", " ID ", "Info ");
+    println!("{:-^146}", "-");
+    println!("{:-^146}", heading);
+    println!("{:-^146}", "-");
+    println!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", " Clients ");
 
     for co in self.current_user_collaterals() {
+
       println!(
-        "{: ^10} | {: <100}",
+        "{: ^10} | {: <100} | {: <30}",
         co.id,
         co.full_name_and_title(),
+        self.collateral_clients_string(co.id),
       );
     }
-    println!("{:-^113}", "-");
+    println!("{:-^146}", "-");
     println!("| {} | {}", "Enter ID of collateral to edit.", "QUIT / Q: quit menu");
   }
   fn display_collateral(&self) {
@@ -1859,7 +1885,7 @@ impl NoteArchive {
     );
     println!(
       "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
-      "First name", "Last name", "Pronouns", "Role/Title", "Institution", " Nat ", " Dir "
+      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
     );
     println!(
       "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
@@ -2488,7 +2514,7 @@ impl NoteArchive {
               continue;
             }
           }
-        }
+        },
         "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
         | "Last Name" => {
           println!("Enter new last name:");
@@ -2507,7 +2533,7 @@ impl NoteArchive {
               thread::sleep(time::Duration::from_secs(1));
             }
           }
-        }
+        },
         "TITLE" | "title" | "Title" | "t" | "T" => {
           println!("Enter new title:");
           let mut title_choice = String::new();
@@ -2525,8 +2551,13 @@ impl NoteArchive {
               thread::sleep(time::Duration::from_secs(1));
             }
           }
-        }
+        },
         "INSITUTION" | "Institution" | "institution" | "inst" | "INST" | "Inst" | "I" | "i" => {
+          if self.current_collateral().support_type == Natural {
+            println!("Unable to add institution for a natural support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
           println!("Enter new institution or NONE to remove:");
           let mut inst_choice = String::new();
           let inst_attempt = io::stdin().read_line(&mut inst_choice);
@@ -2569,10 +2600,70 @@ impl NoteArchive {
               thread::sleep(time::Duration::from_secs(1));
             }
           }
-        }
+        },
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
           self.current_collateral_mut().pronouns = self.choose_pronouns();
-        }
+        },
+        "FORMAL" | "formal" | "Formal" => {
+          if self.current_collateral().support_type == Formal {
+            println!("Collateral is already a formal support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            self.current_collateral_mut().support_type = Formal;
+          }
+        },
+        "NATURAL" | "natural" | "Natural" => {
+          if self.current_collateral().support_type == Natural {
+            println!("Collateral is already a natural support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            if self.current_collateral().institution != None {
+              println!("Setting collateral as a natural support will remove the name of any associated institution.");
+              println!("Proceed? (Y/N)");
+              let mut proceed_choice = String::new();
+              let proceed_attempt = io::stdin().read_line(&mut proceed_choice);
+              match proceed_attempt {
+                Ok(_) => match &proceed_choice.trim()[..] {
+                  "Y" | "y" | "YES" | "Yes" | "yes" => (),
+                  _ => {
+                    println!("Canceled.");
+                    thread::sleep(time::Duration::from_secs(1));
+                    continue;
+                  }
+                }
+                Err(e) => {
+                  println!("Failed to read input.");
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              }
+            }
+
+            self.current_collateral_mut().support_type = Natural;
+            self.current_collateral_mut().indirect_support = false;
+            self.current_collateral_mut().institution = None;
+          }
+        },
+        "INDIRECT" | "indirect" | "Indirect" => {
+          if self.current_collateral().indirect_support == true {
+            println!("Collateral is already an indirect support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            self.current_collateral_mut().indirect_support = true;
+          }
+        },
+        "DIRECT" | "direct" | "Direct" => {
+          if self.current_collateral().indirect_support == false {
+            println!("Collateral is already a direct support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            self.current_collateral_mut().indirect_support = false;
+          }
+        },
         _ => {
           println!("Invalid entry.");
           thread::sleep(time::Duration::from_secs(1));
