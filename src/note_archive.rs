@@ -14,6 +14,7 @@ use crate::collateral::*;
 use crate::pronouns::*;
 use crate::user::*;
 use crate::EmployeeRole::{FP, ICC};
+use crate::SupportType::{Natural, Formal};
 use crate::utils::*;
 
 const FAMILY_ROLES: [&'static str; 104] = [
@@ -40,7 +41,7 @@ const FORMAL_ROLES: [&'static str; 40] = [
   "teacher", "special education teacher", "school guidance counselor", "lifeset worker", "lifeset mentor"
 ];
 
-const INDIRECT_ROLES: [&'static str; 22] = [
+const INDIRECT_ROLES: [&'static str; 23] = [
   "director", "clinical director", "principal", "assistant director", "assistant clinical director", "director of special education",
   "clinical supervisor", "director of social and emotional learning", "assistant director of special education",
   "crisis support worker", "crisis clinician", "crisis response clinician", "mci worker", "mci clinician", "mobile crisis intervention",
@@ -138,16 +139,20 @@ impl NoteArchive {
       String::from("Jerry"),
       String::from("Smith"),
       String::from("TM"),
-      String::from("Kaleidoscope Family Solutions"),
+      Some(String::from("Kaleidoscope Family Solutions")),
       2,
+      Formal,
+      false
     );
     let collateral_2 = Collateral::new(
       2,
       String::from("Barry"),
       String::from("Plith"),
       String::from("OPT"),
-      String::from("Family Solutions, Inc."),
+      Some(String::from("Family Solutions, Inc.")),
       1,
+      Formal,
+      false
     );
     let collaterals = vec![collateral_1, collateral_2];
     let p1 = Pronouns::new(
@@ -1710,10 +1715,10 @@ impl NoteArchive {
     heading.push_str("'s Collaterals");
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^159}", "-");
-    println!("{:-^159}", heading);
-    println!("{:-^159}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40} | {:-^60}", "ID", "Name", "Role/Title", "Institution");
+    println!("{:-^113}", "-");
+    println!("{:-^113}", heading);
+    println!("{:-^113}", "-");
+    println!("{:-^10} | {:-<100}", "ID", "Info");
     match self.current_collateral_ids {
       Some(_) => {
         for c in self.collaterals.iter().filter(|collateral| {
@@ -1725,17 +1730,15 @@ impl NoteArchive {
             .any(|&id| id == collateral.id)
         }) {
           println!(
-            "{: ^10} | {: ^40} | {: ^40} | {: ^60}",
+            "{: ^10} | {: <100}",
             c.id,
-            c.full_name(),
-            c.title,
-            c.institution,
+            c.full_name_and_title(),
           );
         }
       }
       None => (),
     }
-    println!("{:-^159}", "-");
+    println!("{:-^113}", "-");
     println!("| {} | {} | {} | {}", "Enter ID to choose collateral.", "NEW / N: new collateral", "EDIT / E: edit", "QUIT / Q: quit menu");
   }
   fn display_edit_client_collaterals(&self) {
@@ -1745,10 +1748,10 @@ impl NoteArchive {
     heading.push_str("'s Collateral records");
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^159}", "-");
-    println!("{:-^159}", heading);
-    println!("{:-^159}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40} | {:-^60}", "ID", "Name", "Role/Title", "Institution");
+    println!("{:-^113}", "-");
+    println!("{:-^113}", heading);
+    println!("{:-^113}", "-");
+    println!("{:-^10} | {:-<100}", "ID", "Info");
     match self.current_collateral_ids {
       Some(_) => {
         for c in self.collaterals.iter().filter(|collateral| {
@@ -1760,131 +1763,179 @@ impl NoteArchive {
             .any(|&id| id == collateral.id)
         }) {
           println!(
-            "{: ^10} | {: ^40} | {: ^40} | {: ^60}",
+            "{: ^10} | {: <100}",
             c.id,
-            c.full_name(),
-            c.title,
-            c.institution,
+            c.full_name_and_title(),
           );
         }
       }
       None => (),
     }
-    println!("{:-^159}", "-");
+    println!("{:-^113}", "-");
     println!("| {} | {}", "Enter ID of collateral record to edit.", "QUIT / Q: quit menu");
   }
   fn display_user_collaterals(&self) {
+    let current = self.current_user();
     let heading = format!(
       "{} {}, {} - All collateral records",
-      self.current_user().first_name,  
-      self.current_user().last_name,  
-      self.current_user().role,
+      current.first_name,  
+      current.last_name,  
+      current.role,
     );
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^149}", "-");
-    println!("{:-^149}", heading);
-    println!("{:-^149}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40} | {:-^50}", "ID", "Name", "Role/Title", "Institution");
+    println!("{:-^113}", "-");
+    println!("{:-^113}", heading);
+    println!("{:-^113}", "-");
+    println!("{:-^10} | {:-<100}", " ID ", "Info ");
 
     for co in self.current_user_collaterals() {
       println!(
-        "{: ^10} | {: ^40} | {: ^40} | {: ^50}",
+        "{: ^10} | {: <100}",
         co.id,
-        co.full_name(),
-        co.title,
-        co.institution,
+        co.full_name_and_title(),
       );
     }
-    println!("{:-^149}", "-");
+    println!("{:-^113}", "-");
     println!("| {} | {} | {} | {}", "Enter ID to choose collateral.", "EDIT / E: edit", "NEW / N: new collateral", "QUIT / Q: quit menu");
   }
   fn display_edit_user_collaterals(&self) {
+    let current = self.current_user();
     let heading = format!(
       "{} {}, {} - All collateral records",
-      self.current_user().first_name,  
-      self.current_user().last_name,  
-      self.current_user().role,
+      current.first_name,  
+      current.last_name,  
+      current.role,
     );
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^149}", "-");
-    println!("{:-^149}", heading);
-    println!("{:-^149}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40} | {:-^50}", "ID", "Name", "Role/Title", "Institution");
+    println!("{:-^113}", "-");
+    println!("{:-^113}", heading);
+    println!("{:-^113}", "-");
+    println!("{:-^10} | {:-<100}", " ID ", "Info ");
 
     for co in self.current_user_collaterals() {
       println!(
-        "{: ^10} | {: ^40} | {: ^40} | {: ^50}",
+        "{: ^10} | {: <100}",
         co.id,
-        co.full_name(),
-        co.title,
-        co.institution,
+        co.full_name_and_title(),
       );
     }
-    println!("{:-^149}", "-");
+    println!("{:-^113}", "-");
     println!("| {} | {}", "Enter ID of collateral to edit.", "QUIT / Q: quit menu");
   }
   fn display_collateral(&self) {
-    let pronouns_id = self.current_collateral().pronouns;
+    let current = self.current_collateral();
+
+    let pronouns_id = current.pronouns;
     let pronouns_option = self.get_pronouns_by_id(pronouns_id);
     let display_pronouns = match pronouns_option {
       Some(p) => p.short_string(),
       None => String::from("-----"),
     };
+
+    let inst_option = &current.institution;
+    let display_inst = match inst_option {
+      Some(i) => i.to_string(),
+      None => String::from("n/a"),
+    };
+
+    let display_type = match current.support_type {
+      Natural => "Y",
+      Formal => "N",
+    };
+    let display_indirect = match current.indirect_support {
+      true => "N",
+      false => "Y",
+    };
+
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^162}", "-");
-    println!("{:-^162}", " View collateral record ");
-    println!("{:-^162}", "-");
+    println!("{:-^178}", "-");
+    println!("{:-^178}", " View collateral record ");
+    println!("{:-^178}", "-");
     println!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50}",
-      "First name", "Last name", "Pronouns", "Role/Title", "Institution"
+      "{:-^162} | {:-^13}",
+      "-", "Support type",
     );
     println!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50}",
-      self.current_collateral().first_name,
-      self.current_collateral().last_name,
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
+      "First name", "Last name", "Pronouns", "Role/Title", "Institution", " Nat ", " Dir "
+    );
+    println!(
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      current.first_name,
+      current.last_name,
       display_pronouns,
-      self.current_collateral().title,
-      self.current_collateral().institution,
+      current.title,
+      display_inst,
+      display_type,
+      display_indirect,
     );
-    println!("{:-^162}", "-");
+    println!("{:-^178}", "-");
     println!("| {} | {} | {}", "EDIT / E: edit collateral", "DELETE: delete collateral", "QUIT / Q: quit menu");
-    println!("{:-^162}", "-");
+    println!("{:-^178}", "-");
   }
   fn display_edit_collateral(&self) {
-    let pronouns_id = self.current_collateral().pronouns;
+    let current = self.current_collateral();
+
+    let pronouns_id = current.pronouns;
     let pronouns_option = self.get_pronouns_by_id(pronouns_id);
     let display_pronouns = match pronouns_option {
       Some(p) => p.short_string(),
       None => String::from("-----"),
     };
+
+    let inst_option = &current.institution;
+    let display_inst = match inst_option {
+      Some(i) => i.to_string(),
+      None => String::from("n/a"),
+    };
+
+    let (display_type, opposite_type_command) = match current.support_type {
+      Natural => ("Y", "FORMAL: Change to formal support",),
+      Formal => ("N", "NATURAL: Change to natural support"),
+    };
+    let (display_indirect, opposite_indirect_command) = match current.indirect_support {
+      true => ("N", "DIRECT: Change to direct support (e.g., 'for youth')"),
+      false => ("Y", "INDIRECT: Change to indirect support (e.g., not 'for youth')"),
+    };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^162}", "-");
-    println!("{:-^162}", " View collateral record ");
-    println!("{:-^162}", "-");
+    println!("{:-^178}", "-");
+    println!("{:-^178}", " Edit collateral record ");
+    println!("{:-^178}", "-");
     println!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50}",
-      "First name", "Last name", "Pronouns", "Role/Title", "Institution"
+      "{:-^162} | {:-^13}",
+      "-", "Support type",
     );
     println!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50}",
-      self.current_collateral().first_name,
-      self.current_collateral().last_name,
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
+      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
+    );
+    println!(
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      current.first_name,
+      current.last_name,
       display_pronouns,
-      self.current_collateral().title,
-      self.current_collateral().institution,
+      current.title,
+      display_inst,
+      display_type,
+      display_indirect,
     );
-    println!("{:-^162}", "-");
-      println!(
-        "| {} | {} | {} | {} | {} | {}",
-        "FIRST / F: edit first name",
-        "LAST / L: edit surname",
-        "TITLE / T: edit title/role",
-        "INST / I: edit institution",
-        "PRNS / P: edit pronouns",
-        "QUIT / Q: quit menu");
-    println!("{:-^162}", "-");
+    println!("{:-^178}", "-");
+    println!(
+      "| {} | {} | {} | {} | {} | {}",
+      "FIRST / F: edit first name",
+      "LAST / L: edit surname",
+      "TITLE / T: edit title/role",
+      "INST / I: edit institution",
+      "PRNS / P: edit pronouns",
+      "QUIT / Q: quit menu");
+    println!(
+      "| {} | {}",
+      opposite_type_command,
+      opposite_indirect_command,
+    );
+    println!("{:-^178}", "-");
   }
   fn load_collateral(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Collateral> = self.collaterals.iter().find(|c| c.id == id);
@@ -2146,24 +2197,12 @@ impl NoteArchive {
       };
       let title = loop {
         let mut title_choice = String::new();
-        println!("Enter collateral's title.");
+        println!("Enter collateral's role/title.");
         let title_attempt = io::stdin().read_line(&mut title_choice);
         match title_attempt {
-          Ok(_) => break String::from(title_choice.trim()),
+          Ok(_) => break String::from(title_choice.trim()).to_lowercase(),
           Err(e) => {
             println!("Invalid title: {}", e);
-            continue;
-          }
-        };
-      };
-      let institution = loop {
-        let mut institution_choice = String::new();
-        println!("Enter collateral's institution.");
-        let institution_attempt = io::stdin().read_line(&mut institution_choice);
-        match institution_attempt {
-          Ok(_) => break String::from(institution_choice.trim()),
-          Err(e) => {
-            println!("Invalid institution: {}", e);
             continue;
           }
         };
@@ -2171,7 +2210,107 @@ impl NoteArchive {
 
       let pronouns = self.choose_pronouns();
 
-      let collateral_attempt = self.generate_unique_new_collateral(first_name, last_name, title, institution, pronouns);
+      let (support_type, indirect_support, institution) = if FAMILY_ROLES.iter().any(|role| role == &title) {
+        (Natural, false, None)
+      } else if FORMAL_ROLES.iter().any(|role| role == &title ) {
+        let institution = loop {
+          let mut institution_choice = String::new();
+          println!("Enter collateral's institution.");
+          let institution_attempt = io::stdin().read_line(&mut institution_choice);
+          match institution_attempt {
+            Ok(_) => break String::from(institution_choice.trim()),
+            Err(e) => {
+              println!("Invalid institution: {}", e);
+              continue;
+            }
+          }
+        };
+        (Formal, false, Some(institution))
+      } else if INDIRECT_ROLES.iter().any(|role| role == &title ) {
+        let institution = loop {
+          let mut institution_choice = String::new();
+          println!("Enter collateral's institution.");
+          let institution_attempt = io::stdin().read_line(&mut institution_choice);
+          match institution_attempt {
+            Ok(_) => break String::from(institution_choice.trim()),
+            Err(e) => {
+              println!("Invalid institution: {}", e);
+              continue;
+            }
+          }
+        };
+        (Formal, true, Some(institution))
+      } else {
+        loop {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut support_type_choice = String::new();
+          println!("Natural or Formal support?");
+          println!("NATURAL / N | FORMAL / F");
+          let support_type_attempt = io::stdin().read_line(&mut support_type_choice);
+          let s = match support_type_attempt {
+            Ok(_) => match support_type_choice.trim() {
+              "Natural" | "natural" | "NATURAL" | "NAT" | "Nat" | "nat" | "N" | "n" => Natural,
+              "Formal" | "formal" | "FORMAL" | "FORM" | "Form" | "form" | "F" | "f" => Formal,
+              _ => {
+                println!("Please choose NATURAL or FORMAL.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println!("Failed to read input.");
+              continue;
+            }
+          };
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut indirect_choice = String::new();
+          println!("Does this collateral work directly with the client?");
+          println!("YES / Y | NO / N");
+          let indirect_attempt = io::stdin().read_line(&mut indirect_choice);
+          let i = match indirect_attempt {
+            Ok(_) => match indirect_choice.trim() {
+              "YES" | "yes" | "Y" | "y" => false,
+              "NO" | "no" | "N" | "n" => true,
+              _ => {
+                println!("Please choose YES or NO.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println!("Failed to read input.");
+              continue;
+            }
+          };
+          let institution = loop {
+            if s == Formal {
+              let mut institution_choice = String::new();
+              println!("Enter collateral's institution.");
+              let institution_attempt = io::stdin().read_line(&mut institution_choice);
+              match institution_attempt {
+                Ok(_) => break Some(String::from(institution_choice.trim())),
+                Err(e) => {
+                  println!("Invalid institution: {}", e);
+                  continue;
+                }
+              }
+            } else {
+              break None
+            }
+          };
+          break (s, i, institution)
+        }
+      };
+
+      let collateral_attempt = self.generate_unique_new_collateral(
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+        support_type,
+        indirect_support,
+      );
       match collateral_attempt {
         Ok(collateral) => break collateral,
         Err(e) => {
@@ -2196,25 +2335,37 @@ impl NoteArchive {
     first_name: String,
     last_name: String,
     title: String,
-    institution: String,
+    institution: Option<String>,
     pronouns: u32,
+    support_type: SupportType,
+    indirect_support: bool,
   ) -> Result<Collateral, String> {
     let id: u32 = self.collaterals.len() as u32 + 1;
 
-    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
       .collaterals
       .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
       .collect();
 
     let result = if names_and_roles
       .iter()
-      .any(|(f, l, t, i)| f == &first_name && l == &last_name && t == &title && i == &institution)
+      .any(|(f, l, t, i)| f == &first_name && l == &last_name && t == &title && i == &&institution)
     {
-      Err(format!(
-        "There is already a {} at {} named '{} {}.'",
-        title, institution, first_name, last_name
-      ))
+      match institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            title, i, first_name, last_name
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            title, first_name, last_name
+          ))
+        }
+      }
     } else {
       Ok(Collateral::new(
         id,
@@ -2223,6 +2374,8 @@ impl NoteArchive {
         title,
         institution,
         pronouns,
+        support_type,
+        indirect_support
       ))
     };
 
@@ -2256,10 +2409,6 @@ impl NoteArchive {
         .map(|val| val.to_string())
         .collect();
 
-      &self.pronouns,
-      sup_type,
-      indirect,
-
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
       let last_name = String::from(&values[2]);
@@ -2269,13 +2418,15 @@ impl NoteArchive {
         _ => Some(String::from(&values[4])),
       };
       let pronouns: u32 = values[5].parse().unwrap();
-      let support_type = match &values[6] {
+      let support_type = match &values[6][..] {
         "Natural" => Natural,
         "Formal" => Formal,
+        _ => panic!("Invalud support type stored in file."),
       };
-      let indirect_support = match values[7] {
+      let indirect_support = match &values[7][..] {
         "true" => true,
-        "false", => false,
+        "false" => false,
+        _ => panic!("Invalud indirect support boolean value stored in file."),
       };
 
       let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
@@ -2376,17 +2527,43 @@ impl NoteArchive {
           }
         }
         "INSITUTION" | "Institution" | "institution" | "inst" | "INST" | "Inst" | "I" | "i" => {
-          println!("Enter new institution:");
+          println!("Enter new institution or NONE to remove:");
           let mut inst_choice = String::new();
           let inst_attempt = io::stdin().read_line(&mut inst_choice);
           match inst_attempt {
-            Ok(_) => match self.change_collateral_institution(inst_choice.trim()) {
-              Ok(_) => (),
-              Err(e) => {
-                println!("Error: {}", e);
-                thread::sleep(time::Duration::from_secs(1));
+            Ok(_) => match (self.current_collateral().institution.as_ref(), &inst_choice.trim()[..]) {
+              (None, "NONE") => {
+                println!("Collateral currently has no institution.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              },
+              (Some(i), "NONE") => {
+                match self.change_collateral_institution(None) {
+                  Ok(_) => (),
+                  Err(e) => {
+                    println!("Error: {}", e);
+                    thread::sleep(time::Duration::from_secs(1));
+                  }
+                }
+              },
+              (Some(i), inst_choice_slice) => {
+                if &i[..] == inst_choice_slice {
+                  println!("Collateral institution already matches.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              },
+              (None, &_) => {
+                let new_inst = String::from(inst_choice.trim());
+                match self.change_collateral_institution(Some(new_inst)) {
+                  Ok(_) => (),
+                  Err(e) => {
+                    println!("Error: {}", e);
+                    thread::sleep(time::Duration::from_secs(1));
+                  }
+                }
               }
-            },
+            }
             Err(e) => {
               println!("Error: {}", e);
               thread::sleep(time::Duration::from_secs(1));
@@ -2404,27 +2581,39 @@ impl NoteArchive {
     }
   }
   fn change_collateral_first_name(&mut self, new_name: &str) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+    let current = self.current_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
       .collaterals
       .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
       .collect();
 
-    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
       new_name,
-      &self.current_collateral().last_name,
-      &self.current_collateral().title,
-      &self.current_collateral().institution,
+      &current.last_name,
+      &current.title,
+      &current.institution,
     );
 
     let result = if names_and_roles
       .iter()
       .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
     {
-      Err(format!(
-        "There is already a {} at {} named '{} {}.'",
-        ct, ci, cf, cl
-      ))
+      match &current.institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+
+        }
+      }
     } else {
       self.current_collateral_mut().first_name = String::from(new_name);
       Ok(())
@@ -2432,27 +2621,38 @@ impl NoteArchive {
     result
   }
   fn change_collateral_last_name(&mut self, new_name: &str) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+    let current = &self.current_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
       .collaterals
       .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
       .collect();
 
-    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
-      &self.current_collateral().first_name,
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      &current.first_name,
       new_name,
-      &self.current_collateral().title,
-      &self.current_collateral().institution,
+      &current.title,
+      &current.institution,
     );
 
     let result = if names_and_roles
       .iter()
       .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
     {
-      Err(format!(
-        "There is already a {} at {} named '{} {}.'",
-        ct, ci, cf, cl
-      ))
+      match &current.institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+        }
+      }
     } else {
       self.current_collateral_mut().last_name = String::from(new_name);
       Ok(())
@@ -2460,57 +2660,79 @@ impl NoteArchive {
     result
   }
   fn change_collateral_title(&mut self, new_title: &str) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+    let current = &self.current_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
       .collaterals
       .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
       .collect();
 
-    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
-      &self.current_collateral().first_name,
-      &self.current_collateral().last_name,
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      &current.first_name,
+      &current.last_name,
       new_title,
-      &self.current_collateral().institution,
+      &current.institution,
     );
 
     let result = if names_and_roles
       .iter()
       .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
     {
-      Err(format!(
-        "There is already a {} at {} named '{} {}.'",
-        ct, ci, cf, cl
-      ))
+      match &current.institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+        }
+      }
     } else {
       self.current_collateral_mut().title = String::from(new_title);
       Ok(())
     };
     result
   }
-  fn change_collateral_institution(&mut self, new_inst: &str) -> Result<(), String> {
-    let names_and_roles: Vec<(&str, &str, &str, &str)> = self
+  fn change_collateral_institution(&mut self, new_inst: Option<String>) -> Result<(), String> {
+    let current = self.current_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
       .collaterals
       .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution[..]))
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
       .collect();
 
-    let (cf, cl, ct, ci): (&str, &str, &str, &str) = (
-      &self.current_collateral().first_name,
-      &self.current_collateral().last_name,
-      &self.current_collateral().title,
-      new_inst,
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      &current.first_name,
+      &current.last_name,
+      &current.title,
+      &new_inst,
     );
 
     let result = if names_and_roles
       .iter()
       .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
     {
-      Err(format!(
-        "There is already a {} at {} named '{} {}.'",
-        ct, ci, cf, cl
-      ))
+      match new_inst {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+        },
+      }
     } else {
-      self.current_collateral_mut().institution = String::from(new_inst);
+      self.current_collateral_mut().institution = new_inst;
       Ok(())
     };
     result
@@ -2554,9 +2776,17 @@ impl NoteArchive {
     c_ids
   }
   fn display_delete_collateral(&self) {
-    let clients = self.get_clients_by_collateral_id(self.current_collateral().id);
+    let current = self.current_collateral();
+
+    let clients = self.get_clients_by_collateral_id(current.id);
     let client_names: Vec<String> = clients.iter().map(|c| format!("{} {}", c.first_name, c.last_name)).collect();
     let all_client_names = client_names.join(", ");
+
+    let inst_option = &current.institution;
+    let display_inst = match inst_option {
+      Some(i) => i.to_string(),
+      None => String::from("n/a"),
+    };
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^162}", "-");
@@ -2568,9 +2798,9 @@ impl NoteArchive {
     );
     println!(
       "{: ^30} | {: ^30} | {: ^30} | {: ^40}",
-      self.current_collateral().full_name(),
-      self.current_collateral().title,
-      self.current_collateral().institution,
+      current.full_name(),
+      current.title,
+      display_inst,
       all_client_names,
     );
     println!("{:-^162}", "-");

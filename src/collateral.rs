@@ -28,6 +28,16 @@ pub enum SupportType {
   Formal,
 }
 
+impl PartialEq for SupportType {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (&Natural, &Natural) => true,
+      (&Formal, &Formal) => true,
+      _ => false,
+    }
+  }
+}
+
 use crate::SupportType::{Natural, Formal};
 
 impl Collateral {
@@ -39,6 +49,7 @@ impl Collateral {
     institution: Option<String>,
     pronouns: u32,
     support_type: SupportType,
+    indirect_support: bool,
     ) -> Collateral {
     Collateral {
       id,
@@ -48,7 +59,7 @@ impl Collateral {
       institution,
       pronouns,
       support_type,
-      indirect_support: false,
+      indirect_support,
     }
   }
   pub fn full_name(&self) -> String {
@@ -62,50 +73,38 @@ impl Collateral {
     match self.support_type {
       Natural => {
         if self.indirect_support {
-          format!("{} ({})", &self.full_name(), &self.title);
+          return format!("{} ({})", &self.full_name(), &self.title);
         } else {
-          format!("{} ({} of youth)", &self.full_name(), &self.title);
+          return format!("{} ({} of youth)", &self.full_name(), &self.title);
         }
       },
       Formal => {
-        match self.institution {
+        match &self.institution {
           Some(i) => {
             if self.indirect_support {
-              format!("{} ({} at {})", &self.full_name(), &self.title, i);
+              return format!("{} ({} at {})", &self.full_name(), &self.title, i);
             } else {
-              format!("{} ({} for youth at {})", &self.full_name(), &self.title, i);
+              return format!("{} ({} for youth at {})", &self.full_name(), &self.title, i);
             }
           },
           None => {
             if self.indirect_support {
-              format!("{} ({})", &self.full_name(), &self.title);
+              return format!("{} ({})", &self.full_name(), &self.title);
             } else {
-              format!("{} ({} for youth)", &self.full_name(), &self.title);
+              return format!("{} ({} for youth)", &self.full_name(), &self.title);
             }
           }
         }
       },
-    }
-
-
-    match self.institution {
-      Some(i) => {
-      },
-      None => {
-        match self.support_type {
-          Natural => format!("{} ({} of youth)", &self.full_name(), &self.title),
-          Formal => format!("{} ({})", &self.full_name(), &self.title, &self.institution.unwrap()),
-        }
-      }
     }
   }
 }
 
 impl fmt::Display for Collateral {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let inst_str = match self.institution {
-      Some(i) => i,
-      None => String::from("--NONE--")
+    let inst_str = match &self.institution {
+      Some(i) => &i[..],
+      None => "--NONE--",
     };
     let sup_type = match self.support_type {
       Natural => "Natural",
@@ -122,7 +121,7 @@ impl fmt::Display for Collateral {
       &self.first_name[..],
       &self.last_name[..],
       &self.title[..],
-      &inst_str[..],
+      &inst_str,
       &self.pronouns,
       sup_type,
       indirect,
@@ -142,8 +141,9 @@ mod tests {
       String::from("Smith"),
       String::from("OPT"),
       Some(String::from("Riverside Community Care")),
+      2,
       Natural,
-      2
+      false,
     );
     assert_eq!(c1.id, 1);
     assert_eq!(c1.first_name, String::from("Bob"));

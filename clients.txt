@@ -1,9 +1,9 @@
 ##### clients #####
 1 | Chadwicksi | vonni Burvo | 2009-3-31 | 2 | 
-2 | Jack | Smith | 2000-1-1 | 3 | 2
+2 | Jack | Smith | 2000-1-1 | 3 | 
 3 | John | Shmitty | 2003-2-7 | 2 | 
 4 | Paul | Smith | 2003-12-5 | 1 | 
 5 | F | G | 1990-9-28 | 1 | 
-6 | Gorky | Benedicto | 2006-3-20 | 2 | 1
-7 | Yark | Monty | 2001-11-30 | 3 | 3
+6 | Gorky | Benedicto | 2006-3-20 | 2 | 
+7 | Yark | Monty | 2001-11-30 | 3 | 
 ##### clients #####
