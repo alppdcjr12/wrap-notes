@@ -22,7 +22,7 @@ impl PartialEq for Collateral {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, Eq, Ord)]
 pub enum SupportType {
   Natural,
   Formal,

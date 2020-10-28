@@ -506,7 +506,8 @@ impl NoteArchive {
     result
   }
   pub fn save_user(&mut self, user: User) {
-    self.users.push(user);
+    let pos = self.users.binary_search_by(|u| u.id.cmp(&user.id) ).unwrap_or_else(|e| e);
+    self.users.insert(pos, user);
   }
   pub fn write_users(&mut self) -> std::io::Result<()> {
     let mut lines = String::from("##### users #####\n");
@@ -569,6 +570,7 @@ impl NoteArchive {
       let u = User::new(id, first_name, last_name, role, pronouns, clients);
       users.push(u);
     }
+    users.sort_by(|a, b| a.id.cmp(&b.id));
     users
   }
   fn change_user_first_name(&mut self, new_name: &str) -> Result<(), String> {
@@ -1445,6 +1447,7 @@ impl NoteArchive {
       let c = Client::new(id, first_name, last_name, dob, pronouns, collaterals);
       clients.push(c);
     }
+    clients.sort_by(|a, b| a.id.cmp(&b.id));
     clients
   }
   pub fn write_clients(&self) -> std::io::Result<()> {
@@ -1458,7 +1461,8 @@ impl NoteArchive {
     Ok(())
   }
   pub fn save_client(&mut self, client: Client) {
-    self.clients.push(client);
+    let pos = self.clients.binary_search_by(|c| c.id.cmp(&client.id) ).unwrap_or_else(|e| e);
+    self.clients.insert(pos, client);
   }
   fn update_current_clients(&mut self, id: u32) {
     self.current_user_mut().clients.push(id);
@@ -1684,17 +1688,19 @@ impl NoteArchive {
     }
   }
   fn current_user_collaterals(&self) -> Vec<&Collateral> {
-    let mut co_ids: Vec<u32> = vec![];
-    for client_id in &self.current_user().clients {
-      let cols = &self.get_client_by_id(*client_id).collaterals;
-      for c in cols {
-        if !co_ids.iter().any(|cid| cid == c) {
-          co_ids.push(*c);
-        }
-      }
-    }
-    let collats: Vec<&Collateral> = co_ids.iter().map(|id| self.get_collateral_by_id(*id).unwrap()).collect();
-    collats
+    self.collaterals
+      .iter()
+      .filter(|co|
+        self.current_user().clients
+          .iter()
+          .any(|client_id|
+            self.get_client_by_id(*client_id).collaterals
+              .iter()
+              .any(|collateral_id|
+                co.id == *collateral_id) 
+          )
+        )
+      .collect()
   }
   fn current_user_collateral_ids(&self) -> Vec<u32> {
     let mut co_ids: Vec<u32> = vec![];
@@ -1800,7 +1806,7 @@ impl NoteArchive {
     let current = self.current_user();
     let heading = format!(
       "{} {}, {} - All collateral records",
-      current.first_name,  
+      current.first_name,
       current.last_name,  
       current.role,
     );
@@ -2346,7 +2352,6 @@ impl NoteArchive {
       }
     };
     let id = collateral.id;
-    self.save_collateral(collateral);
     match self.current_client_id {
       Some(_) => self.current_client_mut().collaterals.push(id),
       None => {
@@ -2354,6 +2359,7 @@ impl NoteArchive {
         self.get_client_by_id_mut(c_id).collaterals.push(id);
       }
     }
+    self.save_collateral(collateral);
     id
   }
   pub fn generate_unique_new_collateral(
@@ -2470,8 +2476,74 @@ impl NoteArchive {
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
+  fn get_collateral_user_id(&self, id:u32) -> u32 {
+    self.users
+      .iter()
+      .find(|&u|
+        u.clients.iter().any(|&c|
+          self.get_client_by_id(c).collaterals.iter().any(|&co_id|
+            co_id == id
+          )
+        )
+      )
+      .unwrap()
+      .id
+  }
+  fn get_first_client_with_collat_id(&self, id: u32) -> Option<&Client> {
+    self.clients.iter().find(|&c| c.collaterals.iter().any(|c_id| c_id == &id ))
+  }
   pub fn save_collateral(&mut self, collateral: Collateral) {
     self.collaterals.push(collateral);
+
+    // sort by institution
+
+    self.collaterals.sort_by(|a, b|
+      match (a.institution.as_ref(), b.institution.as_ref()) {
+        (Some(a_i), Some(b_i)) => a_i.cmp(&b_i),
+        _ => a.institution.cmp(&b.institution),
+      }
+    );
+    
+    // sort by Natural/Formal
+    
+    self.collaterals.sort_by(|a, b| a.support_type.cmp(&b.support_type) );
+
+    // sort by client ID (first located)
+
+    let client_ids: Vec<u32> = self.collaterals.iter().map(|c| self.get_first_client_with_collat_id(c.id).unwrap().id ).collect();
+    let mut collaterals_and_client_ids = client_ids
+      .iter()
+      .enumerate()
+      .map(|(index, client_id)| (self.collaterals[index].clone(), client_id) )
+      .collect::<Vec<(Collateral, &u32)>>();
+
+    collaterals_and_client_ids.sort_by(|(i_a, u_a), (i_b, u_b)| u_a.cmp(&u_b) );
+
+    let collat_refs_by_client = collaterals_and_client_ids
+      .iter()
+      .map(|(collat, _)| collat )
+      .collect::<Vec<&Collateral>>();
+
+    self.collaterals = collat_refs_by_client.iter().map(|col| *col ).cloned().collect();
+
+    // sort by user ID (first located user ID)
+
+    let user_ids: Vec<u32> = self.collaterals.iter().map(|c| self.get_collateral_user_id(c.id)).collect();
+    let mut collaterals_and_user_ids = user_ids
+      .iter()
+      .enumerate()
+      .map(|(index, user_id)| (self.collaterals[index].clone(), user_id) )
+      .collect::<Vec<(Collateral, &u32)>>();
+
+    collaterals_and_user_ids.sort_by(|(i_a, u_a), (i_b, u_b)| u_a.cmp(&u_b) );
+
+    let collat_refs_by_user = collaterals_and_user_ids
+      .iter()
+      .map(|(collat, _)| collat )
+      .collect::<Vec<&Collateral>>();
+
+    self.collaterals = collat_refs_by_user.iter().map(|col| *col ).cloned().collect();
+
   }
   fn update_current_collaterals(&mut self, id: u32) {
     self.current_client_mut().collaterals.push(id);
@@ -2582,6 +2654,15 @@ impl NoteArchive {
                   println!("Collateral institution already matches.");
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
+                } else {
+                  let new_inst = String::from(inst_choice.trim());
+                  match self.change_collateral_institution(Some(new_inst)) {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Error: {}", e);
+                      thread::sleep(time::Duration::from_secs(1));
+                    }
+                  }
                 }
               },
               (None, &_) => {
@@ -3757,6 +3838,7 @@ mod tests {
     fs::remove_file("some_random_blank_user_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_client_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_pronouns_file_name.txt").unwrap();
+    fs::remove_file("some_random_blank_collateral_file_name.txt").unwrap();
   }
   #[test]
   fn can_load_from_files() {
@@ -3803,6 +3885,7 @@ mod tests {
     fs::remove_file("test_load_user.txt").unwrap();
     fs::remove_file("test_load_client.txt").unwrap();
     fs::remove_file("test_load_pronouns.txt").unwrap();
+    fs::remove_file("test_load_collateral.txt").unwrap();
   }
   #[test]
   fn creates_unique_new_instances() {

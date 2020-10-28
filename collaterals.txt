@@ -1,3 +1,5 @@
 ##### collaterals #####
-1 | Steven | Stevens | king | --NONE-- | 1 | Natural | false
+1 | as | asd | asdf | A | 1 | Formal | false
+3 | sdf | dfg | ert | B | 1 | Formal | false
+2 | asdf | asdfgg | wer | C | 1 | Formal | false
 ##### collaterals #####
