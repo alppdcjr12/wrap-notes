@@ -8,6 +8,7 @@ pub struct User {
   pub role: EmployeeRole,
   pub pronouns: u32,
   pub clients: Vec<u32>,
+  pub collaterals: Vec<u32>,
 }
 
 impl PartialEq for User {
@@ -16,6 +17,7 @@ impl PartialEq for User {
       && self.first_name == other.first_name
       && self.last_name == other.last_name
       && self.clients == other.clients
+      && self.collaterals == other.collaterals
       && self.role == other.role
   }
 }
@@ -55,7 +57,9 @@ impl User {
     last_name: String,
     role: EmployeeRole,
     pronouns: u32,
-    clients: Vec<u32>) -> User {
+    clients: Vec<u32>,
+    collaterals: Vec<u32>,
+  ) -> User {
     User {
       id,
       first_name,
@@ -63,6 +67,7 @@ impl User {
       role,
       pronouns,
       clients,
+      collaterals,
     }
   }
   pub fn full_name(&self) -> String {
@@ -87,7 +92,7 @@ impl fmt::Display for User {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "{} | {} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {} | {}\n",
       &self.id,
       &self.first_name[..],
       &self.last_name[..],
@@ -95,6 +100,12 @@ impl fmt::Display for User {
       &self.pronouns,
       &self
         .clients
+        .iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<String>>()
+        .join("#"),
+      &self
+        .collaterals
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
@@ -109,16 +120,18 @@ mod tests {
 
   #[test]
   fn new_users() {
-    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), ICC, 1, vec![]);
-    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), FP, 2, vec![]);
+    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), ICC, 1, vec![], vec![]);
+    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), FP, 2, vec![], vec![]);
     let test_vec: Vec<u32> = vec![];
     assert_eq!(u1.id, 1);
     assert_eq!(u1.first_name, String::from("Carol"));
     assert_eq!(u1.last_name, String::from("Carolson"));
     assert_eq!(u1.clients, test_vec);
+    assert_eq!(u1.collaterals, test_vec);
     assert_eq!(u2.id, 2);
     assert_eq!(u2.first_name, String::from("Kerri"));
     assert_eq!(u2.last_name, String::from("Kerrison"));
     assert_eq!(u2.clients, test_vec);
+    assert_eq!(u2.collaterals, test_vec);
   }
 }
