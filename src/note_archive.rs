@@ -3594,10 +3594,9 @@ impl NoteArchive {
       possessive.to_lowercase(),
     );
 
-    if self.pronouns.iter().any(|p| p == &new_pronouns) {
-      Some(*p.id)
-    } else {
-      None
+    match self.pronouns.iter().find(|p| p == &&new_pronouns) {
+      Some(p) => Some(p.id),
+      None => None,
     }
     
   }
