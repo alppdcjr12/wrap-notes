@@ -1,4 +1,5 @@
 use std::fmt;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct User {
@@ -7,6 +8,7 @@ pub struct User {
   pub last_name: String,
   pub role: EmployeeRole,
   pub pronouns: u32,
+  pub foreign_keys: HashMap<String, Vec<u32>>, // HERE IS WHERE WE BEGIN
   pub clients: Vec<u32>,
   pub collaterals: Vec<u32>,
 }

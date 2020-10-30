@@ -8,6 +8,7 @@ use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
 use std::io::{Error, ErrorKind};
 use std::{thread, time};
+use std::collections::HashMap;
 
 use crate::client::*;
 use crate::collateral::*;
@@ -478,7 +479,22 @@ impl NoteArchive {
     self.save_user(user);
     id
   }
-  pub fn generate_unique_new_user(
+  fn user_already_exists(&self, first_name: &str, last_name: &str, role: &EmployeeRole) -> Option<u32> {
+    let names_and_roles: Vec<(&str, &str, &EmployeeRole, u32)> = self
+      .users
+      .iter()
+      .map(|u| (&u.first_name[..], &u.last_name[..], &u.role, u.id))
+      .collect();
+
+      match names_and_roles
+      .iter()
+      .find(|(f, l, r, _)| f == &first_name && l == &last_name && r == &role) {
+        Some(name_and_role_tup) => Some(name_and_role_tup.3),
+        None => None,
+      }
+
+  }
+  fn generate_unique_new_user(
     &mut self,
     first_name: String,
     last_name: String,
@@ -487,25 +503,10 @@ impl NoteArchive {
   ) -> Result<User, String> {
     let id: u32 = self.users.len() as u32 + 1;
 
-    let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self
-      .users
-      .iter()
-      .map(|u| (&u.first_name[..], &u.last_name[..], &u.role))
-      .collect();
-
-    let result = if names_and_roles
-      .iter()
-      .any(|(f, l, r)| f == &first_name && l == &last_name && *r == &role)
-    {
-      Err(format!(
-        "There is already a {} with the name '{} {}'.",
-        role, first_name, last_name
-      ))
-    } else {
-      Ok(User::new(id, first_name, last_name, role, pronouns, vec![], vec![]))
-    };
-
-    result
+    match self.user_already_exists(&first_name, &last_name, &role) {
+      Some(_) => Err(format!("There is already a {} with the name '{} {}'.", role, first_name, last_name)),
+      None => Ok(User::new(id, first_name, last_name, role, pronouns, vec![], vec![])),
+    }
   }
   pub fn save_user(&mut self, user: User) {
     let pos = self.users.binary_search_by(|u| u.id.cmp(&user.id) ).unwrap_or_else(|e| e);
@@ -1358,51 +1359,84 @@ impl NoteArchive {
       let client_attempt = self.generate_unique_new_client(first_name, last_name, dob, pronouns);
       match client_attempt {
         Ok(client) => break client,
-        Err(e) => {
-          println!("Client could not be generated: {}.", e);
-          continue;
+        Err(error_hash) => {
+          println!(
+            "Client could not be generated. Errors: '{}'.",
+            error_hash.keys().cloned().collect::<Vec<String>>().join(", "),
+          );
+          match error_hash.get(&String::from("duplicate")) {
+            Some(id_ref) => {
+              match self.get_client_by_id(*id_ref) {
+                Some(client) => {
+                  let current_clients = match self.current_client_ids {
+                    Some(ids) => ids,
+                    None => vec![],
+                  };
+                  if !current_clients.iter().any(|c_id| c_id == id_ref ) {
+                    let mut conf = String::new();
+                    let choice = loop {
+                      println!("Would you like to use the existing record? (Y/N)");
+                      let conf_attempt = io::stdin().read_line(&mut conf);
+                      match conf_attempt {
+                        Ok(_) => break String::from(conf.trim()),
+                        Err(_) => {
+                          println!("Failed to read input.");
+                          continue;
+                        }
+                      }
+                    };
+                    match &choice[..] {
+                      "YES" | "yes" | "Y" | "y" => break *client,
+                      "NO" | "no" | "N" | "n" => continue,
+                    }
+                  }
+                },
+                None => {
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              }
+            },
+            None => {
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
         }
       }
     };
+
     let id = client.id;
     self.save_client(client);
     id
   }
-  pub fn generate_unique_new_client(
+  fn client_already_exists(&self, first_name: &str, last_name: &str, dob: &NaiveDate) -> Option<u32> {
+    let names_and_dobs: Vec<(&str, &str, &NaiveDate, u32)> = self
+      .clients
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.dob, c.id))
+      .collect();
+
+    match names_and_dobs
+      .iter()
+      .find(|(f, l, d, _)| f == &first_name && l == &last_name && d == &dob) {
+        Some(name_and_dob_tup) => Some(name_and_dob_tup.3),
+        None => None,
+      }
+  }
+  fn generate_unique_new_client(
     &mut self,
     first_name: String,
     last_name: String,
     dob: NaiveDate,
     pronouns: u32,
-  ) -> Result<Client, String> {
+  ) -> Result<Client, HashMap<String, u32>> {
     let id: u32 = self.clients.len() as u32 + 1;
 
-    let names_and_dobs: Vec<(&str, &str, &NaiveDate)> = self
-      .clients
-      .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.dob))
-      .collect();
-
-    let result = if names_and_dobs
-      .iter()
-      .any(|(f, l, d)| f == &first_name && l == &last_name && *d == &dob)
-    {
-      Err(format!(
-        "There is already a '{} {}' with DOB '{}'.",
-        first_name, last_name, dob
-      ))
-    } else {
-      Ok(Client::new(
-        id,
-        first_name,
-        last_name,
-        dob,
-        pronouns,
-        vec![],
-      ))
-    };
-
-    result
+    match self.client_already_exists(&first_name, &last_name, &dob ) {
+      Some(dup_id) => Err([(String::from("duplicate"), dup_id)].iter().cloned().collect::<HashMap<String, u32>>()),
+      None => Ok(Client::new(id, first_name, last_name, dob, pronouns, vec![]))
+    }
   }
   pub fn read_clients(filepath: &str) -> Vec<Client> {
     let file = OpenOptions::new()
@@ -1670,8 +1704,11 @@ impl NoteArchive {
   fn get_client_option_by_id(&self, id: u32) -> Option<&Client> {
     self.clients.iter().find(|c| c.id == id)
   }
-  fn get_client_by_id_mut(&mut self, id: u32) -> &mut Client {
-    self.clients.iter_mut().find(|c| c.id == id).unwrap()
+  fn get_client_by_id(&mut self, id: u32) -> Option<&Client> {
+    self.clients.iter().find(|c| c.id == id)
+  }
+  fn get_client_by_id_mut(&mut self, id: u32) -> Option<&mut Client> {
+    self.clients.iter_mut().find(|c| c.id == id)
   }
 
   // collaterals
@@ -2389,24 +2426,90 @@ impl NoteArchive {
       );
       match collateral_attempt {
         Ok(collateral) => break collateral,
-        Err(e) => {
-          println!("Collateral could not be generated: {}.", e);
-          continue;
+        Err(error_hash) => {
+          println!(
+            "Collateral could not be generated. Errors: '{}'.",
+            error_hash.keys().cloned().collect::<Vec<String>>().join(", "),
+          );
+          match error_hash.get(&String::from("duplicate")) {
+            Some(id_ref) => {
+              match self.get_collateral_by_id(*id_ref) {
+                Some(collat) => {
+                  let current_collats = match self.current_collateral_ids {
+                    Some(ids) => ids,
+                    None => vec![],
+                  };
+                  if !self.current_user_collaterals().iter().any(|co| co.id == *id_ref ) || !current_collats.iter().any(|co_id| co_id == id_ref ) {
+                    let mut conf = String::new();
+                    let choice = loop {
+                      println!("Would you like to use the existing record? (Y/N)");
+                      let conf_attempt = io::stdin().read_line(&mut conf);
+                      match conf_attempt {
+                        Ok(_) => break String::from(conf.trim()),
+                        Err(_) => {
+                          println!("Failed to read input.");
+                          continue;
+                        }
+                      }
+                    };
+                    match &choice[..] {
+                      "YES" | "yes" | "Y" | "y" => break *collat,
+                      "NO" | "no" | "N" | "n" => continue,
+                    }
+                  }
+                },
+                None => {
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              }
+            },
+            None => {
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
         }
       }
     };
     let id = collateral.id;
     match self.current_client_id {
-      Some(_) => self.current_client_mut().collaterals.push(id),
+      Some(_) => {
+        if !self.current_client().collaterals.iter().any(|co_id| co_id == &id ) {
+          self.current_client_mut().collaterals.push(id)
+        }
+      }
       None => {
         let c_id = self.specify_client();
-        self.get_client_by_id_mut(c_id).collaterals.push(id);
+        if !self.get_client_by_id(c_id).unwrap().collaterals.iter().any(|co_id| co_id == &id ) {
+          self.get_client_by_id_mut(c_id).unwrap().collaterals.push(id);
+        }
       }
     }
-    self.save_collateral(collateral);
+    match self.get_collateral_by_id(id) {
+      Some(_) => (),
+      None => self.save_collateral(collateral),
+    }
     id
   }
-  pub fn generate_unique_new_collateral(
+  fn collateral_already_exists(&self, first_name: &str, last_name: &str, title: &str, institution: &Option<String>) -> Option<u32> {
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>, u32)> = self
+      .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution, c.id))
+      .collect();
+
+    let maybe_id = match names_and_roles
+      .iter()
+      .find(|(f, l, t, i, _)| f == &first_name && l == &last_name && t == &title && i == &institution) {
+        Some(name_and_role_tup) => Some(name_and_role_tup.4),
+        None => None,
+      };
+
+    maybe_id
+
+  }
+  fn generate_unique_new_collateral(
     &mut self,
     first_name: String,
     last_name: String,
@@ -2415,47 +2518,14 @@ impl NoteArchive {
     pronouns: u32,
     support_type: SupportType,
     indirect_support: bool,
-  ) -> Result<Collateral, String> {
+  ) -> Result<Collateral, HashMap<String, u32>> {
     let id: u32 = self.collaterals.len() as u32 + 1;
 
-    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
-      .collaterals
-      .iter()
-      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
-      .collect();
+    match self.collateral_already_exists(&first_name, &last_name, &title, &institution) {
+      Some(match_id) => Err([(String::from("duplicate"), match_id)].iter().cloned().collect::<HashMap<String, u32>>()),
+      None => Ok(Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support))
+    }
 
-    let result = if names_and_roles
-      .iter()
-      .any(|(f, l, t, i)| f == &first_name && l == &last_name && t == &title && i == &&institution)
-    {
-      match institution {
-        Some(i) => {
-          Err(format!(
-            "There is already a {} at {} named '{} {}.'",
-            title, i, first_name, last_name
-          ))
-        },
-        None => {
-          Err(format!(
-            "There is already a {} named '{} {}.'",
-            title, first_name, last_name
-          ))
-        }
-      }
-    } else {
-      Ok(Collateral::new(
-        id,
-        first_name,
-        last_name,
-        title,
-        institution,
-        pronouns,
-        support_type,
-        indirect_support
-      ))
-    };
-
-    result
   }
   pub fn read_collaterals(filepath: &str) -> Vec<Collateral> {
     let file = OpenOptions::new()
@@ -2771,7 +2841,6 @@ impl NoteArchive {
                 if &i[..] == inst_choice_slice {
                   println!("Collateral institution already matches.");
                   thread::sleep(time::Duration::from_secs(2));
-                  continue;
                 } else {
                   let new_inst = String::from(inst_choice.trim());
                   match self.change_collateral_institution(Some(new_inst)) {
@@ -2809,7 +2878,39 @@ impl NoteArchive {
             thread::sleep(time::Duration::from_secs(2));
             continue;
           } else {
-            self.current_collateral_mut().support_type = Formal;
+            loop {
+              println!("Institution required for formal support. Enter 'NONE' to cancel, or enter institution below:");
+              let mut inst_choice = String::new();
+              let inst_attempt = io::stdin().read_line(&mut inst_choice);
+              match inst_attempt {
+                Ok(_) => match &inst_choice.trim()[..] {
+                  "NONE" => break,
+                  _ => {
+                    let current = self.current_collateral();
+                    match self.collateral_already_exists(
+                      &current.first_name,
+                      &current.last_name,
+                      &current.title,
+                      &Some(String::from(inst_choice.trim()))
+                    ) {
+                      Some(_) => {
+                        println!("A collateral already exists with that information. Consider selecting ADD from the collateral menu.");
+                        thread::sleep(time::Duration::from_secs(3));
+                        break;
+                      },
+                      None => self.current_collateral_mut().institution = Some(inst_choice.trim().to_string()),
+                    }
+                  }
+                },
+                Err(e) => {
+                  println!("Failed to read line.");
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                },
+              }
+              self.current_collateral_mut().support_type = Formal;
+              break;
+            }
           }
         },
         "NATURAL" | "natural" | "Natural" => {
@@ -2819,27 +2920,41 @@ impl NoteArchive {
             continue;
           } else {
             if self.current_collateral().institution != None {
-              println!("Setting collateral as a natural support will remove the name of any associated institution.");
-              println!("Proceed? (Y/N)");
-              let mut proceed_choice = String::new();
-              let proceed_attempt = io::stdin().read_line(&mut proceed_choice);
-              match proceed_attempt {
-                Ok(_) => match &proceed_choice.trim()[..] {
-                  "Y" | "y" | "YES" | "Yes" | "yes" => (),
-                  _ => {
-                    println!("Canceled.");
-                    thread::sleep(time::Duration::from_secs(1));
-                    continue;
-                  }
-                }
-                Err(e) => {
-                  println!("Failed to read input.");
-                  thread::sleep(time::Duration::from_secs(1));
+              let current = self.current_collateral();
+              match self.collateral_already_exists(
+                &current.first_name,
+                &current.last_name,
+                &current.title,
+                &None
+              ) {
+                Some(_) => {
+                  println!("Creates duplicate record because another natural support has the same name and no institution.");
+                  thread::sleep(time::Duration::from_secs(2));
                   continue;
-                }
+                },
+                None => {
+                  println!("Setting collateral as a natural support will remove the name of any associated institution.");
+                  println!("Proceed? (Y/N)");
+                  let mut proceed_choice = String::new();
+                  let proceed_attempt = io::stdin().read_line(&mut proceed_choice);
+                  match proceed_attempt {
+                    Ok(_) => match &proceed_choice.trim()[..] {
+                      "Y" | "y" | "YES" | "Yes" | "yes" => (),
+                      _ => {
+                        println!("Canceled.");
+                        thread::sleep(time::Duration::from_secs(1));
+                        continue;
+                      }
+                    }
+                    Err(e) => {
+                      println!("Failed to read input.");
+                      thread::sleep(time::Duration::from_secs(1));
+                      continue;
+                    }
+                  }
+                },
               }
             }
-
             self.current_collateral_mut().support_type = Natural;
             self.current_collateral_mut().indirect_support = false;
             self.current_collateral_mut().institution = None;
@@ -3468,7 +3583,25 @@ impl NoteArchive {
       None => None,
     }
   }
-  pub fn generate_unique_new_pronouns(
+  fn pronouns_already_exist(&self, subject: String, object: String, possessive_determiner: String, possessive: String) -> Option<u32> {
+    let id: u32 = self.pronouns.len() as u32 + 1;
+
+    let new_pronouns = Pronouns::new(
+      id,
+      subject.to_lowercase(),
+      object.to_lowercase(),
+      possessive_determiner.to_lowercase(),
+      possessive.to_lowercase(),
+    );
+
+    if self.pronouns.iter().any(|p| p == &new_pronouns) {
+      Some(*p.id)
+    } else {
+      None
+    }
+    
+  }
+  fn generate_unique_new_pronouns(
     &mut self,
     subject: String,
     object: String,
