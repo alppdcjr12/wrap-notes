@@ -1,5 +1,6 @@
 use std::fmt;
 use chrono::{NaiveDate, Datelike, TimeZone, Utc, Local};
+use std::collections::HashMap;
 
 
 #[derive(Debug, Clone)]
@@ -9,7 +10,7 @@ pub struct Client {
   pub last_name: String,
   pub dob: NaiveDate,
   pub pronouns: u32,
-  pub collaterals: Vec<u32>,
+  pub foreign_keys: HashMap<String, Vec<u32>>,
 }
 
 impl PartialEq for Client {
@@ -18,7 +19,6 @@ impl PartialEq for Client {
       && self.first_name == other.first_name
       && self.last_name == other.last_name
       && self.dob == other.dob
-      && self.collaterals == other.collaterals
   }
 }
 
@@ -31,13 +31,16 @@ impl Client {
     pronouns: u32,
     collaterals: Vec<u32>,
     ) -> Client {
+    let foreign_keys: HashMap<String, Vec<u32>> = [
+      (String::from("collaterals"), collaterals),
+    ].iter().cloned().collect();
     Client {
       id,
       first_name,
       last_name,
       dob,
       pronouns,
-      collaterals,
+      foreign_keys,
     }
   }
   pub fn full_name(&self) -> String {
@@ -91,7 +94,7 @@ impl fmt::Display for Client {
       &self.dob.day(),
       &self.pronouns,
       &self
-        .collaterals
+        .foreign_keys[&String::from("collaterals")]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
@@ -114,12 +117,12 @@ mod tests {
     assert_eq!(c1.last_name, String::from("Smith"));
     assert_eq!(c1.dob, NaiveDate::from_ymd(2000, 1, 1));
     assert_eq!(c1.pronouns, 2);
-    assert_eq!(c1.collaterals, test_vec);
+    assert_eq!(c1.foreign_keys[&String::from("collaterals")], test_vec);
     assert_eq!(c2.id, 2);
     assert_eq!(c2.first_name, String::from("Joe"));
     assert_eq!(c2.last_name, String::from("Shmoe"));
     assert_eq!(c2.dob, NaiveDate::from_ymd(2000, 1, 2));
     assert_eq!(c2.pronouns, 1);
-    assert_eq!(c2.collaterals, test_vec);
+    assert_eq!(c2.foreign_keys[&String::from("collaterals")], test_vec);
   }
 }
