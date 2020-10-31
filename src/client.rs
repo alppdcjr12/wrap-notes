@@ -51,8 +51,7 @@ impl Client {
     name
   }
   pub fn fmt_dob(&self) -> String {
-    let dob: String = format!("{}-{}-{}", &self.dob.year(), &self.dob.month(), &self.dob.day());
-    dob
+    self.dob.format("%Y-%m-%d").to_string()
   }
   pub fn fmt_date_of_birth(&self) -> String {
     let month = match &self.dob.month() {

@@ -1,8 +1,9 @@
 ##### collaterals #####
-1 | as | asd | asdf | A | 1 | Formal | false
 4 | Steve | Jenkins | iht | IHT, inc. | 2 | Formal | false
+1 | as | asd | asdf | A | 1 | Formal | false
 3 | sdf | dfg | ert | B | 1 | Formal | false
 2 | asdf | asdfgg | wer | C | 1 | Formal | false
 5 | Jorg | Monty | father | --NONE-- | 1 | Natural | false
 6 | Jorg | Ponty | OPT | University of Minnesota | 2 | Formal | false
+7 | Bark | Bimbo | iht | Kaleidoscope | 1 | Formal | false
 ##### collaterals #####
