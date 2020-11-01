@@ -6,8 +6,8 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub struct NoteDay {
   pub id: u32,
-  pub foreign_key: HashMap<String, u32>
-  pub foreign_keys: HashMap<String, Vec<u32>>
+  pub foreign_key: HashMap<String, u32>,
+  pub foreign_keys: HashMap<String, Vec<u32>>,
   pub date: NaiveDate,
 }
 

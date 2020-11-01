@@ -1,4 +1,4 @@
-const FAMILY_ROLES: [&'static str; 104] = [
+pub const FAMILY_ROLES: [&'static str; 104] = [
   "family", "parent", "nuclear family", "nuclear family member", "family member", "immediate family", "spouse", "husband", "wife",
   "father", "mother", "step-father", "step father", "stepfather", "step-mother", "step mother", "stepmother", "step-mother", "legal guardian",
   "child", "son", "daughter", "step-son", "step son", "stepson", "step-daughter", "stepdaughter", "step daughter", "sibling", "brother", "sister",
@@ -13,7 +13,7 @@ const FAMILY_ROLES: [&'static str; 104] = [
   "biological mother", "biological father", "biological mom", "biological dad", "adoptive first couse", "adoptive second cousin", "adoptive cousin"
 ];
 
-const FORMAL_ROLES: [&'static str; 40] = [
+pub const FORMAL_ROLES: [&'static str; 40] = [
   "intensive care coordinator", "icc", "family partner", "fp", "in home therapist", "in-home therapist", "iht",
   "in home behavioral therapist", "in-home behavioral therapist", "ihbt", "therapeutic mentor", "tm", "ot", "occupational therapist",
   "psychiatrist", "outpatient therapist", "opt", "guidance counselor", "school social worker", "social worker", "dcf worker",
@@ -22,7 +22,7 @@ const FORMAL_ROLES: [&'static str; 40] = [
   "teacher", "special education teacher", "school guidance counselor", "lifeset worker", "lifeset mentor"
 ];
 
-const INDIRECT_ROLES: [&'static str; 23] = [
+pub const INDIRECT_ROLES: [&'static str; 23] = [
   "director", "clinical director", "principal", "assistant director", "assistant clinical director", "director of special education",
   "clinical supervisor", "director of social and emotional learning", "assistant director of special education",
   "crisis support worker", "crisis clinician", "crisis response clinician", "mci worker", "mci clinician", "mobile crisis intervention",
