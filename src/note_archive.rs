@@ -28,6 +28,7 @@ pub struct NoteArchive {
   pub note_days: Vec<NoteDay>,
   pub foreign_key: HashMap<String, u32>,
   pub foreign_keys: HashMap<String, Vec<u32>>,
+  pub encrypted: bool,
   user_filepath: String,
   client_filepath: String,
   collateral_filepath: String,
@@ -38,11 +39,105 @@ pub struct NoteArchive {
 impl NoteArchive {
   pub fn run(&mut self) {
     NoteArchive::remove_test_files();
-    thread::sleep(time::Duration::from_secs(3));
     self.choose_user();
     self.write_to_files();
 
     self.logged_in_action();
+  }
+  fn display_decrypt_files() {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^58}", "-");
+    println!("{:-^58}", " Files not readable ");
+    println!("{:-^58}", "-");
+    println!("{:-^15} | {:-^40}", " Command ", " Function ");
+    println!("{:-^58}", "-");
+    
+    println!("{:-^58}", "-");
+    println!(
+      "{: >15} | {: <40}",
+      " DECRPYT / D ", " Attempt to decrypt files with a password "
+    );
+    println!(
+      "{: >15} | {: <40}",
+      " DELETE ", " Delete all data and start over "
+    );
+    println!(
+      "{: >15} | {: <40}",
+      " QUIT / Q ", " Close program "
+    );
+    println!("{:-^58}", "-");
+
+  }
+  fn choose_decrypt_files(
+    user_filepath: &str,
+    client_filepath: &str,
+    collateral_filepath: &str,
+    pronouns_filepath: &str,
+    note_day_filepath: &str) -> bool {
+    loop {
+      Self::display_decrypt_files();
+      let mut choice = String::new();
+      let choice_attempt = io::stdin().read_line(&mut choice);
+      match choice_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+        }
+      }
+      choice = choice.trim().to_string();
+      match &choice[..] {
+        "DECRYPT" | "decrypt" | "Decrypt" | "D" | "d" => {
+          println!("Enter password to attempt decryption.");
+          let mut pw = String::new();
+          let pw_attempt = io::stdin().read_line(&mut pw);
+          match pw_attempt {
+            Ok(_) => (),
+            Err(e) => {
+              println!("Failed to read input. Please try again.");
+            }
+          }
+          pw = pw.trim().to_string();
+          Self::decrypt_all_files(
+            user_filepath,
+            client_filepath,
+            collateral_filepath,
+            pronouns_filepath,
+            note_day_filepath,
+            &pw
+          ).unwrap();
+          break match Self::read_users(user_filepath) {
+            Ok(_) => true,
+            Err(e) => {
+              Self::reencrypt_all_files(
+                user_filepath,
+                client_filepath,
+                collateral_filepath,
+                pronouns_filepath,
+                note_day_filepath,
+                &pw
+              ).unwrap();
+              false
+            }
+          }
+        },
+        "DELETE" | "delete" | "Delete" => {
+          fs::remove_file(user_filepath).unwrap();
+          fs::remove_file(client_filepath).unwrap();
+          fs::remove_file(collateral_filepath).unwrap();
+          fs::remove_file(pronouns_filepath).unwrap();
+          fs::remove_file(note_day_filepath).unwrap();
+          break true;
+        },
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break false;
+        },
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      }
+    }
   }
   pub fn new(
     user_filepath: String,
@@ -53,22 +148,41 @@ impl NoteArchive {
   ) -> NoteArchive {
     let foreign_key: HashMap<String, u32> = HashMap::new();
     let foreign_keys: HashMap<String, Vec<u32>> = HashMap::new();
-    let mut a = NoteArchive {
-      users: Self::read_users(&user_filepath),
-      clients: Self::read_clients(&client_filepath),
-      collaterals: Self::read_collaterals(&collateral_filepath),
-      pronouns: vec![],
-      note_days: Self::read_note_days(&note_day_filepath),
-      foreign_key,
-      foreign_keys,
-      user_filepath,
-      client_filepath,
-      collateral_filepath,
-      pronouns_filepath,
-      note_day_filepath,
-    };
-    a.read_pronouns();
-    a
+    let encrypted = false;
+    let mut build_note_archive = true;
+    match Self::read_users(&user_filepath) {
+      Ok(_) => (),
+      Err(e) => {
+        build_note_archive = Self::choose_decrypt_files(
+          &user_filepath,
+          &client_filepath,
+          &collateral_filepath,
+          &pronouns_filepath,
+          &note_day_filepath,
+        );
+      }
+    }
+    if build_note_archive {
+      let mut a = NoteArchive {
+        users: Self::read_users(&user_filepath).unwrap(),
+        clients: Self::read_clients(&client_filepath),
+        collaterals: Self::read_collaterals(&collateral_filepath),
+        pronouns: vec![],
+        note_days: Self::read_note_days(&note_day_filepath),
+        foreign_key,
+        foreign_keys,
+        encrypted,
+        user_filepath,
+        client_filepath,
+        collateral_filepath,
+        pronouns_filepath,
+        note_day_filepath,
+      };
+      a.read_pronouns();
+      a
+    } else {
+      panic!("Unable to access data.");
+    }
   }
   pub fn new_test() -> NoteArchive {
     let user_1 = User::new(
@@ -142,7 +256,14 @@ impl NoteArchive {
       String::from("her"),
       String::from("hers"),
     );
-    let pronouns = vec![p1, p2];
+    let p3 = Pronouns::new(
+      3,
+      String::from("they"),
+      String::from("them"),
+      String::from("their"),
+      String::from("theirs"),
+    );
+    let pronouns = vec![p1, p2, p3];
     let nd1 = NoteDay::new(
       1,
       Local::now().naive_local().date(),
@@ -191,6 +312,9 @@ impl NoteArchive {
     if fs::metadata("test_pronouns.txt").is_ok() {
       fs::remove_file("test_pronouns.txt").unwrap();
     }
+    if fs::metadata("test_note_days.txt").is_ok() {
+      fs::remove_file("test_note_days.txt").unwrap();
+    }
   }
   pub fn write_to_files(&mut self) {
     self.write_users().unwrap();
@@ -199,7 +323,43 @@ impl NoteArchive {
     self.write_pronouns().unwrap();
     self.write_note_days().unwrap();
   }
-  pub fn display_actions(&self) {
+  fn encrypt_all_files(&self, pw: &str) -> Result<(), Error> {
+    encrypt_file(&self.user_filepath, pw)?;
+    encrypt_file(&self.client_filepath, pw)?;
+    encrypt_file(&self.collateral_filepath, pw)?;
+    encrypt_file(&self.pronouns_filepath, pw)?;
+    encrypt_file(&self.note_day_filepath, pw)?;
+    Ok(())
+  }
+  fn reencrypt_all_files(
+    user_filepath: &str,
+    client_filepath: &str,
+    collateral_filepath: &str,
+    pronouns_filepath: &str,
+    note_day_filepath: &str,
+    pw: &str) -> Result<(), Error> {
+    encrypt_file(user_filepath, pw)?;
+    encrypt_file(client_filepath, pw)?;
+    encrypt_file(collateral_filepath, pw)?;
+    encrypt_file(pronouns_filepath, pw)?;
+    encrypt_file(note_day_filepath, pw)?;
+    Ok(())
+  }
+  fn decrypt_all_files(
+    user_filepath: &str,
+    client_filepath: &str,
+    collateral_filepath: &str,
+    pronouns_filepath: &str,
+    note_day_filepath: &str,
+    pw: &str) -> Result<(), Error> {
+    decrypt_file(user_filepath, pw)?;
+    decrypt_file(client_filepath, pw)?;
+    decrypt_file(collateral_filepath, pw)?;
+    decrypt_file(pronouns_filepath, pw)?;
+    decrypt_file(note_day_filepath, pw)?;
+    Ok(())
+  }
+  fn display_actions(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^58}", "-");
     let heading_with_spaces = format!(" {} ", self.current_user().name_and_title()); 
@@ -237,6 +397,7 @@ impl NoteArchive {
     println!("{: >15} | {: <40}", " USER / U ", " Switch user ");
     println!("{: >15} | {: <40}", " PRNS / P ", " View/edit pronoun records ");
     println!("{: >15} | {: <40}", " DELETE / D ", " Delete current user ");
+    println!("{: >15} | {: <40}", " SECURITY / S ", " Security options ");
     println!("{: >15} | {: <40}", " QUIT / Q ", " End program ");
 
     println!("{:-^58}", "-");
@@ -283,6 +444,12 @@ impl NoteArchive {
           self.choose_delete_user();
           self.choose_user();
         },
+        "SECURITY" | "security" | "Security" | "S" | "s" => {
+          self.choose_security_options();
+          if self.encrypted {
+            break;
+          }
+        },
         "quit" | "q" | "QUIT" | "Q" | "Quit" => {
           break ();
         },
@@ -292,6 +459,137 @@ impl NoteArchive {
         },
       }
       self.write_to_files();
+    }
+  }
+  fn choose_security_options(&mut self) {
+    self.display_security_options();
+    loop {
+      let mut choice = String::new();
+      let choice_attempt = io::stdin().read_line(&mut choice);
+      match choice_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      choice = choice.trim().to_string();
+      match &choice[..] {
+        "ENCRYPT" | "encrypt" | "Encrypt" => {
+          self.choose_encrypt_all_files();
+          break;
+        },
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        },
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      }
+    }
+
+  }
+  fn display_security_options(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^58}", "-");
+    println!("{:-^58}", " Security ");
+    println!("{:-^58}", "-");
+    println!("{:-^15} | {:-^40}", " Command ", " Function ");
+    println!("{:-^58}", "-");
+    
+    println!(
+      "{: >15} | {: <40}",
+      " ENCRYPT ", " Encrypt all files and protect with a password | WARNING: cannot be reversed if password is lost. "
+    );
+    println!(
+      "{: >15} | {: <40}",
+      " QUIT / Q ", " Cancel "
+    );
+    
+    println!("{:-^58}", "-");
+  }
+  fn choose_encrypt_all_files(&mut self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("If you forget your password, accessing this program's data will be impossible.");
+    println!("This applies to all data for all users and clients associated with this program on your computer.");
+    println!("Encryption is not and is not intended to be HIPPA compliant.");
+    println!("By continuing, you agree that the responsibility to store and transfer data privately and securely is entirely your own.");
+    println!("To cancel and return to the program, enter QUIT / Q.");
+    println!("To continue with secure encryption, enter YES / Y.");
+
+    loop {
+      let mut choice = String::new();
+      let choice_attempt = io::stdin().read_line(&mut choice);
+      match choice_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      choice = choice.trim().to_string();
+      match &choice[..] {
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          let new_password = loop {
+            println!("Enter new password for encryption (minimum 8 characters):");
+            let mut choice = String::new();
+            let choice_attempt = io::stdin().read_line(&mut choice);
+            match choice_attempt {
+              Ok(_) => {
+                if choice.trim().len() < 8 {
+                  println!("Password not long enough.");
+                  continue;
+                } else {
+                  println!("Confirm password:");
+                  let mut confirm = String::new();
+                  let confirm_attempt = io::stdin().read_line(&mut confirm);
+                  match confirm_attempt {
+                    Ok(_) => {
+                      if confirm.trim() != choice.trim() {
+                        println!("Passwords do not match.");
+                        continue;
+                      } else {
+                        break confirm.trim().to_string()
+                      }
+                    },
+                    Err(e) => {
+                      println!("Passwords do not match (error: {})", e);
+                      continue;
+                    }
+                  }
+                  
+                }
+              },
+              Err(e) => {
+                println!("Failed to read input. Please try again.");
+                continue;
+              }
+            }
+          };
+          match self.encrypt_all_files(&new_password) {
+            Ok(_) => (),
+            Err(e) => {
+              println!("Failed to encrypt files: {}", e);
+              continue;
+            },
+          }
+          self.encrypted = true;
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          println!("Files encrypted successfully.");
+          thread::sleep(time::Duration::from_secs(2));
+          break;
+        },
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        },
+        _ => {
+          println!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      }
     }
   }
 
@@ -528,7 +826,7 @@ impl NoteArchive {
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
-  pub fn read_users(filepath: &str) -> Vec<User> {
+  pub fn read_users(filepath: &str) -> Result<Vec<User>, Error> {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -541,20 +839,25 @@ impl NoteArchive {
     let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
-      lines.remove(0).unwrap();
+      lines.remove(0)?;
     }
     if lines.len() > 0 {
-      lines.remove(lines.len() - 1).unwrap();
+      lines.remove(lines.len() - 1)?;
     }
 
     let mut users: Vec<User> = vec![];
 
-    for line in lines {
+    let ok_lines: Vec<String> = lines.iter().filter(|r| r.is_ok()).map(|l| l.as_ref().unwrap().clone() ).collect();
+
+    for line in ok_lines {
       let values: Vec<String> = line
-        .unwrap()
         .split(" | ")
         .map(|val| val.to_string())
         .collect();
+
+      if values.len() < 7 {
+        return Err(Error::new(ErrorKind::Other, "Failed to read user file from filepath."));
+      }
 
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
@@ -588,7 +891,7 @@ impl NoteArchive {
       users.push(u);
     }
     users.sort_by(|a, b| a.id.cmp(&b.id));
-    users
+    Ok(users)
   }
   fn change_user_first_name(&mut self, new_name: &str) -> Result<(), String> {
     let names_and_roles: Vec<(&str, &str, &EmployeeRole)> = self
@@ -4447,14 +4750,15 @@ impl NoteArchive {
 
       let id: u32 = values[0].parse().unwrap();
       
-      let date_string: Vec<i32> = match &values[1][..] {
+      let date_vec: Vec<i32> = match &values[1][..] {
         "" => vec![],
-        _ => values[3]
+        _ => values[1]
         .split("-")
           .map(|val| val.parse().unwrap())
           .collect(),
       };
-      let (year, month, day): (i32, u32, u32) = (date_string[0], date_string[1] as u32, date_string[2] as u32);
+
+      let (year, month, day): (i32, u32, u32) = (date_vec[0], date_vec[1] as u32, date_vec[2] as u32);
       let date = NaiveDate::from_ymd(year, month, day);
 
       let user_id: u32 = values[2].parse().unwrap();
@@ -4577,6 +4881,7 @@ mod tests {
         String::from("some_random_blank_client_file_name.txt"),
         String::from("some_random_blank_collateral_file_name.txt"),
         String::from("some_random_blank_pronouns_file_name.txt"),
+        String::from("some_random_blank_note_day_file_name.txt"),
       );
       assert_eq!(a.users, vec![]);
       assert_eq!(a.clients, vec![]);
@@ -4609,8 +4914,9 @@ mod tests {
     }
     fs::remove_file("some_random_blank_user_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_client_file_name.txt").unwrap();
-    fs::remove_file("some_random_blank_pronouns_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_collateral_file_name.txt").unwrap();
+    fs::remove_file("some_random_blank_pronouns_file_name.txt").unwrap();
+    fs::remove_file("some_random_blank_note_day_file_name.txt").unwrap();
   }
   #[test]
   fn can_load_from_files() {
@@ -4644,6 +4950,7 @@ mod tests {
         String::from("test_load_client.txt"),
         String::from("test_load_collateral.txt"),
         String::from("test_load_pronouns.txt"),
+        String::from("test_load_note_days.txt"),
       );
 
       a1.users = vec![test_user];
@@ -4660,6 +4967,7 @@ mod tests {
     fs::remove_file("test_load_client.txt").unwrap();
     fs::remove_file("test_load_collateral.txt").unwrap();
     fs::remove_file("test_load_pronouns.txt").unwrap();
+    fs::remove_file("test_load_note_days.txt").unwrap();
   }
   #[test]
   fn creates_unique_new_instances() {
