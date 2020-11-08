@@ -13,7 +13,7 @@ pub fn make_ascii_titlecase(s: &mut str) {
   }
 }
 
-pub fn decrypt_file(data_fp: &str, pw: &str) -> Result<(), Error> {
+pub fn decrypt_file(data_fp: &str, output_fp: &str, pw: &str) -> Result<(), Error> {
 
   let mut key = password_to_bytes(pw.to_string());
 
@@ -56,9 +56,11 @@ pub fn decrypt_file(data_fp: &str, pw: &str) -> Result<(), Error> {
     all_blocks.append(&mut decrypted_block.to_vec());
   }
 
-  let mut file = File::create(data_fp)?;
-
-  file.write_all(&all_blocks)?;
+  if !all_blocks.is_empty() {
+    let mut file = File::create(output_fp)?;
+  
+    file.write_all(&all_blocks)?;
+  }
 
   Ok(())
 

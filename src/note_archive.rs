@@ -97,26 +97,19 @@ impl NoteArchive {
             }
           }
           pw = pw.trim().to_string();
-          Self::decrypt_all_files(
+          break match Self::decrypt_all_files(
             user_filepath,
             client_filepath,
             collateral_filepath,
             pronouns_filepath,
             note_day_filepath,
             &pw
-          ).unwrap();
-          break match Self::read_users(user_filepath) {
+          ) {
             Ok(_) => true,
-            Err(e) => {
-              Self::reencrypt_all_files(
-                user_filepath,
-                client_filepath,
-                collateral_filepath,
-                pronouns_filepath,
-                note_day_filepath,
-                &pw
-              ).unwrap();
-              false
+            Err(_) => {
+              println!("Incorrect password. Try again in 10 seconds.");
+              thread::sleep(time::Duration::from_secs(10));
+              continue;
             }
           }
         },
@@ -165,10 +158,10 @@ impl NoteArchive {
     if build_note_archive {
       let mut a = NoteArchive {
         users: Self::read_users(&user_filepath).unwrap(),
-        clients: Self::read_clients(&client_filepath),
-        collaterals: Self::read_collaterals(&collateral_filepath),
+        clients: Self::read_clients(&client_filepath).unwrap(),
+        collaterals: Self::read_collaterals(&collateral_filepath).unwrap(),
         pronouns: vec![],
-        note_days: Self::read_note_days(&note_day_filepath),
+        note_days: Self::read_note_days(&note_day_filepath).unwrap(),
         foreign_key,
         foreign_keys,
         encrypted,
@@ -178,7 +171,7 @@ impl NoteArchive {
         pronouns_filepath,
         note_day_filepath,
       };
-      a.read_pronouns();
+      a.pronouns = a.read_pronouns().unwrap();
       a
     } else {
       panic!("Unable to access data.");
@@ -324,25 +317,26 @@ impl NoteArchive {
     self.write_note_days().unwrap();
   }
   fn encrypt_all_files(&self, pw: &str) -> Result<(), Error> {
-    encrypt_file(&self.user_filepath, pw)?;
-    encrypt_file(&self.client_filepath, pw)?;
-    encrypt_file(&self.collateral_filepath, pw)?;
-    encrypt_file(&self.pronouns_filepath, pw)?;
-    encrypt_file(&self.note_day_filepath, pw)?;
-    Ok(())
-  }
-  fn reencrypt_all_files(
-    user_filepath: &str,
-    client_filepath: &str,
-    collateral_filepath: &str,
-    pronouns_filepath: &str,
-    note_day_filepath: &str,
-    pw: &str) -> Result<(), Error> {
-    encrypt_file(user_filepath, pw)?;
-    encrypt_file(client_filepath, pw)?;
-    encrypt_file(collateral_filepath, pw)?;
-    encrypt_file(pronouns_filepath, pw)?;
-    encrypt_file(note_day_filepath, pw)?;
+    match Self::read_users(&self.user_filepath) {
+      Ok(_) => encrypt_file(&self.user_filepath, pw)?,
+      Err(_) => (),
+    }
+    match Self::read_clients(&self.client_filepath) {
+      Ok(_) => encrypt_file(&self.client_filepath, pw)?,
+      Err(_) => (),
+    }
+    match Self::read_collaterals(&self.collateral_filepath) {
+      Ok(_) => encrypt_file(&self.collateral_filepath, pw)?,
+      Err(_) => (),
+    }
+    match Self::read_pronouns_from_file_without_reindexing(&self.pronouns_filepath) {
+      Ok(_) => encrypt_file(&self.pronouns_filepath, pw)?,
+      Err(_) => (),
+    }
+    match Self::read_note_days(&self.note_day_filepath) {
+      Ok(_) => encrypt_file(&self.note_day_filepath, pw)?,
+      Err(_) => (),
+    }
     Ok(())
   }
   fn decrypt_all_files(
@@ -352,12 +346,41 @@ impl NoteArchive {
     pronouns_filepath: &str,
     note_day_filepath: &str,
     pw: &str) -> Result<(), Error> {
-    decrypt_file(user_filepath, pw)?;
-    decrypt_file(client_filepath, pw)?;
-    decrypt_file(collateral_filepath, pw)?;
-    decrypt_file(pronouns_filepath, pw)?;
-    decrypt_file(note_day_filepath, pw)?;
-    Ok(())
+    decrypt_file(user_filepath, "decrypt_attempt_user.txt", pw)?;
+    decrypt_file(client_filepath, "decrypt_attempt_client.txt", pw)?;
+    decrypt_file(collateral_filepath, "decrypt_attempt_collateral.txt", pw)?;
+    decrypt_file(pronouns_filepath, "decrypt_attempt_pronouns.txt", pw)?;
+    decrypt_file(note_day_filepath, "decrypt_attempt_note_day.txt", pw)?;
+    let user_result = Self::read_users("decrypt_attempt_user.txt");
+    let client_result = Self::read_clients("decrypt_attempt_client.txt");
+    let collateral_result = Self::read_collaterals("decrypt_attempt_collateral.txt");
+    let pronouns_result = Self::read_pronouns_from_file_without_reindexing("decrypt_attempt_pronouns.txt");
+    let note_day_result = Self::read_note_days("decrypt_attempt_note_day.txt");
+    match (
+      user_result,
+      client_result,
+      collateral_result,
+      pronouns_result,
+      note_day_result,
+    ) {
+      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
+        decrypt_file(user_filepath, user_filepath, pw)?;
+        decrypt_file(client_filepath, client_filepath, pw)?;
+        decrypt_file(collateral_filepath, collateral_filepath, pw)?;
+        decrypt_file(pronouns_filepath, pronouns_filepath, pw)?;
+        decrypt_file(note_day_filepath, note_day_filepath, pw)?;
+        fs::remove_file("decrypt_attempt_user.txt")?;
+        fs::remove_file("decrypt_attempt_client.txt")?;
+        fs::remove_file("decrypt_attempt_collateral.txt")?;
+        fs::remove_file("decrypt_attempt_pronouns.txt")?;
+        fs::remove_file("decrypt_attempt_note_day.txt")?;
+        Ok(())
+      },
+      _ => Err(Error::new(
+            ErrorKind::Other,
+            "Failed to decrypt files with the given password.",
+          )),
+    }
   }
   fn display_actions(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -847,16 +870,16 @@ impl NoteArchive {
 
     let mut users: Vec<User> = vec![];
 
-    let ok_lines: Vec<String> = lines.iter().filter(|r| r.is_ok()).map(|l| l.as_ref().unwrap().clone() ).collect();
+    for line in lines {
+      let line_string = line?;
 
-    for line in ok_lines {
-      let values: Vec<String> = line
+      let values: Vec<String> = line_string
         .split(" | ")
         .map(|val| val.to_string())
         .collect();
 
       if values.len() < 7 {
-        return Err(Error::new(ErrorKind::Other, "Failed to read user file from filepath."));
+        return Err(Error::new(ErrorKind::Other, "Failed to read users from filepath."));
       }
 
       let id: u32 = values[0].parse().unwrap();
@@ -1746,7 +1769,7 @@ impl NoteArchive {
       None => Ok(Client::new(id, first_name, last_name, dob, pronouns, vec![]))
     }
   }
-  pub fn read_clients(filepath: &str) -> Vec<Client> {
+  pub fn read_clients(filepath: &str) -> Result<Vec<Client>, Error> {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -1759,20 +1782,25 @@ impl NoteArchive {
     let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
-      lines.remove(0).unwrap();
+      lines.remove(0)?;
     }
     if lines.len() > 0 {
-      lines.remove(lines.len() - 1).unwrap();
+      lines.remove(lines.len() - 1)?;
     }
 
     let mut clients: Vec<Client> = vec![];
 
     for line in lines {
-      let values: Vec<String> = line
-        .unwrap()
+      let line_string = line?;
+
+      let values: Vec<String> = line_string
         .split(" | ")
         .map(|val| val.to_string())
         .collect();
+
+      if values.len() < 6 {
+        return Err(Error::new(ErrorKind::Other, "Failed to read clients from filepath."));
+      }
 
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
@@ -1800,7 +1828,7 @@ impl NoteArchive {
       clients.push(c);
     }
     clients.sort_by(|a, b| a.id.cmp(&b.id));
-    clients
+    Ok(clients)
   }
   pub fn write_clients(&self) -> std::io::Result<()> {
     let mut lines = String::from("##### clients #####\n");
@@ -2856,7 +2884,7 @@ impl NoteArchive {
     }
 
   }
-  pub fn read_collaterals(filepath: &str) -> Vec<Collateral> {
+  pub fn read_collaterals(filepath: &str) -> Result<Vec<Collateral>, Error> {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -2869,20 +2897,24 @@ impl NoteArchive {
     let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
-      lines.remove(0).unwrap();
+      lines.remove(0)?;
     }
     if lines.len() > 0 {
-      lines.remove(lines.len() - 1).unwrap();
+      lines.remove(lines.len() - 1)?;
     }
 
     let mut collaterals: Vec<Collateral> = vec![];
 
     for line in lines {
-      let values: Vec<String> = line
-        .unwrap()
+      let line_string = line?;
+      let values: Vec<String> = line_string
         .split(" | ")
         .map(|val| val.to_string())
         .collect();
+
+      if values.len() < 8 {
+        return Err(Error::new(ErrorKind::Other, "Failed to read collaterals from filepath."));
+      }
 
       let id: u32 = values[0].parse().unwrap();
       let first_name = String::from(&values[1]);
@@ -2907,7 +2939,7 @@ impl NoteArchive {
       let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
       collaterals.push(c);
     }
-    collaterals
+    Ok(collaterals)
   }
   pub fn write_collaterals(&self) -> std::io::Result<()> {
     let mut lines = String::from("##### collaterals #####\n");
@@ -3567,7 +3599,7 @@ impl NoteArchive {
   }
 
   // pronouns
-  pub fn read_pronouns(&mut self) {
+  pub fn read_pronouns(&mut self) -> Result<Vec<Pronouns>, Error> {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -3580,10 +3612,10 @@ impl NoteArchive {
     let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
-      lines.remove(0).unwrap();
+      lines.remove(0)?;
     }
     if lines.len() > 0 {
-      lines.remove(lines.len() - 1).unwrap();
+      lines.remove(lines.len() - 1)?;
     }
 
     let mut pronouns: Vec<Pronouns> = vec![
@@ -3611,11 +3643,15 @@ impl NoteArchive {
     ];
 
     for line in lines {
-      let values: Vec<String> = line
-        .unwrap()
+      let line_string = line?;
+      let values: Vec<String> = line_string
         .split(" | ")
         .map(|val| val.to_string())
         .collect();
+
+      if values.len() < 5 {
+        return Err(Error::new(ErrorKind::Other, "Failed to read pronouns from filepath."));
+      }
         
       // if any pronouns have a matching ID
       // due to someone editing the default values,
@@ -3646,7 +3682,83 @@ impl NoteArchive {
         }
       }
     }
-    self.pronouns = pronouns;
+    Ok(pronouns)
+  }
+  pub fn read_pronouns_from_file_without_reindexing(filepath: &str) -> Result<Vec<Pronouns>, Error> {
+    let file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .open(filepath)
+      .unwrap();
+
+    let reader = BufReader::new(file);
+
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
+
+    if lines.len() > 0 {
+      lines.remove(0)?;
+    }
+    if lines.len() > 0 {
+      lines.remove(lines.len() - 1)?;
+    }
+
+    let mut pronouns: Vec<Pronouns> = vec![
+      Pronouns::new(
+        1,
+        String::from("he"),
+        String::from("him"),
+        String::from("his"),
+        String::from("his"),
+      ),
+      Pronouns::new(
+        2,
+        String::from("she"),
+        String::from("her"),
+        String::from("her"),
+        String::from("hers"),
+      ),
+      Pronouns::new(
+        3,
+        String::from("they"),
+        String::from("them"),
+        String::from("their"),
+        String::from("theirs"),
+      ),
+    ];
+
+    for line in lines {
+      let line_string = line?;
+      let values: Vec<String> = line_string
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
+
+      if values.len() < 5 {
+        return Err(Error::new(ErrorKind::Other, "Failed to read pronouns from filepath."));
+      }
+        
+      // if any pronouns have a matching ID
+      // due to someone editing the default values,
+      // change ID to last item in vector + 1, continuing count
+        
+      let saved_id: u32 = values[0].parse().unwrap();
+      let next_id = pronouns[pronouns.len() - 1].id + 1;
+        
+      let subject = String::from(&values[1]);
+      let object = String::from(&values[2]);
+      let possessive_determiner = String::from(&values[3]);
+      let possessive = String::from(&values[4]);
+      
+      let s2 = subject.clone();
+      let o2 = object.clone();
+      let pd2 = possessive_determiner.clone();
+      let p2 = possessive.clone();
+
+      let p = Pronouns::new(next_id, subject, object, possessive_determiner, possessive);
+      pronouns.push(p);
+    }
+    Ok(pronouns)
   }
   fn reassign_pronouns_id(&mut self, old_id: u32, new_id: u32) {
     let mut i = 0;
@@ -4720,7 +4832,7 @@ impl NoteArchive {
       None => Ok(NoteDay::new(id, date, user_id, client_id, vec![], vec![]))
     }
   }
-  pub fn read_note_days(filepath: &str) -> Vec<NoteDay> {
+  pub fn read_note_days(filepath: &str) -> Result<Vec<NoteDay>, Error> {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -4733,17 +4845,18 @@ impl NoteArchive {
     let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
 
     if lines.len() > 0 {
-      lines.remove(0).unwrap();
+      lines.remove(0)?;
     }
     if lines.len() > 0 {
-      lines.remove(lines.len() - 1).unwrap();
+      lines.remove(lines.len() - 1)?;
     }
 
     let mut note_days: Vec<NoteDay> = vec![];
 
     for line in lines {
-      let values: Vec<String> = line
-        .unwrap()
+      let line_string = line?;
+
+      let values: Vec<String> = line_string
         .split(" | ")
         .map(|val| val.to_string())
         .collect();
@@ -4786,7 +4899,7 @@ impl NoteArchive {
     note_days.sort_by(|a, b| a.foreign_key["client_id"].cmp(&b.foreign_key["client_id"]));
     note_days.sort_by(|a, b| a.foreign_key["user_id"].cmp(&b.foreign_key["user_id"]));
     note_days.sort_by(|a, b| b.date.cmp(&a.date));
-    note_days
+    Ok(note_days)
   }
   pub fn write_note_days(&self) -> std::io::Result<()> {
     let mut lines = String::from("##### note_days #####\n");
