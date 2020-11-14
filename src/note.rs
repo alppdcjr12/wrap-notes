@@ -79,6 +79,7 @@ impl fmt::Display for StructureType {
   }
 }
 
+#[derive(Debug)]
 pub struct NoteTemplate {
   pub id: u32,
   pub structure: StructureType,

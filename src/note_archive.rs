@@ -18,20 +18,7 @@ use crate::note_day::*;
 use crate::note::*;
 use crate::EmployeeRole::{FP, ICC};
 use crate::SupportType::{Natural, Formal};
-use crate::StructureType::{
-  CarePlanMeeting,
-  CarePlanMeetingVerbose,
-  Intake,
-  Assessment,
-  SNCD,
-  HomeVisit,
-  AgendaPrep,
-  Debrief,
-  PhoneCall,
-  Scheduling,
-  SentEmail,
-  Referral
-};
+use crate::StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
 use crate::utils::*;
 use crate::constants::*;
 
@@ -45,12 +32,7 @@ pub struct NoteArchive {
   pub foreign_key: HashMap<String, u32>,
   pub foreign_keys: HashMap<String, Vec<u32>>,
   pub encrypted: bool,
-  user_filepath: String,
-  client_filepath: String,
-  collateral_filepath: String,
-  pronouns_filepath: String,
-  note_day_filepath: String,
-  note_template_filepath: String,
+  pub filepaths: HashMap<String, String>,
 }
 
 // general functions
@@ -101,7 +83,6 @@ fn choose_blanks() -> usize {
 
 impl NoteArchive {
   pub fn run(&mut self) {
-    NoteArchive::remove_test_files();
     self.choose_user();
     self.write_to_files();
 
@@ -136,8 +117,8 @@ impl NoteArchive {
     client_filepath: &str,
     collateral_filepath: &str,
     pronouns_filepath: &str,
-    note_template_filepath: &str,
-    note_day_filepath: &str) -> bool {
+    note_day_filepath: &str,
+    note_template_filepath: &str) -> bool {
     loop {
       Self::display_decrypt_files();
       let mut choice = String::new();
@@ -184,6 +165,7 @@ impl NoteArchive {
           fs::remove_file(collateral_filepath).unwrap();
           fs::remove_file(pronouns_filepath).unwrap();
           fs::remove_file(note_day_filepath).unwrap();
+          fs::remove_file(note_template_filepath).unwrap();
           break true;
         },
         "QUIT" | "quit" | "Quit" | "Q" | "q" => {
@@ -197,48 +179,36 @@ impl NoteArchive {
       }
     }
   }
-  pub fn new(
-    user_filepath: String,
-    client_filepath: String,
-    collateral_filepath: String,
-    pronouns_filepath: String,
-    note_day_filepath: String,
-    note_template_filepath: String,
-  ) -> NoteArchive {
+  pub fn new(filepaths: HashMap<String, String>) -> NoteArchive {
     let foreign_key: HashMap<String, u32> = HashMap::new();
     let foreign_keys: HashMap<String, Vec<u32>> = HashMap::new();
     let encrypted = false;
     let mut build_note_archive = true;
-    match Self::read_users(&user_filepath) {
+    match Self::read_users(&filepaths["user_filepath"]) {
       Ok(_) => (),
       Err(e) => {
         build_note_archive = Self::choose_decrypt_files(
-          &user_filepath,
-          &client_filepath,
-          &collateral_filepath,
-          &pronouns_filepath,
-          &note_day_filepath,
-          &note_template_filepath,
+          &filepaths["user_filepath"],
+          &filepaths["client_filepath"],
+          &filepaths["collateral_filepath"],
+          &filepaths["pronouns_filepath"],
+          &filepaths["note_day_filepath"],
+          &filepaths["note_template_filepath"],
         );
       }
     }
     if build_note_archive {
       let mut a = NoteArchive {
-        users: Self::read_users(&user_filepath).unwrap(),
-        clients: Self::read_clients(&client_filepath).unwrap(),
-        collaterals: Self::read_collaterals(&collateral_filepath).unwrap(),
+        users: Self::read_users(&filepaths["user_filepath"]).unwrap(),
+        clients: Self::read_clients(&filepaths["client_filepath"]).unwrap(),
+        collaterals: Self::read_collaterals(&filepaths["collateral_filepath"]).unwrap(),
         pronouns: vec![],
-        note_days: Self::read_note_days(&note_day_filepath).unwrap(),
-        note_templates: Self::read_note_templates(&note_template_filepath).unwrap(),
+        note_days: Self::read_note_days(&filepaths["note_day_filepath"]).unwrap(),
+        note_templates: Self::read_note_templates(&filepaths["note_template_filepath"]).unwrap(),
         foreign_key,
         foreign_keys,
         encrypted,
-        user_filepath,
-        client_filepath,
-        collateral_filepath,
-        pronouns_filepath,
-        note_day_filepath,
-        note_template_filepath,
+        filepaths,
       };
       a.pronouns = a.read_pronouns().unwrap();
       a
@@ -246,7 +216,7 @@ impl NoteArchive {
       panic!("Unable to access data.");
     }
   }
-  pub fn new_test() -> NoteArchive {
+  pub fn new_test(filepaths: HashMap<String, String>) -> NoteArchive {
     let user_1 = User::new(
       1,
       String::from("Pete"),
@@ -344,14 +314,7 @@ impl NoteArchive {
     );
     let note_days = vec![nd1, nd2];
 
-    let mut notes = NoteArchive::new(
-      String::from("test_user.txt"),
-      String::from("test_client.txt"),
-      String::from("test_collateral.txt"),
-      String::from("test_pronouns.txt"),
-      String::from("test_note_days.txt"),
-      String::from("test_note_templates.txt"),
-    );
+    let mut notes = NoteArchive::new(filepaths);
 
     let nt1 = NoteTemplate::new(
       1,
@@ -380,26 +343,6 @@ impl NoteArchive {
 
     notes
   }
-  pub fn remove_test_files() {
-    if fs::metadata("test_user.txt").is_ok() {
-      fs::remove_file("test_user.txt").unwrap();
-    }
-    if fs::metadata("test_client.txt").is_ok() {
-      fs::remove_file("test_client.txt").unwrap();
-    }
-    if fs::metadata("test_collateral.txt").is_ok() {
-      fs::remove_file("test_collateral.txt").unwrap();
-    }
-    if fs::metadata("test_pronouns.txt").is_ok() {
-      fs::remove_file("test_pronouns.txt").unwrap();
-    }
-    if fs::metadata("test_note_days.txt").is_ok() {
-      fs::remove_file("test_note_days.txt").unwrap();
-    }
-    if fs::metadata("test_note_templates.txt").is_ok() {
-      fs::remove_file("test_note_templates.txt").unwrap();
-    }
-  }
   fn write_to_files(&mut self) {
     self.write_users().unwrap();
     self.write_clients().unwrap();
@@ -409,28 +352,28 @@ impl NoteArchive {
     self.write_note_templates().unwrap();
   }
   fn encrypt_all_files(&self, pw: &str) -> Result<(), Error> {
-    match Self::read_users(&self.user_filepath) {
-      Ok(_) => encrypt_file(&self.user_filepath, pw)?,
+    match Self::read_users(&self.filepaths["user_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["user_filepath"], pw)?,
       Err(_) => (),
     }
-    match Self::read_clients(&self.client_filepath) {
-      Ok(_) => encrypt_file(&self.client_filepath, pw)?,
+    match Self::read_clients(&self.filepaths["client_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["client_filepath"], pw)?,
       Err(_) => (),
     }
-    match Self::read_collaterals(&self.collateral_filepath) {
-      Ok(_) => encrypt_file(&self.collateral_filepath, pw)?,
+    match Self::read_collaterals(&self.filepaths["collateral_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["collateral_filepath"], pw)?,
       Err(_) => (),
     }
-    match Self::read_pronouns_from_file_without_reindexing(&self.pronouns_filepath) {
-      Ok(_) => encrypt_file(&self.pronouns_filepath, pw)?,
+    match Self::read_pronouns_from_file_without_reindexing(&self.filepaths["pronouns_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["pronouns_filepath"], pw)?,
       Err(_) => (),
     }
-    match Self::read_note_days(&self.note_day_filepath) {
-      Ok(_) => encrypt_file(&self.note_day_filepath, pw)?,
+    match Self::read_note_days(&self.filepaths["note_day_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["note_day_filepath"], pw)?,
       Err(_) => (),
     }
-    match Self::read_note_templates(&self.note_template_filepath) {
-      Ok(_) => encrypt_file(&self.note_template_filepath, pw)?,
+    match Self::read_note_templates(&self.filepaths["note_template_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["note_template_filepath"], pw)?,
       Err(_) => (),
     }
     Ok(())
@@ -747,7 +690,7 @@ impl NoteArchive {
     println!("{:-^66}", "-");
     println!("{:-^66}", " Users ");
     println!("{:-^66}", "-");
-    println!("{:-^10} | {:-^10} | {:-^40}", "ID", "Role", "Name");
+    println!("{:-^10} | {:-^10} | {:-^40}", " ID ", " Role ", " Name ");
     for u in &self.users {
       println!(
         "{: ^10} | {: ^10} | {: ^40}",
@@ -845,6 +788,7 @@ impl NoteArchive {
         Ok(_) => break chosen_id,
         Err(e) => {
           println!("Unable to load user with id {}: {}", chosen_id, e);
+          thread::sleep(time::Duration::from_secs(1));
           continue;
         }
       }
@@ -984,7 +928,7 @@ impl NoteArchive {
       lines.push_str(&u.to_string());
     }
     lines.push_str("##### users #####");
-    let mut file = File::create(self.user_filepath.clone()).unwrap();
+    let mut file = File::create(self.filepaths["user_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -1310,7 +1254,7 @@ impl NoteArchive {
     println!("{:-^96}", "-");
     println!("{:-^96}", heading);
     println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
+    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
     match self.foreign_key.get("current_user_id") {
       Some(_) => {
         for c in self.get_current_clients() {
@@ -1336,7 +1280,7 @@ impl NoteArchive {
     println!("{:-^96}", "-");
     println!("{:-^96}", heading);
     println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", "ID", "NAME", "DOB");
+    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
     match self.foreign_key.get("current_user_id") {
       Some(_) => {
         for c in self.get_current_clients() {
@@ -2026,7 +1970,7 @@ impl NoteArchive {
       lines.push_str(&c.to_string()[..]);
     }
     lines.push_str("##### clients #####");
-    let mut file = File::create(self.client_filepath.clone()).unwrap();
+    let mut file = File::create(self.filepaths["client_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -2355,7 +2299,7 @@ impl NoteArchive {
     println!("{:-^113}", "-");
     println!("{:-^113}", heading);
     println!("{:-^113}", "-");
-    println!("{:-^10} | {:-<100}", "ID", "Info");
+    println!("{:-^10} | {:-<100}", " ID ", " Info ");
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
         for c in self.get_current_collaterals() {
@@ -3186,7 +3130,7 @@ impl NoteArchive {
       lines.push_str(&c.to_string()[..]);
     }
     lines.push_str("##### collaterals #####");
-    let mut file = File::create(self.collateral_filepath.clone()).unwrap();
+    let mut file = File::create(self.filepaths["collateral_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -3852,7 +3796,7 @@ impl NoteArchive {
       .read(true)
       .write(true)
       .create(true)
-      .open(self.pronouns_filepath.clone())
+      .open(self.filepaths["pronouns_filepath"].clone())
       .unwrap();
 
     let reader = BufReader::new(file);
@@ -4147,7 +4091,7 @@ impl NoteArchive {
     println!("{:-^44}", "-");
     println!("{:-^44}", " Pronouns ");
     println!("{:-^44}", "-");
-    println!("{:-^10} | {:-^31}", "ID", "Pronouns");
+    println!("{:-^10} | {:-^31}", " ID ", " Pronouns ");
     for p in &self.pronouns {
       println!("{: ^10} | {: ^31}", p.id, p.short_string());
     }
@@ -4322,7 +4266,7 @@ impl NoteArchive {
       lines.push_str(&p.to_string()[..]);
     }
     lines.push_str("##### pronouns #####");
-    let mut file = File::create(self.pronouns_filepath.clone()).unwrap();
+    let mut file = File::create(self.filepaths["pronouns_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -4788,7 +4732,7 @@ impl NoteArchive {
       );
     }
     println!("{:-^96}", "-");
-    println!("| {} | {}", "Choose date by ID.", "NEW / N: New note");
+    println!("| {} | {}", "Choose note by ID.", "NEW / N: New note");
   }
   fn display_user_recent_note_days(&self) {
     let mut heading = String::from(" Recent notes for ");
@@ -4809,7 +4753,7 @@ impl NoteArchive {
       );
     }
     println!("{:-^96}", "-");
-    println!("| {} | {} | {} | {}", "Choose date by ID.", "NEW / N: New note", "ALL / A: View all notes", "QUIT / Q: quit menu");
+    println!("| {} | {} | {} | {}", "Choose note by ID.", "NEW / N: New note", "ALL / A: View all notes", "QUIT / Q: quit menu");
   }
   fn load_note_day(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&NoteDay> = self.note_days.iter().find(|nd| nd.id == id);
@@ -5218,7 +5162,7 @@ impl NoteArchive {
       lines.push_str(&c.to_string()[..]);
     }
     lines.push_str("##### note_days #####");
-    let mut file = File::create(self.note_day_filepath.clone()).unwrap();
+    let mut file = File::create(self.filepaths["note_day_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -5670,7 +5614,10 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
-        _ => panic!("Unsupported StructureType saved to file."),
+        _ => return Err(Error::new(
+          ErrorKind::Other,
+          "Unsupported StructureType saved to file.",
+        )),
       };
 
       let content = values[2].clone();
@@ -5705,7 +5652,7 @@ impl NoteArchive {
       }
     }
     lines.push_str("##### note_templates #####");
-    let mut file = File::create(self.note_template_filepath.clone()).unwrap();
+    let mut file = File::create(self.filepaths["note_template_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -5786,14 +5733,15 @@ mod tests {
   #[test]
   fn can_open_blank_files() {
     {
-      let a = NoteArchive::new(
-        String::from("some_random_blank_user_file_name.txt"),
-        String::from("some_random_blank_client_file_name.txt"),
-        String::from("some_random_blank_collateral_file_name.txt"),
-        String::from("some_random_blank_pronouns_file_name.txt"),
-        String::from("some_random_blank_note_day_file_name.txt"),
-        String::from("some_random_blank_note_template_file_name.txt"),
-      );
+      let filepaths: HashMap<String, String> = [
+        (String::from("user_filepath"), String::from("some_random_blank_user_file_name.txt"),),
+        (String::from("client_filepath"), String::from("some_random_blank_client_file_name.txt"),),
+        (String::from("collateral_filepath"), String::from("some_random_blank_collateral_file_name.txt"),),
+        (String::from("pronouns_filepath"), String::from("some_random_blank_pronouns_file_name.txt"),),
+        (String::from("note_day_filepath"), String::from("some_random_blank_note_day_file_name.txt"),),
+        (String::from("note_template_filepath"), String::from("some_random_blank_note_template_file_name.txt"),),
+      ].iter().cloned().collect();
+      let a = NoteArchive::new(filepaths);
       assert_eq!(a.users, vec![]);
       assert_eq!(a.clients, vec![]);
       assert_eq!(
@@ -5857,14 +5805,15 @@ mod tests {
         String::from("his"),
         String::from("his"),
       );
-      let mut a1 = NoteArchive::new(
-        String::from("test_load_user.txt"),
-        String::from("test_load_client.txt"),
-        String::from("test_load_collateral.txt"),
-        String::from("test_load_pronouns.txt"),
-        String::from("test_load_note_days.txt"),
-        String::from("test_load_note_templates.txt"),
-      );
+        let filepaths: HashMap<String, String> = [
+          (String::from("user_filepath"), String::from("test_load_user.txt"),),
+          (String::from("client_filepath"), String::from("test_load_client.txt"),),
+          (String::from("collateral_filepath"), String::from("test_load_collateral.txt"),),
+          (String::from("pronouns_filepath"), String::from("test_load_pronouns.txt"),),
+          (String::from("note_day_filepath"), String::from("test_load_note_days.txt"),),
+          (String::from("note_template_filepath"), String::from("test_load_note_templates.txt"),),
+        ].iter().cloned().collect();
+      let mut a1 = NoteArchive::new(filepaths);
 
       a1.users = vec![test_user];
       a1.clients = vec![test_client];
@@ -5885,7 +5834,16 @@ mod tests {
   }
   #[test]
   fn creates_unique_new_instances() {
-    let mut notes = NoteArchive::new_test();
+    let filepaths: HashMap<String, String> = [
+      (String::from("user_filepath"), String::from("test_user_new_instance.txt"),),
+      (String::from("client_filepath"), String::from("test_client_new_instance.txt"),),
+      (String::from("collateral_filepath"), String::from("test_collateral_new_instance.txt"),),
+      (String::from("pronouns_filepath"), String::from("test_pronouns_new_instance.txt"),),
+      (String::from("note_day_filepath"), String::from("test_note_days_new_instance.txt"),),
+      (String::from("note_template_filepath"), String::from("test_note_templates_new_instance.txt"),),
+    ].iter().cloned().collect();
+
+    let mut notes = NoteArchive::new_test(filepaths.clone());
 
     let new_user_attempt =
       notes.generate_unique_new_user(String::from("Carl"), String::from("Carlson"), ICC, 1);
@@ -5955,13 +5913,24 @@ mod tests {
         String::from("zeirs")
       )
     );
+    for (_, v) in filepaths {
+      fs::remove_file(v).unwrap();
+    }
   }
 
   // pronouns
 
   #[test]
   fn gets_current_pronouns() {
-    let mut notes = NoteArchive::new_test();
+    let filepaths: HashMap<String, String> = [
+      (String::from("user_filepath"), String::from("test_user_current_pronouns.txt"),),
+      (String::from("client_filepath"), String::from("test_client_current_pronouns.txt"),),
+      (String::from("collateral_filepath"), String::from("test_collateral_current_pronouns.txt"),),
+      (String::from("pronouns_filepath"), String::from("test_pronouns_current_pronouns.txt"),),
+      (String::from("note_day_filepath"), String::from("test_note_days_current_pronouns.txt"),),
+      (String::from("note_template_filepath"), String::from("test_note_templates_current_pronouns.txt"),),
+    ].iter().cloned().collect();
+    let mut notes = NoteArchive::new_test(filepaths.clone());
 
     notes.load_user(1).unwrap();
 
@@ -5970,11 +5939,22 @@ mod tests {
     let current_pronouns_id = notes.current_user().pronouns;
 
     assert_eq!(notes.get_pronouns_by_id(current_pronouns_id).unwrap().id, 1);
+    for (_, v) in filepaths {
+      fs::remove_file(v).unwrap();
+    }
   }
 
   #[test]
   fn updates_current_pronouns() {
-    let mut notes = NoteArchive::new_test();
+    let filepaths: HashMap<String, String> = [
+      (String::from("user_filepath"), String::from("test_user_updates_pronouns.txt"),),
+      (String::from("client_filepath"), String::from("test_client_updates_pronouns.txt"),),
+      (String::from("collateral_filepath"), String::from("test_collateral_updates_pronouns.txt"),),
+      (String::from("pronouns_filepath"), String::from("test_pronouns_updates_pronouns.txt"),),
+      (String::from("note_day_filepath"), String::from("test_note_days_updates_pronouns.txt"),),
+      (String::from("note_template_filepath"), String::from("test_note_templates_updates_pronouns.txt"),),
+    ].iter().cloned().collect();
+    let mut notes = NoteArchive::new_test(filepaths.clone());
 
     notes.load_user(1).unwrap();
 
@@ -5983,5 +5963,9 @@ mod tests {
 
     notes.update_current_pronouns(1);
     assert_eq!(notes.current_user().pronouns, 1);
+
+    for (_, v) in filepaths {
+      fs::remove_file(v).unwrap();
+    }
   }
 }

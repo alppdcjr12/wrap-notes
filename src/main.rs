@@ -10,13 +10,14 @@ pub const ND_FL: &str = "note_days.txt";
 pub const NT_FL: &str = "note_templates.txt";
 
 fn main() {
-  let mut a = NoteArchive::new(
-    String::from(USR_FL),
-    String::from(CLT_FL),
-    String::from(COL_FL),
-    String::from(PRN_FL),
-    String::from(ND_FL),
-    String::from(NT_FL),
-  );
+  let filepaths = [
+    (String::from("user_filepath"), String::from(USR_FL),),
+    (String::from("client_filepath"), String::from(CLT_FL),),
+    (String::from("collateral_filepath"), String::from(COL_FL),),
+    (String::from("pronouns_filepath"), String::from(PRN_FL),),
+    (String::from("note_day_filepath"), String::from(ND_FL),),
+    (String::from("note_template_filepath"), String::from(NT_FL),),
+  ].iter().cloned().collect();
+  let mut a = NoteArchive::new(filepaths);
   a.run();
 }
