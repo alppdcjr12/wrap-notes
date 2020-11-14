@@ -6,6 +6,20 @@ pub mod user;
 pub use user::*;
 pub use crate::EmployeeRole::{FP, ICC};
 pub use crate::SupportType::{Natural, Formal};
+pub use crate::StructureType::{
+  CarePlanMeeting,
+  CarePlanMeetingVerbose,
+  Intake,
+  Assessment,
+  SNCD,
+  HomeVisit,
+  AgendaPrep,
+  Debrief,
+  PhoneCall,
+  Scheduling,
+  SentEmail,
+  Referral
+};
 
 pub mod note_archive;
 pub use note_archive::*;
@@ -21,6 +35,9 @@ pub use pronouns::*;
 
 pub mod note_day;
 pub use note_day::*;
+
+pub mod note;
+pub use note::*;
 
 pub mod utils;
 pub use utils::*;

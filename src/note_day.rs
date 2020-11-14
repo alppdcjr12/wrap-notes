@@ -31,8 +31,8 @@ impl NoteDay {
       (String::from("client_id"), client_id),
     ].iter().cloned().collect();
     let foreign_keys: HashMap<String, Vec<u32>> = [
-      (String::from("collaterals"), collaterals),
-      (String::from("notes"), notes),
+      (String::from("collateral_ids"), collaterals),
+      (String::from("note_ids"), notes),
     ].iter().cloned().collect();
     NoteDay {
       id,
@@ -80,16 +80,16 @@ impl fmt::Display for NoteDay {
       &self.date.year(),
       &self.date.month(),
       &self.date.day(),
-      &self.foreign_key[&String::from("user_id")],
-      &self.foreign_key[&String::from("client_id")],
+      &self.foreign_key["user_id"],
+      &self.foreign_key["client_id"],
       &self
-        .foreign_keys[&String::from("notes")]
+        .foreign_keys["note_ids"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
         .join("#"),
       &self
-        .foreign_keys[&String::from("collaterals")]
+        .foreign_keys["collateral_ids"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()

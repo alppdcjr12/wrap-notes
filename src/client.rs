@@ -32,7 +32,7 @@ impl Client {
     collaterals: Vec<u32>,
     ) -> Client {
     let foreign_keys: HashMap<String, Vec<u32>> = [
-      (String::from("collaterals"), collaterals),
+      (String::from("collateral_ids"), collaterals),
     ].iter().cloned().collect();
     Client {
       id,
@@ -93,7 +93,7 @@ impl fmt::Display for Client {
       &self.dob.day(),
       &self.pronouns,
       &self
-        .foreign_keys[&String::from("collaterals")]
+        .foreign_keys["collateral_idss"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
@@ -116,12 +116,12 @@ mod tests {
     assert_eq!(c1.last_name, String::from("Smith"));
     assert_eq!(c1.dob, NaiveDate::from_ymd(2000, 1, 1));
     assert_eq!(c1.pronouns, 2);
-    assert_eq!(c1.foreign_keys[&String::from("collaterals")], test_vec);
+    assert_eq!(c1.foreign_keys["collateral_ids"], test_vec);
     assert_eq!(c2.id, 2);
     assert_eq!(c2.first_name, String::from("Joe"));
     assert_eq!(c2.last_name, String::from("Shmoe"));
     assert_eq!(c2.dob, NaiveDate::from_ymd(2000, 1, 2));
     assert_eq!(c2.pronouns, 1);
-    assert_eq!(c2.foreign_keys[&String::from("collaterals")], test_vec);
+    assert_eq!(c2.foreign_keys["collateral_ids"], test_vec);
   }
 }

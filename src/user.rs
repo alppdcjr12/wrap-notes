@@ -59,8 +59,8 @@ impl User {
     collaterals: Vec<u32>,
   ) -> User {
     let foreign_keys: HashMap<String, Vec<u32>> = [
-      (String::from("clients"), clients),
-      (String::from("collaterals"), collaterals),
+      (String::from("client_ids"), clients),
+      (String::from("collateral_ids"), collaterals),
     ].iter().cloned().collect();
     User {
       id,
@@ -100,13 +100,13 @@ impl fmt::Display for User {
       &self.role,
       &self.pronouns,
       &self
-        .foreign_keys[&String::from("clients")]
+        .foreign_keys["client_ids"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
         .join("#"),
       &self
-        .foreign_keys[&String::from("collaterals")]
+        .foreign_keys["collateral_ids"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
@@ -127,12 +127,12 @@ mod tests {
     assert_eq!(u1.id, 1);
     assert_eq!(u1.first_name, String::from("Carol"));
     assert_eq!(u1.last_name, String::from("Carolson"));
-    assert_eq!(u1.foreign_keys[&String::from("clients")], test_vec);
-    assert_eq!(u1.foreign_keys[&String::from("collaterals")], test_vec);
+    assert_eq!(u1.foreign_keys["client_ids"], test_vec);
+    assert_eq!(u1.foreign_keys["collateral_ids"], test_vec);
     assert_eq!(u2.id, 2);
     assert_eq!(u2.first_name, String::from("Kerri"));
     assert_eq!(u2.last_name, String::from("Kerrison"));
-    assert_eq!(u2.foreign_keys[&String::from("clients")], test_vec);
-    assert_eq!(u2.foreign_keys[&String::from("collaterals")], test_vec);
+    assert_eq!(u2.foreign_keys["client_ids"], test_vec);
+    assert_eq!(u2.foreign_keys["collateral_ids"], test_vec);
   }
 }

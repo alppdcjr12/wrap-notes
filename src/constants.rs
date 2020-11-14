@@ -31,3 +31,58 @@ pub const INDIRECT_ROLES: [&'static str; 23] = [
   "mobile crisis clinician"
 ];
 
+pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 1] = [
+  (
+    "Care plan meeting",
+    "\
+      This is a template for {{ u1 }} for the client {{ c1 }}. \
+    ",
+  ),
+];
+
+pub const BLANKS: [(&'static str, &'static str); 11] = [
+  (
+    "{{c}}",
+    "Current client's name",
+  ),
+  (
+    "{{co}}",
+    "One or more collaterals(s)",
+  ),
+  (
+    "{{coall}}",
+    "All collaterals for the current client",
+  ),
+  (
+    "{{p#-#}}",
+    "Pronouns for the person in another blank",
+  ),
+  (
+    "{{t}}",
+    "Today's date",
+  ),
+  (
+    "{{nd}}",
+    "The date of the note being written",
+  ),
+  (
+    "{{d}}",
+    "Document"
+  ),
+  (
+    "{{m}}",
+    "Meeting"
+  ),
+  (
+    "{{a}}",
+    "General action",
+  ),
+  (
+    "{{o}}",
+    "Other phrase"
+  ),
+  (
+    "{{i}}",
+    "Custom user input",
+  ),
+];
