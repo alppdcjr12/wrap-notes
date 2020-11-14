@@ -1,4 +1,0 @@
-##### note_templates #####
-1 | Care Plan Meeting | ICC met with {{co}} for a Care Plan Meeting for {{c}}. | 2 | 
-2 | Phone Call | ICC called {{co}} to discuss a referral for IHT services. | 1 | 
-##### note_templates #####

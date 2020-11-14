@@ -808,8 +808,8 @@ impl NoteArchive {
     }
   }
   fn choose_user(&mut self) -> u32 {
-    self.display_users();
-    let verified_id = loop {
+    let verified_id = 'outer: loop {
+      self.display_users();
       let chosen_id = loop {
         let input = loop {
           let mut choice = String::new();
@@ -819,15 +819,18 @@ impl NoteArchive {
             Ok(_) => break choice,
             Err(e) => {
               println!("Could not read input; try again ({}).", e);
-            continue;
+              continue;
             }
           }
         };
         let input = input.trim();
         match input {
           "NEW" | "new" | "New" | "N" | "n" => {
-            let num = self.create_user_get_id();
-            break num;
+            let maybe_user_id = self.create_user_get_id();
+            match maybe_user_id {
+              Some(num) => break num,
+              None => continue 'outer,
+            }
           }
           _ => match input.parse() {
             Ok(num) => break num,
@@ -848,11 +851,12 @@ impl NoteArchive {
     };
     verified_id
   }
-  fn create_user_get_id(&mut self) -> u32 {
+  fn create_user_get_id(&mut self) -> Option<u32> {
     let user = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println!("Enter your first name.");
+        println!("Enter 'CANCEL' at any time to cancel.");
+        println!("First name:");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
@@ -862,9 +866,12 @@ impl NoteArchive {
           }
         };
       };
+      if first_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
       let last_name = loop {
         let mut last_name_choice = String::new();
-        println!("Enter your last name.");
+        println!("Last name:");
         let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
         match last_name_attempt {
           Ok(_) => break String::from(last_name_choice.trim()),
@@ -874,14 +881,18 @@ impl NoteArchive {
           }
         };
       };
+      if last_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
       let role: EmployeeRole = loop {
         let mut role_choice = String::new();
-        println!("Enter your role ('ICC' or 'FP').");
+        println!("Role ('ICC' or 'FP'):");
         let role_attempt = io::stdin().read_line(&mut role_choice);
         match role_attempt {
-          Ok(_) => match role_choice.trim() {
-            "ICC" | "icc" | "Icc" => break ICC,
-            "FP" | "fp" | "Fp" => break FP,
+          Ok(_) => match &role_choice.trim().to_ascii_lowercase()[..] {
+            "icc" => break ICC,
+            "fp" => break FP,
+            "cancel" => return None,
             _ => {
               println!("Please choose role 'FP' or 'ICC.'");
               continue;
@@ -893,7 +904,33 @@ impl NoteArchive {
           }
         };
       };
-      let pronouns = self.choose_pronouns();
+      let pronouns = 'pronouns: loop {
+        match self.choose_pronouns_option() {
+          Some(p) => break p,
+          None => {
+            loop {
+              println!("Cancel? (Y/N)");
+              let mut cancel = String::new();
+              let cancel_attempt = io::stdin().read_line(&mut cancel);
+              match cancel_attempt {
+                Ok(_) => match &cancel.trim().to_lowercase()[..] {
+                  "yes" | "y"  => return None,
+                  "no" | "n" | "cancel" => continue 'pronouns,
+                  _ => {
+                    println!("Please choose either 'yes/y' or 'no/n'.");
+                    continue;
+                  }
+                },
+                Err(e) => {
+                  println!("Failed to read input.");
+                  continue;
+                }
+              }
+  
+            }
+          }
+        } 
+      };
       let user_attempt = self.generate_unique_new_user(first_name, last_name, role, pronouns);
       match user_attempt {
         Ok(user) => break user,
@@ -905,7 +942,7 @@ impl NoteArchive {
     };
     let id = user.id;
     self.save_user(user);
-    id
+    Some(id)
   }
   fn user_dup_id_option(&self, first_name: &str, last_name: &str, role: &EmployeeRole) -> Option<u32> {
     let names_and_roles: Vec<(&str, &str, &EmployeeRole, u32)> = self
@@ -1164,7 +1201,11 @@ impl NoteArchive {
           }
         },
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
-          self.current_user_mut().pronouns = self.choose_pronouns();
+          let pronouns_option = self.choose_pronouns_option();
+          match pronouns_option {
+            Some(p) => self.current_user_mut().pronouns = p,
+            None => (),
+          }
         }
         _ => println!("Invalid entry."),
       }
@@ -1410,8 +1451,11 @@ impl NoteArchive {
           break;
         },
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_client_get_id();
-          self.update_current_clients(new_id);
+          let maybe_new_id = self.create_client_get_id();
+          match maybe_new_id {
+            Some(new_id) => self.update_current_clients(new_id),
+            None => continue,
+          }
           break;
         },
         _ => match input.parse() {
@@ -1462,8 +1506,11 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_client_get_id();
-          self.update_current_clients(new_id);
+          let maybe_new_id = self.create_client_get_id();
+          match maybe_new_id {
+            Some(new_id) => self.update_current_clients(new_id),
+            None => (),
+          }
           continue;
         },
         "ADD" | "add" | "Add" | "a" | "A" => {
@@ -1591,8 +1638,11 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_client_get_id();
-          self.update_current_clients(new_id);
+          let maybe_new_id = self.create_client_get_id();
+          match maybe_new_id {
+            Some(new_id) => self.update_current_clients(new_id),
+            None => (),
+          }
           continue;
         },
         "ADD" | "add" | "Add" | "a" | "A" => {
@@ -1663,10 +1713,11 @@ impl NoteArchive {
       }
     }
   }
-  fn create_client_get_id(&mut self) -> u32 {
+  fn create_client_get_id(&mut self) -> Option<u32> {
     let client = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
+        println!("Enter 'CANCEL' at any time to cancel.");
         println!("Enter client's first name.");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
@@ -1677,6 +1728,9 @@ impl NoteArchive {
           }
         };
       };
+      if first_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
       let last_name = loop {
         let mut last_name_choice = String::new();
         println!("Enter client's last name.");
@@ -1689,13 +1743,21 @@ impl NoteArchive {
           }
         };
       };
+      if last_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
       let dob: NaiveDate = loop {
         let birth_year = loop {
           let mut birth_year_choice = String::new();
           println!("Enter client's birth year.");
           let birth_year_attempt = io::stdin().read_line(&mut birth_year_choice);
           let birth_year_attempt = match birth_year_attempt {
-            Ok(_) => birth_year_choice.trim().parse(),
+            Ok(_) => {
+              if birth_year_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                return None;
+              }
+              birth_year_choice.trim().parse()
+            },
             Err(e) => {
               println!("Invalid birth year: {}", e);
               continue;
@@ -1719,7 +1781,12 @@ impl NoteArchive {
           println!("Enter client's birth month as a decimal number (1-12).");
           let birth_month_attempt = io::stdin().read_line(&mut birth_month_choice);
           let birth_month_attempt = match birth_month_attempt {
-            Ok(_) => birth_month_choice.trim().parse(),
+            Ok(_) => {
+              if birth_month_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                return None;
+              }
+              birth_month_choice.trim().parse()
+            },
             Err(e) => {
               println!("Invalid birth month: {}", e);
               continue;
@@ -1743,7 +1810,12 @@ impl NoteArchive {
           println!("Enter client's birth day as a decimal number (1-31).");
           let birth_day_attempt = io::stdin().read_line(&mut birth_day_choice);
           let birth_day_attempt = match birth_day_attempt {
-            Ok(_) => birth_day_choice.trim().parse(),
+            Ok(_) => {
+              if birth_day_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                return None;
+              }
+              birth_day_choice.trim().parse()
+            },
             Err(e) => {
               println!("Invalid birth day: {}", e);
               continue;
@@ -1775,7 +1847,33 @@ impl NoteArchive {
         };
       };
 
-      let pronouns = self.choose_pronouns();
+      let pronouns = 'pronouns: loop {
+        match self.choose_pronouns_option() {
+          Some(p) => break p,
+          None => {
+            loop {
+              println!("Cancel? (Y/N)");
+              let mut cancel = String::new();
+              let cancel_attempt = io::stdin().read_line(&mut cancel);
+              match cancel_attempt {
+                Ok(_) => match &cancel.trim().to_lowercase()[..] {
+                  "yes" | "y"  => return None,
+                  "no" | "n" | "cancel" => continue 'pronouns,
+                  _ => {
+                    println!("Please choose either 'yes/y' or 'no/n'.");
+                    continue;
+                  }
+                },
+                Err(e) => {
+                  println!("Failed to read line.");
+                  continue;
+                }
+              }
+  
+            }
+          }
+        } 
+      };
 
       let client_attempt = self.generate_unique_new_client(first_name, last_name, dob, pronouns);
       match client_attempt {
@@ -1831,7 +1929,7 @@ impl NoteArchive {
 
     let id = client.id;
     self.save_client(client);
-    id
+    Some(id)
   }
   fn client_dup_id_option(&self, first_name: &str, last_name: &str, dob: &NaiveDate) -> Option<u32> {
     let names_and_dobs: Vec<(&str, &str, &NaiveDate, u32)> = self
@@ -1999,7 +2097,11 @@ impl NoteArchive {
           }
         }
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
-          self.current_client_mut().pronouns = self.choose_pronouns();
+          let maybe_pronouns = self.choose_pronouns_option();
+          match maybe_pronouns {
+            Some(p) => self.current_client_mut().pronouns = p,
+            None => (),
+          }
         }
         _ => {
           println!("Invalid entry.");
@@ -2492,8 +2594,11 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_collateral_get_id();
-          self.update_current_collaterals(new_id);
+          let maybe_new_id = self.create_collateral_get_id();
+          match maybe_new_id {
+            Some(new_id) => self.update_current_collaterals(new_id),
+            None => (),
+          }
           continue;
         },
         "ADD" | "add" | "Add" | "a" | "A" => {
@@ -2591,7 +2696,11 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_collateral_get_id();
+          let maybe_new_id = self.create_collateral_get_id();
+          match maybe_new_id {
+            Some(_) => (),
+            None => (),
+          }
           continue;
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
@@ -2716,11 +2825,12 @@ impl NoteArchive {
       }
     }
   }
-  fn create_collateral_get_id(&mut self) -> u32 {
+  fn create_collateral_get_id(&mut self) -> Option<u32> {
     let collateral = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println!("Enter collateral's first name.");
+        println!("Enter 'CANCEL' at any time to cancel.");
+        println!("Collateral's first name:");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
@@ -2730,9 +2840,12 @@ impl NoteArchive {
           }
         };
       };
+      if first_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
       let last_name = loop {
         let mut last_name_choice = String::new();
-        println!("Enter collateral's last name.");
+        println!("Collateral's last name:");
         let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
         match last_name_attempt {
           Ok(_) => break String::from(last_name_choice.trim()),
@@ -2742,20 +2855,52 @@ impl NoteArchive {
           }
         };
       };
+      if last_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
       let title = loop {
         let mut title_choice = String::new();
         println!("Enter collateral's role/title.");
         let title_attempt = io::stdin().read_line(&mut title_choice);
         match title_attempt {
-          Ok(_) => break String::from(title_choice.trim()).to_lowercase(),
+          Ok(_) => break String::from(title_choice.trim()),
           Err(e) => {
             println!("Invalid title: {}", e);
             continue;
           }
         };
       };
+      if title.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
 
-      let pronouns = self.choose_pronouns();
+      let pronouns = 'pronouns: loop {
+        match self.choose_pronouns_option() {
+          Some(p) => break p,
+          None => {
+            loop {
+              println!("Cancel? (Y/N)");
+              let mut cancel = String::new();
+              let cancel_attempt = io::stdin().read_line(&mut cancel);
+              match cancel_attempt {
+                Ok(_) => match &cancel.trim().to_lowercase()[..] {
+                  "yes" | "y" => return None,
+                  "no" | "n" | "cancel" => continue 'pronouns,
+                  _ => {
+                    println!("Please choose either 'yes/y' or 'no/n'.");
+                    continue;
+                  }
+                },
+                Err(e) => {
+                  println!("Failed to read input.");
+                  continue;
+                }
+              }
+  
+            }
+          }
+        } 
+      };
 
       let (support_type, indirect_support, institution) = if FAMILY_ROLES.iter().any(|role| role == &title) {
         (Natural, false, None)
@@ -2798,6 +2943,7 @@ impl NoteArchive {
             Ok(_) => match support_type_choice.trim() {
               "Natural" | "natural" | "NATURAL" | "NAT" | "Nat" | "nat" | "N" | "n" => Natural,
               "Formal" | "formal" | "FORMAL" | "FORM" | "Form" | "form" | "F" | "f" => Formal,
+              "CANCEL" | "cancel" | "Cancel" => return None,
               _ => {
                 println!("Please choose NATURAL or FORMAL.");
                 thread::sleep(time::Duration::from_secs(1));
@@ -2822,6 +2968,7 @@ impl NoteArchive {
                 Ok(_) => match indirect_choice.trim() {
                   "YES" | "yes" | "Y" | "y" => false,
                   "NO" | "no" | "N" | "n" => true,
+                  "CANCEL" | "cancel" | "Cancel" => return None,
                   _ => {
                     println!("Please choose YES or NO.");
                     thread::sleep(time::Duration::from_secs(1));
@@ -2841,7 +2988,13 @@ impl NoteArchive {
               println!("Enter collateral's institution.");
               let institution_attempt = io::stdin().read_line(&mut institution_choice);
               match institution_attempt {
-                Ok(_) => break Some(String::from(institution_choice.trim())),
+                Ok(_) => {
+                  if institution_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                    return None;
+                  } else {
+                    break Some(String::from(institution_choice.trim()));
+                  }
+                }
                 Err(e) => {
                   println!("Invalid institution: {}", e);
                   continue;
@@ -2896,6 +3049,7 @@ impl NoteArchive {
                     match &choice[..] {
                       "YES" | "yes" | "Y" | "y" => break collat.clone(),
                       "NO" | "no" | "N" | "n" => continue,
+                      "CANCEL" | "Cancel" | "cancel" => return None,
                       _ => println!("Invalid command."),
                     }
                   }
@@ -2932,7 +3086,7 @@ impl NoteArchive {
       Some(_) => (),
       None => self.save_collateral(collateral),
     }
-    id
+    Some(id)
   }
   fn collateral_dup_id_option(&self, first_name: &str, last_name: &str, title: &str, institution: &Option<String>) -> Option<u32> {
     let names_and_roles: Vec<(&str, &str, &str, &Option<String>, u32)> = self
@@ -3147,11 +3301,16 @@ impl NoteArchive {
           break;
         },
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_collateral_get_id();
-          self.update_current_collaterals(new_id);
-          println!("Collateral added to client '{}'.", self.current_client().full_name());
-          thread::sleep(time::Duration::from_secs(2));
-          break;
+          let maybe_new_id = self.create_collateral_get_id();
+          match maybe_new_id {
+            Some(new_id) => {
+              self.update_current_collaterals(new_id);
+              println!("Collateral added to client '{}'.", self.current_client().full_name());
+              thread::sleep(time::Duration::from_secs(2));
+              break;
+            },
+            None => continue,
+          }
         },
         _ => match input.parse() {
           Ok(num) => {
@@ -3316,7 +3475,11 @@ impl NoteArchive {
           }
         },
         "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
-          self.current_collateral_mut().pronouns = self.choose_pronouns();
+          let maybe_pronouns = self.choose_pronouns_option();
+          match maybe_pronouns {
+            Some(p) => self.current_collateral_mut().pronouns = p,
+            None => (),
+          }
         },
         "FORMAL" | "formal" | "Formal" => {
           if self.current_collateral().support_type == Formal {
@@ -3924,7 +4087,7 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
+        println!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu/cancel ");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice,
@@ -4646,7 +4809,7 @@ impl NoteArchive {
       );
     }
     println!("{:-^96}", "-");
-    println!("| {} | {} | {}", "Choose date by ID.", "NEW / N: New note", "ALL / A: View all notes");
+    println!("| {} | {} | {} | {}", "Choose date by ID.", "NEW / N: New note", "ALL / A: View all notes", "QUIT / Q: quit menu");
   }
   fn load_note_day(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&NoteDay> = self.note_days.iter().find(|nd| nd.id == id);
@@ -4683,7 +4846,11 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_note_day_get_id();
+          let maybe_new_id = self.create_note_day_get_id();
+          match maybe_new_id {
+            Some(_) => (),
+            None => (),
+          }
           continue;
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
@@ -4763,9 +4930,10 @@ impl NoteArchive {
       }
     }
   }
-  fn create_note_day_get_id(&mut self) -> u32 {
+  fn create_note_day_get_id(&mut self) -> Option<u32> {
     let note_day = loop {
       let mut today_choice = String::new();
+      println!("Enter 'CANCEL' at any time to cancel.");
       println!("Note for today? (Y/N)");
       let today_attempt = io::stdin().read_line(&mut today_choice);
       match today_attempt {
@@ -4793,18 +4961,23 @@ impl NoteArchive {
                   println!("What year?");
                   let year_attempt = io::stdin().read_line(&mut year_choice);
                   match year_attempt {
-                    Ok(_) => match year_choice.trim().parse() {
-                      Ok(val) => {
-                        if val > 9999 || val < 1000 {
-                          println!("Please enter a valid year.");
-                          continue;
-                        } else {
-                          break val;
-                        }
+                    Ok(_) => {
+                      if year_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                        return None;
                       }
-                      Err(e) => {
-                        println!("Invalid repsonse: {}", e);
-                        continue;
+                      match year_choice.trim().parse() {
+                        Ok(val) => {
+                          if val > 9999 || val < 1000 {
+                            println!("Please enter a valid year.");
+                            continue;
+                          } else {
+                            break val;
+                          }
+                        }
+                        Err(e) => {
+                          println!("Invalid repsonse: {}", e);
+                          continue;
+                        }
                       }
                     }
                     Err(e) => {
@@ -4812,7 +4985,8 @@ impl NoteArchive {
                       continue;
                     }
                   }
-                }
+                },
+                "Cancel" | "CANCEL" | "cancel" => return None,
                 _ => {
                   println!("Please choose 'yes' or 'no.'");
                   continue;
@@ -4836,18 +5010,23 @@ impl NoteArchive {
                   println!("What month?");
                   let month_attempt = io::stdin().read_line(&mut month_choice);
                   match month_attempt {
-                    Ok(_) => match month_choice.trim().parse() {
-                      Ok(val) => {
-                        if val > 12 || val < 1 {
-                          println!("Please enter a valid month.");
-                          continue;
-                        } else {
-                          break val;
-                        }
+                    Ok(_) => {
+                      if month_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                        return None;
                       }
-                      Err(e) => {
-                        println!("Invalid repsonse: {}", e);
-                        continue;
+                      match month_choice.trim().parse() {
+                        Ok(val) => {
+                          if val > 12 || val < 1 {
+                            println!("Please enter a valid month.");
+                            continue;
+                          } else {
+                            break val;
+                          }
+                        }
+                        Err(e) => {
+                          println!("Invalid repsonse: {}", e);
+                          continue;
+                        }
                       }
                     }
                     Err(e) => {
@@ -4855,7 +5034,8 @@ impl NoteArchive {
                       continue;
                     }
                   }
-                }
+                },
+                "CANCEL" | "cancel" | "Cancel" => return None,
                 _ => {
                   println!("Please choose 'yes' or 'no.'");
                   continue;
@@ -4872,18 +5052,23 @@ impl NoteArchive {
             println!("What day?");
             let day_attempt = io::stdin().read_line(&mut day_choice);
             match day_attempt {
-              Ok(_) => match day_choice.trim().parse() {
-                Ok(val) => {
-                  if val > 31 || val < 1 {
-                    println!("Please enter a valid day.");
-                    continue;
-                  } else {
-                    break val;
-                  }
+              Ok(_) => {
+                if day_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                  return None;
                 }
-                Err(e) => {
-                  println!("Invalid repsonse: {}", e);
-                  continue;
+                match day_choice.trim().parse() {
+                  Ok(val) => {
+                    if val > 31 || val < 1 {
+                      println!("Please enter a valid day.");
+                      continue;
+                    } else {
+                      break val;
+                    }
+                  }
+                  Err(e) => {
+                    println!("Invalid repsonse: {}", e);
+                    continue;
+                  }
                 }
               }
               Err(e) => {
@@ -4903,6 +5088,7 @@ impl NoteArchive {
             }
           }
         },
+        "CANCEL" | "cancel" | "Cancel" => return None,
         _ => {
           println!("Invalid command.");
           continue;
@@ -4928,7 +5114,7 @@ impl NoteArchive {
 
     let id = note_day.id;
     self.save_note_day(note_day);
-    id
+    Some(id)
   }
   fn note_day_dup_id_option(&self, date: &NaiveDate, user_id: u32, client_id: u32) -> Option<u32> {
     let dates_and_ids: Vec<(&NaiveDate, u32, u32, u32)> = self
@@ -5184,7 +5370,11 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "NEW" | "new" | "New" | "n" | "N" => {
-          let new_id = self.create_note_template_get_id();
+          let maybe_new_id = self.create_note_template_get_id();
+          match maybe_new_id {
+            Some(_) => (),
+            None => (),
+          }
           continue;
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
@@ -5277,10 +5467,11 @@ impl NoteArchive {
     println!("{:-^96}", "-");
     println!("| {}", "Choose template type by name, ID, or abbreviation.");
   }
-  fn create_note_template_get_id(&mut self) -> u32 {
+  fn create_note_template_get_id(&mut self) -> Option<u32> {
     let note_template = loop {
       let structure = loop {
         self.display_structure_types();
+        println!("Enter 'CANCEL' at any time to cancel.");
         println!("Build a template for what kind of record?");
         let mut structure_choice = String::new();
         let structure_attempt = io::stdin().read_line(&mut structure_choice);
@@ -5305,6 +5496,7 @@ impl NoteArchive {
           "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Scheduling,
           "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => SentEmail,
           "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Referral,
+          "cancel" | "CANCEL" | "Cancel" => return None,
           _ => {
             println!("Invalid choice.");
             thread::sleep(time::Duration::from_secs(2));
@@ -5360,6 +5552,7 @@ impl NoteArchive {
             }
             break;
           },
+          "CANCEL" | "cancel" | "Cancel" => return None,
           _ => {
             println!("Invalid command.");
             thread::sleep(time::Duration::from_secs(2));
@@ -5380,7 +5573,7 @@ impl NoteArchive {
 
     let id = note_template.id;
     self.save_note_template(note_template);
-    id
+    Some(id)
   }
   fn note_template_dup_id_option(&self, structure: &StructureType, content: String, user_id: u32) -> Option<u32> {
     let template_fields: Vec<(&StructureType, &str, u32, u32)> = self

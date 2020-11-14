@@ -1,4 +1,0 @@
-##### users #####
-1 | Pete | Peteson | ICC | 1 | 1#2 | 1#2
-2 | Sandy | Sandyson | FP | 1 | 1 | 1
-##### users #####

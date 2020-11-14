@@ -1,4 +1,0 @@
-##### collaterals #####
-1 | Jerry | Smith | TM | Kaleidoscope Family Solutions | 2 | Formal | false
-2 | Barry | Plith | OPT | Family Solutions, Inc. | 1 | Formal | false
-##### collaterals #####

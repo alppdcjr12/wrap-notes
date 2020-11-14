@@ -1,4 +1,0 @@
-##### clients #####
-1 | Pete | McLastName | 2006-1-2 | 1 | 1#2
-2 | Sandy | O'Lastnymn | 2007-2-3 | 1 | 
-##### clients #####
