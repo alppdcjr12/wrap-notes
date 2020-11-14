@@ -93,7 +93,7 @@ impl fmt::Display for Client {
       &self.dob.day(),
       &self.pronouns,
       &self
-        .foreign_keys["collateral_idss"]
+        .foreign_keys["collateral_ids"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()

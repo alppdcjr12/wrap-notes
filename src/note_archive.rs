@@ -70,7 +70,7 @@ fn display_blanks() {
 fn choose_blanks() -> usize {
   loop {
     display_blanks();
-    let input = String::new();
+    let mut input = String::new();
     let input_attempt = io::stdin().read_line(&mut input);
     match input_attempt {
       Ok(_) => (),
@@ -1791,8 +1791,8 @@ impl NoteArchive {
                 Some(client) => {
                   let new_vec = vec![];
                   let current_clients = match self.foreign_key.get("current_user_id") {
-                    Some(_) => &self.get_current_clients().iter().map(|c| c.id).collect(),
-                    None => &new_vec,
+                    Some(_) => self.get_current_clients().iter().map(|c| c.id).collect::<Vec<u32>>().clone(),
+                    None => new_vec,
                   };
                   if !current_clients.iter().any(|c_id| c_id == id_ref ) {
                     let mut conf = String::new();
@@ -2877,7 +2877,7 @@ impl NoteArchive {
                 Some(collat) => {
                   let new_vec = vec![];
                   let current_collats = match self.foreign_key.get("current_client_id") {
-                    Some(_) => self.get_current_collaterals().iter().map(|co| co.id).collect().clone(),
+                    Some(_) => self.get_current_collaterals().iter().map(|co| co.id).collect::<Vec<u32>>().clone(),
                     None => new_vec.clone(),
                   };
                   if !self.current_user_collaterals().iter().any(|co| co.id == *id_ref ) || !current_collats.iter().any(|co_id| co_id == id_ref ) {
@@ -3013,12 +3013,12 @@ impl NoteArchive {
       let support_type = match &values[6][..] {
         "Natural" => Natural,
         "Formal" => Formal,
-        _ => panic!("Invalud support type stored in file."),
+        _ => panic!("Invalid SupportType saved in file."),
       };
       let indirect_support = match &values[7][..] {
         "true" => true,
         "false" => false,
-        _ => panic!("Invalud indirect support boolean value stored in file."),
+        _ => panic!("Invalid 'indirect support boolean' value stored in file."),
       };
 
       let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
@@ -5298,7 +5298,7 @@ impl NoteArchive {
           "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Intake,
           "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Assessment,
           "5" | "SNCD" | "sncd" | "Sncd" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => SNCD,
-          "6" | "Home Visit" | "home visit" | "Home visit" | "home visit" | "HV" | "hv" | "Hv" => HomeVisit,
+          "6" | "Home Visit" | "home visit" | "Home visit" | "HV" | "hv" | "Hv" => HomeVisit,
           "7" | "Agenda Prep" | "Agenda prep" | "agenda prep" | "AGENDA PREP" | "AP" | "ap" | "Ap" => AgendaPrep,
           "8" | "Debrief" | "debrief" | "DEBRIEF" | "D" | "d" => Debrief,
           "9" | "Phone call" | "Phone Call" | "PHONE CALL" | "phone call" | "PC" | "pc" => PhoneCall,
@@ -5360,6 +5360,11 @@ impl NoteArchive {
             }
             break;
           },
+          _ => {
+            println!("Invalid command.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
         }
       };
 
@@ -5440,6 +5445,9 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
+        _t => {
+          panic!("Support not added for reading default Structure Type from constant.");
+        }
       };
       let content = String::from(def.1);
       let nt = NoteTemplate::new(i, structure, false, content, None);
@@ -5469,6 +5477,7 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
+        _ => panic!("Unsupported StructureType saved to file."),
       };
 
       let content = values[2].clone();
@@ -5489,7 +5498,7 @@ impl NoteArchive {
     note_templates.sort_by(|a, b|
       match (&a.foreign_key.get("user_id"), &b.foreign_key.get("user_id")) {
         (Some(anum), Some(bnum)) => anum.cmp(&bnum),
-        _ => b.foreign_key["user_id"].cmp(&a.foreign_key["user_id"]),
+        _ => b.foreign_key.get("user_id").cmp(&a.foreign_key.get("user_id")),
       }
     );
     note_templates.sort_by(|a, b| a.structure.cmp(&b.structure));
@@ -5695,10 +5704,10 @@ mod tests {
     );
 
     let new_pronouns_attempt = notes.generate_unique_new_pronouns(
-      String::from("they"),
-      String::from("them"),
-      String::from("their"),
-      String::from("theirs"),
+      String::from("zey"),
+      String::from("zem"),
+      String::from("zeir"),
+      String::from("zeirs"),
     );
 
     let new_user = match new_user_attempt {
@@ -5706,12 +5715,18 @@ mod tests {
       Err(_) => panic!("Failed to generate user."),
     };
     let new_client = match new_client_attempt {
-      Ok(user) => user,
-      Err(_) => panic!("Failed to generate client."),
+      Ok(client) => client,
+      Err(h) => {
+        let mut msg = String::new();
+        for (e, i) in &h {
+          msg.push_str(&format!(" {}: {}.", e, i));
+        } 
+        panic!(format!("Failed to generate client: {}", msg));
+      }
     };
     let new_pronouns = match new_pronouns_attempt {
       Ok(pronouns) => pronouns,
-      Err(_) => panic!("Failed to generate pronouns."),
+      Err(e) => panic!("Failed to generate pronouns: {}", e),
     };
 
     assert_eq!(
@@ -5740,11 +5755,11 @@ mod tests {
     assert_eq!(
       new_pronouns,
       Pronouns::new(
-        3,
-        String::from("they"),
-        String::from("them"),
-        String::from("their"),
-        String::from("theirs")
+        4,
+        String::from("zey"),
+        String::from("zem"),
+        String::from("zeir"),
+        String::from("zeirs")
       )
     );
   }

@@ -7,7 +7,7 @@ pub const CLT_FL: &str = "clients.txt";
 pub const COL_FL: &str = "collaterals.txt";
 pub const PRN_FL: &str = "pronouns.txt";
 pub const ND_FL: &str = "note_days.txt";
-pub const NDT_FL: &str = "note_templates.txt";
+pub const NT_FL: &str = "note_templates.txt";
 
 fn main() {
   let mut a = NoteArchive::new(
@@ -15,7 +15,8 @@ fn main() {
     String::from(CLT_FL),
     String::from(COL_FL),
     String::from(PRN_FL),
-    String::from(NDT_FL),
+    String::from(ND_FL),
+    String::from(NT_FL),
   );
   a.run();
 }

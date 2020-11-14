@@ -33,7 +33,7 @@ pub const INDIRECT_ROLES: [&'static str; 23] = [
 
 pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 1] = [
   (
-    "Care plan meeting",
+    "Care Plan Meeting",
     "\
       This is a template for {{ u1 }} for the client {{ c1 }}. \
     ",

@@ -154,9 +154,9 @@ impl NoteTemplate {
     }
   }
   fn generate_display_content_string(&self) -> String {
-    let content_slice = &self.content.clone();
+    let mut content_slice = self.content.clone();
     for b in BLANKS.iter() {
-      str::replace(content_slice, b.0, b.1);
+      content_slice = str::replace(&content_slice, b.0, b.1);
     }
     content_slice.clone()
   }
