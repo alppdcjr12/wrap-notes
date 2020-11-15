@@ -117,6 +117,10 @@ impl NoteTemplate {
       &self.content[..]
     }
   }
+  pub fn display_short(&self) -> String {
+    let display_c = if self.custom { "custom" } else { "default" };
+    format!("{} ({})", self.structure, display_c);
+  }
   pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
@@ -128,8 +132,16 @@ impl NoteTemplate {
       } else {
         let mut long_sent = sentence.clone();
         while long_sent.len() > 140 {
-          length_adjusted_vec.push((1, String::from(&long_sent[..140])));
-          long_sent = String::from(&long_sent[141..]);
+          match &long_sent[..140].rfind(' ') {
+            None => {
+              length_adjusted_vec.push((i, String::from(&long_sent[..140])));
+              long_sent = String::from(&long_sent[141..]);
+            },
+            Some(idx) => {
+              length_adjusted_vec.push((i, String::from(&long_sent[..idx])));
+              long_sent = String::from(&long_sent[idx+1..]);
+            }
+          }
         }
         length_adjusted_vec.push((i, long_sent));
       }
@@ -156,6 +168,9 @@ impl NoteTemplate {
   }
   fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
+    for b in Blank::iterator() {
+      content_slice = str::replace(&content_slice, b.encode(), b);
+    }
     for b in BLANKS.iter() {
       content_slice = str::replace(&content_slice, b.0, b.1);
     }
@@ -313,7 +328,8 @@ pub struct Note {
   pub category: NoteCategory,
   pub structure: StructureType,
   pub content: String,
-  pub blanks: Vec<(String, u32)> // table name and id
+  pub blank: Vec<(Blank, String, u32)> // blank type, display string, foreign key
+  pub blanks: Vec<(Blank, String, Vec<u32>)> // blank type, display_string, foreign keys
 }
 
 impl Note {
@@ -321,17 +337,67 @@ impl Note {
     id: u32,
     category: NoteCategory,
     structure: StructureType,
-    note_day_id: u32,
-    note_template_id: u32,
     content: String) -> Note {
+    let blank = vec![];
     let blanks = vec![];
     Note {
       id,
       category,
       structure,
       content,
+      blank,
       blanks,
     }
+  }
+  pub fn preview(&self) -> &str {
+    if self.content.len() > 70 {
+      &self.content[0..70]
+    } else {
+      &self.content[..]
+    }
+  }
+  pub fn get_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
+    let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
+    let mut length_adjusted_vec = vec![];
+    for (i, sent) in display_content_vec.iter().enumerate() {
+      let mut sentence = sent.clone();
+      sentence.push_str(".");
+      if sentence.len() < 140 {
+        length_adjusted_vec.push((i, sentence))
+      } else {
+        let mut long_sent = sentence.clone();
+        while long_sent.len() > 140 {
+          match &long_sent[..140].rfind(' ') {
+            None => {
+              length_adjusted_vec.push((i, String::from(&long_sent[..140])));
+              long_sent = String::from(&long_sent[141..]);
+            },
+            Some(idx) => {
+              length_adjusted_vec.push((i, String::from(&long_sent[..idx])));
+              long_sent = String::from(&long_sent[idx+1..]);
+            }
+          }
+        }
+        length_adjusted_vec.push((i, long_sent));
+      }
+    }
+    length_adjusted_vec
+  }
+  fn generate_display_content_string(&self) -> String {
+    let mut content_slice = self.content.clone();
+    for (blank_type, display_string, _) in self.blank.iter() {
+      content_slice = content_slice.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
+    }
+    for (blank_type, display_string, _) in self.blanks.iter() {
+      content_slice = content_slice.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
+    }
+    for blank_type in Blank::iterator() {
+      content_slice = str::replace(&content_slice, &format!("{}", blank_type)[..], "_______________");
+    }
+    content_slice
+  }
+  pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
+    Self::get_content_vec_from_string(self.generate_display_content_string())
   }
 }
 
@@ -356,5 +422,117 @@ impl fmt::Display for Note {
       &self.content,
       blanks_str,
     )
+  }
+}
+
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
+pub enum Blank {
+  CurrentClientName,
+  Collaterals,
+  AllCollaterals,
+  PronounsForBlank,
+  PronounsForUser,
+  PronounsForClient,
+  PronounsForCollateral,
+  TodayDate,
+  NoteDayDate,
+  Document,
+  Meeting,
+  Action,
+  Phrase,
+  Custom
+}
+
+
+use crate::Blank::{
+  CurrentClientName,
+  Collaterals,
+  AllCollaterals,
+  PronounsForBlank,
+  PronounsForUser,
+  PronounsForClient,
+  TodayDate,
+  NoteDayDate,
+  Document,
+  Meeting,
+  Action,
+  Phrase,
+  Custom
+};
+
+impl Blank {
+  pub fn iterator() -> impl Iterator<Item = Blank> {
+    [
+      CurrentClientName,
+      Collaterals,
+      AllCollaterals,
+      PronounsForBlank,
+      PronounsForUser,
+      PronounsForClient,
+      TodayDate,
+      NoteDayDate,
+      Document,
+      Meeting,
+      Action,
+      Phrase,
+      Custom,
+    ].iter().copied()
+  }
+  pub fn vector_of_variants() -> Vec<Blank> {
+    vec![
+      CurrentClientName,
+      Collaterals,
+      AllCollaterals,
+      PronounsForBlank,
+      PronounsForUser,
+      PronounsForClient,
+      TodayDate,
+      NoteDayDate,
+      Document,
+      Meeting,
+      Action,
+      Phrase,
+      Custom,
+    ]
+  }
+  pub fn abbreviate(&self) -> &str {
+    match self {
+      CurrentClientName => "c",
+      Collaterals => "co",
+      AllCollaterals => "allco",
+      PronounsForBlank => "p#",
+      PronounsForUser => "pu",
+      PronounsForClient => "pc",
+      TodayDate => "td",
+      NoteDayDate => "ndd",
+      Document => "d",
+      Meeting => "m",
+      Action => "a",
+      Phrase => "p",
+      Custom => "cu",
+    }
+  }
+  pub fn display_to_user(&self) -> &str {
+    match self {
+      CurrentClientName => "Name of client",
+      Collaterals => "One or more collaterals",
+      AllCollaterals => "All collaterals for the current client",
+      PronounsForBlank => "Pronouns of the person in another blank",
+      PronounsForUser => "Pronouns of the current user",
+      PronounsForClient => "Pronouns of the current client",
+      TodayDate => "Today's date",
+      NoteDayDate => "The date of the current note",
+      Document => "Document name",
+      Meeting => "Meeting title",
+      Action => "General action",
+      Phrase => "Other phrase",
+      Custom => "Custom input",
+    }
+  }
+}
+
+impl fmt::Display for Blank {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "-#-{}-#-", self.abbreviate())
   }
 }

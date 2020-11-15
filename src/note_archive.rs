@@ -29,6 +29,7 @@ pub struct NoteArchive {
   pub pronouns: Vec<Pronouns>,
   pub note_days: Vec<NoteDay>,
   pub note_templates: Vec<NoteTemplate>,
+  pub notes: Vec<Note>,
   pub foreign_key: HashMap<String, u32>,
   pub foreign_keys: HashMap<String, Vec<u32>>,
   pub encrypted: bool,
@@ -44,8 +45,8 @@ fn display_blanks() {
   println!("{:-^73}", "-");
   println!("{:-^10} | {:-^60}", " ID ", " Type ");
   println!("{:-^73}", "-");
-  for (i, blank) in BLANKS.iter().enumerate() {
-    println!("{:-^10} | {:-^60}", i, blank.1);
+  for (i, b) in Blank::iterator().enumerate() {
+    println!("{:-^10} | {:-<60}", i, b.display_to_user());
   }
   println!("Choose blank type by ID.");
 }
@@ -64,7 +65,7 @@ fn choose_blanks() -> usize {
     }
     match input.trim().parse::<usize>() {
       Ok(num) => {
-        if num > 0 && num <= BLANKS.len() {
+        if num > 0 && num <= Blank::vector_of_variants().len() {
           break num-1;
         } else {
           println!("Invalid ID.");
@@ -118,7 +119,8 @@ impl NoteArchive {
     collateral_filepath: &str,
     pronouns_filepath: &str,
     note_day_filepath: &str,
-    note_template_filepath: &str) -> bool {
+    note_template_filepath: &str,
+    note_filepath: &str) -> bool {
     loop {
       Self::display_decrypt_files();
       let mut choice = String::new();
@@ -149,6 +151,7 @@ impl NoteArchive {
             pronouns_filepath,
             note_day_filepath,
             note_template_filepath,
+            note_filepath,
             &pw
           ) {
             Ok(_) => true,
@@ -166,6 +169,7 @@ impl NoteArchive {
           fs::remove_file(pronouns_filepath).unwrap();
           fs::remove_file(note_day_filepath).unwrap();
           fs::remove_file(note_template_filepath).unwrap();
+          fs::remove_file(note_filepath).unwrap();
           break true;
         },
         "QUIT" | "quit" | "Quit" | "Q" | "q" => {
@@ -194,6 +198,7 @@ impl NoteArchive {
           &filepaths["pronouns_filepath"],
           &filepaths["note_day_filepath"],
           &filepaths["note_template_filepath"],
+          &filepaths["note_filepath"],
         );
       }
     }
@@ -205,6 +210,7 @@ impl NoteArchive {
         pronouns: vec![],
         note_days: Self::read_note_days(&filepaths["note_day_filepath"]).unwrap(),
         note_templates: Self::read_note_templates(&filepaths["note_template_filepath"]).unwrap(),
+        notes: Self::read_notes(&filepaths["note_filepath"]).unwrap(),
         foreign_key,
         foreign_keys,
         encrypted,
@@ -376,6 +382,10 @@ impl NoteArchive {
       Ok(_) => encrypt_file(&self.filepaths["note_template_filepath"], pw)?,
       Err(_) => (),
     }
+    match Self::read_notes(&self.filepaths["note_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["note_filepath"], pw)?,
+      Err(_) => (),
+    }
     Ok(())
   }
   fn decrypt_all_files(
@@ -385,6 +395,7 @@ impl NoteArchive {
     pronouns_filepath: &str,
     note_day_filepath: &str,
     note_template_filepath: &str,
+    note_filepath: &str,
     pw: &str) -> Result<(), Error> {
     decrypt_file(user_filepath, "decrypt_attempt_user.txt", pw)?;
     decrypt_file(client_filepath, "decrypt_attempt_client.txt", pw)?;
@@ -392,18 +403,21 @@ impl NoteArchive {
     decrypt_file(pronouns_filepath, "decrypt_attempt_pronouns.txt", pw)?;
     decrypt_file(note_day_filepath, "decrypt_attempt_note_day.txt", pw)?;
     decrypt_file(note_template_filepath, "decrypt_attempt_note_template.txt", pw)?;
+    decrypt_file(note_filepath, "decrypt_attempt_note.txt", pw)?;
     let user_result = Self::read_users("decrypt_attempt_user.txt");
     let client_result = Self::read_clients("decrypt_attempt_client.txt");
     let collateral_result = Self::read_collaterals("decrypt_attempt_collateral.txt");
     let pronouns_result = Self::read_pronouns_from_file_without_reindexing("decrypt_attempt_pronouns.txt");
     let note_day_result = Self::read_note_days("decrypt_attempt_note_day.txt");
     let note_template_result = Self::read_note_templates("decrypt_attempt_note_template.txt");
+    let note_result = Self::read_notes("decrypt_attempt_note.txt");
     fs::remove_file("decrypt_attempt_user.txt")?;
     fs::remove_file("decrypt_attempt_client.txt")?;
     fs::remove_file("decrypt_attempt_collateral.txt")?;
     fs::remove_file("decrypt_attempt_pronouns.txt")?;
     fs::remove_file("decrypt_attempt_note_day.txt")?;
     fs::remove_file("decrypt_attempt_note_template.txt")?;
+    fs::remove_file("decrypt_attempt_note.txt")?;
     match (
       user_result,
       client_result,
@@ -411,14 +425,16 @@ impl NoteArchive {
       pronouns_result,
       note_day_result,
       note_template_result
+      note_result
     ) {
-      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
+      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
         decrypt_file(user_filepath, user_filepath, pw)?;
         decrypt_file(client_filepath, client_filepath, pw)?;
         decrypt_file(collateral_filepath, collateral_filepath, pw)?;
         decrypt_file(pronouns_filepath, pronouns_filepath, pw)?;
         decrypt_file(note_day_filepath, note_day_filepath, pw)?;
         decrypt_file(note_template_filepath, note_template_filepath, pw)?;
+        decrypt_file(note_filepath, note_filepath, pw)?;
         Ok(())
       },
       _ => Err(Error::new(
@@ -5229,8 +5245,15 @@ impl NoteArchive {
   fn get_note_day_option_by_id(&self, id: u32) -> Option<&NoteDay> {
     self.note_days.iter().find(|nd| nd.id == id)
   }
+  fn get_note_day_by_id(&mut self, id: u32) -> Option<&NoteDay> {
+    self.note_days.iter().find(|nd| nd.id == id)
+  }
   fn get_note_day_by_id_mut(&mut self, id: u32) -> Option<&mut NoteDay> {
     self.note_days.iter_mut().find(|nd| nd.id == id)
+  }
+  /// assumes that the given note_day_id is valid
+  fn get_client_by_note_day_id(&self, id: u32) -> Option<&Client> {
+    self.clients.iter().find(|c| self.get_note_day_by_id(id).unwrap().foreign_key["client_id"] == c.id )
   }
 
 // note templates
@@ -5412,6 +5435,421 @@ impl NoteArchive {
     println!("| {}", "Choose template type by name, ID, or abbreviation.");
   }
   fn create_note_template_get_id(&mut self) -> Option<u32> {
+    let note_template = loop {
+      let structure = loop {
+        self.display_structure_types();
+        println!("Enter 'CANCEL' at any time to cancel.");
+        println!("Build a template for what kind of record?");
+        let mut structure_choice = String::new();
+        let structure_attempt = io::stdin().read_line(&mut structure_choice);
+        match structure_attempt {
+          Ok(_) => (),
+          Err(e) => {
+            println!("Invalid repsonse: {}", e);
+            continue;
+          }
+        }
+        let structure = structure_choice.trim();
+        break match &structure[..] {
+          "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => CarePlanMeeting,
+          "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanMeetingVerbose,
+          "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Intake,
+          "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Assessment,
+          "5" | "SNCD" | "sncd" | "Sncd" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => SNCD,
+          "6" | "Home Visit" | "home visit" | "Home visit" | "HV" | "hv" | "Hv" => HomeVisit,
+          "7" | "Agenda Prep" | "Agenda prep" | "agenda prep" | "AGENDA PREP" | "AP" | "ap" | "Ap" => AgendaPrep,
+          "8" | "Debrief" | "debrief" | "DEBRIEF" | "D" | "d" => Debrief,
+          "9" | "Phone call" | "Phone Call" | "PHONE CALL" | "phone call" | "PC" | "pc" => PhoneCall,
+          "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Scheduling,
+          "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => SentEmail,
+          "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Referral,
+          "cancel" | "CANCEL" | "Cancel" => return None,
+          _ => {
+            println!("Invalid choice.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          },
+        }
+      };
+      let mut content = String::new();
+      let mut display_content = String::new();
+      loop {
+        let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
+        NoteTemplate::display_content_from_vec(display_content_vec);
+        println!("Add text or blank?");
+        println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
+        let mut custom_choice = String::new();
+        let custom_attempt = io::stdin().read_line(&mut custom_choice);
+        match custom_attempt {
+          Ok(_) => (),
+          Err(e) => {
+            println!("Invalid repsonse: {}", e);
+            continue;
+          }
+        }
+        let custom = custom_choice.trim();
+        match &custom[..] {
+          "TEXT" | "text" | "Text" | "T" | "t" => {
+            loop {
+              println!("Enter custom text as you would like it to appear.");
+              let mut text_choice = String::new();
+              let text_attempt = io::stdin().read_line(&mut text_choice);
+              match text_attempt {
+                Ok(_) => {
+                  content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                  display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                },
+                Err(e) => {
+                  println!("Invalid repsonse: {}", e);
+                  continue;
+                }
+              }
+            }
+          },
+          "BLANK" | "blank" | "Blank" | "B" | "b" => {
+            let blank_idx = choose_blanks();
+            content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
+            display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+          },
+          "SAVE" | "save" | "Save" | "S" | "s" => {
+            if display_content.len() == 0 {
+              println!("You must add at least one field to the content of a template. Please add either some text or at least one blank.");
+              thread::sleep(time::Duration::from_secs(4));
+              continue;
+            }
+            break;
+          },
+          "CANCEL" | "cancel" | "Cancel" => return None,
+          _ => {
+            println!("Invalid command.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+        }
+      };
+
+      match self.generate_unique_new_note_template(structure, content, self.current_user().id) {
+        Ok(nt) => break nt,
+        Err(e) => {
+          println!("Failed to generate template: {}", e);
+          thread::sleep(time::Duration::from_secs(3));
+          continue;
+        }
+      }
+    };
+
+    let id = note_template.id;
+    self.save_note_template(note_template);
+    Some(id)
+  }
+  fn note_template_dup_id_option(&self, structure: &StructureType, content: String, user_id: u32) -> Option<u32> {
+    let template_fields: Vec<(&StructureType, &str, u32, u32)> = self
+      .note_templates
+      .iter()
+      .map(|nt| (&nt.structure, &nt.content[..], nt.foreign_key["user_id"], nt.id))
+      .collect();
+
+    match template_fields
+      .iter()
+      .find(|(s, c, u, _)| s == &structure && c == &&content[..] && u == &user_id) {
+        Some(field_tup) => Some(field_tup.3),
+        None => None,
+      }
+  }
+  fn generate_unique_new_note_template(
+    &mut self,
+    structure: StructureType,
+    content: String,
+    user_id: u32,
+  ) -> Result<NoteTemplate, String> {
+    let id: u32 = self.note_templates.len() as u32 + 1;
+
+    match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
+      Some(dup_id) => Err(String::from("A template exists for the same user with matching type and content.")),
+      None => Ok(NoteTemplate::new(id, structure, true, content, Some(user_id)))
+    }
+  }
+  pub fn read_note_templates(filepath: &str) -> Result<Vec<NoteTemplate>, Error> {
+    let file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .open(filepath)
+      .unwrap();
+
+    let reader = BufReader::new(file);
+
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
+
+    if lines.len() > 0 {
+      lines.remove(0)?;
+    }
+    if lines.len() > 0 {
+      lines.remove(lines.len() - 1)?;
+    }
+
+    let mut note_templates: Vec<NoteTemplate> = vec![];
+
+    for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
+      let i = i as u32;
+      let structure = match def.0 {
+        "Care Plan Meeting" => CarePlanMeeting,
+        "Care Plan Meeting Verbose" => CarePlanMeetingVerbose,
+        "Intake" => Intake,
+        "Assessment" => Assessment,
+        "SNCD" => SNCD,
+        "Home Visit" => HomeVisit,
+        "Agenda Prep" => AgendaPrep,
+        "Debrief" => Debrief,
+        "Phone Call" => PhoneCall,
+        "Scheduling" => Scheduling,
+        "Sent Email" => SentEmail,
+        "Referral" => Referral,
+        _t => {
+          panic!("Support not added for reading default Structure Type from constant.");
+        }
+      };
+      let content = String::from(def.1);
+      let nt = NoteTemplate::new(i, structure, false, content, None);
+      note_templates.push(nt);
+    }
+
+    for line in lines {
+      let line_string = line?;
+
+      let values: Vec<String> = line_string
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
+
+      let id: u32 = values[0].parse().unwrap();
+
+      let structure = match &values[1][..] {
+        "Care Plan Meeting" => CarePlanMeeting,
+        "Care Plan Meeting Verbose" => CarePlanMeetingVerbose,
+        "Intake" => Intake,
+        "Assessment" => Assessment,
+        "SNCD" => SNCD,
+        "Home Visit" => HomeVisit,
+        "Agenda Prep" => AgendaPrep,
+        "Debrief" => Debrief,
+        "Phone Call" => PhoneCall,
+        "Scheduling" => Scheduling,
+        "Sent Email" => SentEmail,
+        "Referral" => Referral,
+        _ => return Err(Error::new(
+          ErrorKind::Other,
+          "Unsupported StructureType saved to file.",
+        )),
+      };
+
+      let content = values[2].clone();
+
+      let user_id = Some(values[3].parse().unwrap());
+
+      let note_ids: Vec<u32> = match &values[4][..] {
+        "" => vec![],
+        _ => values[4]
+          .split("#")
+          .map(|val| val.parse().unwrap())
+          .collect(),
+      };
+      let nt = NoteTemplate::new(id, structure, true, content, user_id);
+      note_templates.push(nt);
+    }
+    note_templates.sort_by(|a, b| a.id.cmp(&b.id));
+    note_templates.sort_by(|a, b|
+      match (&a.foreign_key.get("user_id"), &b.foreign_key.get("user_id")) {
+        (Some(anum), Some(bnum)) => anum.cmp(&bnum),
+        _ => b.foreign_key.get("user_id").cmp(&a.foreign_key.get("user_id")),
+      }
+    );
+    note_templates.sort_by(|a, b| a.structure.cmp(&b.structure));
+    Ok(note_templates)
+  }
+  pub fn write_note_templates(&self) -> std::io::Result<()> {
+    let mut lines = String::from("##### note_templates #####\n");
+    for nt in &self.note_templates {
+      if nt.custom {
+        lines.push_str(&nt.to_string()[..]);
+      }
+    }
+    lines.push_str("##### note_templates #####");
+    let mut file = File::create(self.filepaths["note_template_filepath"].clone()).unwrap();
+    file.write_all(lines.as_bytes()).unwrap();
+    Ok(())
+  }
+  fn save_note_template(&mut self, note_template: NoteTemplate) {
+
+    let pos = self.note_templates.binary_search_by(|nt| nt.structure.cmp(&note_template.structure)
+      .then_with(|| match (&nt.foreign_key.get("user_id"), &note_template.foreign_key.get("user_id")) {
+        (Some(anum), Some(bnum)) => anum.cmp(&bnum),
+        _ => note_template.foreign_key["user_id"].cmp(&nt.foreign_key["user_id"]),
+      } )
+      .then_with(|| nt.id.cmp(&note_template.id))
+    ).unwrap_or_else(|e| e);
+
+    self.note_templates.insert(pos, note_template);
+    self.write_note_templates().unwrap();
+  }
+  fn current_user_custom_note_templates(&self) -> Vec<&NoteTemplate> {
+    self.note_templates.iter().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == self.current_user().id).collect()
+  }
+  fn current_user_custom_note_templates_mut(&mut self) -> Vec<&mut NoteTemplate> {
+    let current_id = self.current_user().id;
+    self.note_templates.iter_mut().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == current_id).collect()
+  }
+  fn choose_delete_note_template(&mut self) {
+    loop {
+      self.display_delete_note_template();
+      println!("Are you sure you want to delete this note template?");
+      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      let mut confirm = String::new();
+      let input_attempt = io::stdin().read_line(&mut confirm);
+      let command = match input_attempt {
+        Ok(_) => confirm.trim().to_string(),
+        Err(e) => {
+          println!("Failed to read input: {}", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      };
+      match &command[..] {
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          self.delete_current_note_template();
+          break;
+        }
+        _ => {
+          break;
+        }
+      }
+    }
+  }
+  fn display_delete_note_template(&self) {
+    let heading = String::from(" DELETE NOTE TEMPLATE ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^146}", "-");
+    println!("{:-^146}", heading);
+    println!("{:-^146}", "-");
+
+    self.current_note_template().display_content();
+
+    println!("{:-^146}", "-");
+  }
+  fn delete_current_note_template(&mut self) {
+    let id = self.foreign_key.get("current_note_template_id").unwrap();
+    self.note_templates.retain(|nd| nd.id != *id);
+    self.foreign_key.remove("current_note_template_id");
+  }
+  fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
+    self.note_templates.iter().find(|nt| nt.id == id)
+  }
+  fn get_note_template_option_by_id_mut(&mut self, id: u32) -> Option<&mut NoteTemplate> {
+    self.note_templates.iter_mut().find(|nt| nt.id == id)
+  }
+
+// notes
+
+  fn current_note_mut(&mut self) -> &mut Note {
+    let n_id = match self.foreign_key.get("current_note_id") {
+      Some(id) => id,
+      None => panic!("There is no current note selected."),
+    };
+    let maybe_current: Option<&mut Note> = self.notes.iter_mut().find(|nt| nt.id == *n_id);
+    match maybe_current {
+      Some(n) => n,
+      None => panic!("The loaded ID does not match any saved notes."),
+    }
+  }
+  fn current_note(&self) -> &Note {
+    let n_id = match self.foreign_key.get("current_note_id") {
+      Some(id) => id,
+      None => panic!("There is no current note selected."),
+    };
+    let maybe_current: Option<&Note> = self.notes.iter().find(|nt| nt.id == *n_id);
+    match maybe_current {
+      Some(n) => n,
+      None => panic!("The loaded ID does not match any saved notes."),
+    }
+  }
+  fn current_note_day_notes(&self) -> Vec<&Note> {
+    self.notes.iter().filter(|n| self.current_note_day().foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id )).collect()
+  }
+  fn get_note_day_by_note_id(&self, id: u32) -> Option<&NoteDay> {
+    self.note_days.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == id) )
+  }
+  fn get_note_template_by_note_id(&self, id: u32) -> Option<&NoteTemplate> {
+    self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == id) )
+  }
+  fn display_note(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^163}", "-");
+
+    let n = self.current_note();
+    let nd = self.get_note_day_by_note_id(n.id).unwrap();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    let nt = self.get_note_template_by_note_id(n.id).unwrap();
+    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
+    println!("{:-^163}", heading);
+    println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
+    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
+    println!("{:-^163}", "-");
+    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println!("{:-^163}", "-");
+    let mut current_i = 0;
+    for (i, cont) in n.get_display_content_vec() {
+      let display_i = if i == current_i {
+        String::from("   ")
+      } else {
+        format!(" {} ", i)
+      };
+      println!("{:-^20} | {:-^140}", display_i, cont);
+      current_i = i;
+      println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
+    }
+  }
+  fn load_note(&mut self, id: u32) -> std::io::Result<()> {
+    let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
+    match current {
+      Some(n) => {
+        self.foreign_key.insert(String::from("current_note_id"), n.id);
+        Ok(())
+      }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to read selected note from filepath.",
+      )),
+    }
+  }
+  fn choose_note(&mut self) {
+    self.display_note();
+    loop {
+      let mut choice = String::new();
+      let read_attempt = io::stdin().read_line(&mut choice);
+      let input = match read_attempt {
+        Ok(_) => choice,
+        Err(e) => {
+          println!("Could not read input; try again ({}).", e);
+          continue;
+        }
+      };
+      let input = input.trim();
+      match input {
+        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+          break;
+        }
+        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+          self.choose_delete_note();
+          break;
+        }
+        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+          self.choose_edit_note();
+        }
+        _ => println!("Invalid command."),
+      }
+    }
+  }
+  fn create_note_get_id(&mut self) -> Option<u32> {
     let note_template = loop {
       let structure = loop {
         self.display_structure_types();
@@ -5740,6 +6178,7 @@ mod tests {
         (String::from("pronouns_filepath"), String::from("some_random_blank_pronouns_file_name.txt"),),
         (String::from("note_day_filepath"), String::from("some_random_blank_note_day_file_name.txt"),),
         (String::from("note_template_filepath"), String::from("some_random_blank_note_template_file_name.txt"),),
+        (String::from("note_filepath"), String::from("some_random_blank_note_file_name.txt"),),
       ].iter().cloned().collect();
       let a = NoteArchive::new(filepaths);
       assert_eq!(a.users, vec![]);
@@ -5812,6 +6251,7 @@ mod tests {
           (String::from("pronouns_filepath"), String::from("test_load_pronouns.txt"),),
           (String::from("note_day_filepath"), String::from("test_load_note_days.txt"),),
           (String::from("note_template_filepath"), String::from("test_load_note_templates.txt"),),
+          (String::from("note_filepath"), String::from("test_load_note.txt"),),
         ].iter().cloned().collect();
       let mut a1 = NoteArchive::new(filepaths);
 
@@ -5841,6 +6281,7 @@ mod tests {
       (String::from("pronouns_filepath"), String::from("test_pronouns_new_instance.txt"),),
       (String::from("note_day_filepath"), String::from("test_note_days_new_instance.txt"),),
       (String::from("note_template_filepath"), String::from("test_note_templates_new_instance.txt"),),
+      (String::from("note_filepath"), String::from("test_note_new_instance.txt"),),
     ].iter().cloned().collect();
 
     let mut notes = NoteArchive::new_test(filepaths.clone());
@@ -5929,6 +6370,7 @@ mod tests {
       (String::from("pronouns_filepath"), String::from("test_pronouns_current_pronouns.txt"),),
       (String::from("note_day_filepath"), String::from("test_note_days_current_pronouns.txt"),),
       (String::from("note_template_filepath"), String::from("test_note_templates_current_pronouns.txt"),),
+      (String::from("note_filepath"), String::from("test_note_current_pronouns.txt"),),
     ].iter().cloned().collect();
     let mut notes = NoteArchive::new_test(filepaths.clone());
 
@@ -5953,6 +6395,7 @@ mod tests {
       (String::from("pronouns_filepath"), String::from("test_pronouns_updates_pronouns.txt"),),
       (String::from("note_day_filepath"), String::from("test_note_days_updates_pronouns.txt"),),
       (String::from("note_template_filepath"), String::from("test_note_templates_updates_pronouns.txt"),),
+      (String::from("note_filepath"), String::from("test_note_updates_pronouns.txt"),),
     ].iter().cloned().collect();
     let mut notes = NoteArchive::new_test(filepaths.clone());
 

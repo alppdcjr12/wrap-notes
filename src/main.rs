@@ -8,6 +8,7 @@ pub const COL_FL: &str = "collaterals.txt";
 pub const PRN_FL: &str = "pronouns.txt";
 pub const ND_FL: &str = "note_days.txt";
 pub const NT_FL: &str = "note_templates.txt";
+pub const N_FL: &str = "note.txt";
 
 fn main() {
   let filepaths = [
@@ -17,6 +18,7 @@ fn main() {
     (String::from("pronouns_filepath"), String::from(PRN_FL),),
     (String::from("note_day_filepath"), String::from(ND_FL),),
     (String::from("note_template_filepath"), String::from(NT_FL),),
+    (String::from("note_filepath"), String::from(N_FL),),
   ].iter().cloned().collect();
   let mut a = NoteArchive::new(filepaths);
   a.run();
