@@ -326,14 +326,14 @@ impl NoteArchive {
       1,
       CarePlanMeeting,
       true,
-      String::from("ICC met with {{co}} for a Care Plan Meeting for {{c}}."),
+      String::from("ICC met with (---co---) for a Care Plan Meeting for (---c---)."),
       Some(2)
     );
     let nt2 = NoteTemplate::new(
       2,
       PhoneCall,
       true,
-      String::from("ICC called {{co}} to discuss a referral for IHT services."),
+      String::from("ICC called (---co---) to discuss a referral for IHT services."),
       Some(1),
     );
 
@@ -5307,6 +5307,30 @@ impl NoteArchive {
     println!("{:-^136}", "-");
     println!("| {} | {}", "Choose template by ID.", "NEW / N: New template");
   }
+  fn display_select_user_template(&self) {
+    let mut heading = String::from(" All templates for ");
+    heading.push_str(&self.current_user().full_name()[..]);
+    heading.push_str(" ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^136}", "-");
+    println!("{:-^136}", heading);
+    println!("{:-^136}", "-");
+    println!("{:-^10} | {:-^40} | {:-^80}", " ID ", " Type ", " Preview ");
+    for nt in self.current_user_note_templates() {
+      let mut type_string = format!("{}", nt.structure);
+      if nt.custom {
+        type_string.push_str(" (custom)");
+      }
+      println!(
+        "{: ^10} | {: ^40} | {: ^80}",
+        nt.id,
+        type_string,
+        nt.preview(),
+      );
+    }
+    println!("{:-^136}", "-");
+    println!("| {} | {}", "Choose template by ID.", "NEW / N: New template");
+  }
   fn load_note_template(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&NoteTemplate> = self.note_templates.iter().find(|nt| nt.id == id);
     match current {
@@ -5363,6 +5387,65 @@ impl NoteArchive {
             }
             match self.load_note_template(num) {
               Ok(_) => self.choose_note_template(),
+              Err(e) => {
+                println!("Unable to load template with ID {}: {}", num, e);
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn select_note_template(&mut self) -> Option<u32> {
+    loop {
+      let input = loop {
+        self.display_select_user_template();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let maybe_new_id = self.create_note_template_get_id();
+          match maybe_new_id {
+            Some(_) => (),
+            None => (),
+          }
+          continue;
+        },
+        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+          // self.choose_edit_note_templates();
+          println!("          // self.choose_edit_note_templates();");
+          continue;
+        },
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break None;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.current_user_note_templates()
+              .iter()
+              .any(|&nt| nt.id == num) {
+                println!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+            }
+            match self.load_note_template(num) {
+              Ok(_) => break Some(num),
               Err(e) => {
                 println!("Unable to load template with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
@@ -5781,7 +5864,7 @@ impl NoteArchive {
   fn get_note_template_by_note_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == id) )
   }
-  fn display_note(&self) {
+  fn display_note_sentences(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
 
@@ -5805,8 +5888,28 @@ impl NoteArchive {
       };
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
-      println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
     }
+    println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
+  }
+  fn display_note(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^163}", "-");
+
+    let n = self.current_note();
+    let nd = self.get_note_day_by_note_id(n.id).unwrap();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    let nt = self.get_note_template_by_note_id(n.id).unwrap();
+    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
+    println!("{:-^163}", heading);
+    println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
+    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
+    println!("{:-^163}", "-");
+    println!("{:-^163}", "-");
+    println!("{:-^163}", " Content ");
+    println!("{:-^163}", "-");
+    println!("{}", n.generate_display_content_string());
+    println!("{:-^163}", "-");
+    println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
   }
   fn load_note(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
@@ -5848,6 +5951,53 @@ impl NoteArchive {
         _ => println!("Invalid command."),
       }
     }
+  }
+  fn create_note_from_template_get_id(&mut self) -> Option<u32> {
+    let note = loop {
+      let nt_id = self.select_note_template().unwrap();
+      let nt = self.get_note_template_option_by_id(nt_id).unwrap();
+      let nst = nt.structure.clone();
+      let ncnt = nt.content.clone();
+      let ncat = match self.current_user().role {
+        ICC => {
+          match nst {
+            CarePlanMeeting => FaceToFaceContactWithClient,
+            CarePlanMeetingVerbose => FaceToFaceContactWithClient,
+            Intake => FaceToFaceContactWithClient,
+            Assessment => FaceToFaceContactWithClient,
+            SNCD => FaceToFaceContactWithClient,
+            HomeVisit => FaceToFaceContactWithClient,
+            AgendaPrep => FaceToFaceContactWithClient,
+            Debrief => FaceToFaceContactWithClient,
+            PhoneCall => TelephoneContactWithClient,
+            Scheduling => CareCoordination,
+            SentEmail => CareCoordination,
+            Referral => CareCoordination,
+          }
+        }
+        FP => {
+          match nst {
+            CarePlanMeeting => Tbd,
+            CarePlanMeetingVerbose => Tbd,
+            Intake => Tbd,
+            Assessment => Tbd,
+            SNCD => Tbd,
+            HomeVisit => Tbd,
+            AgendaPrep => Tbd,
+            Debrief => Tbd,
+            PhoneCall => Tbd,
+            Scheduling => Tbd,
+            SentEmail => Tbd,
+            Referral => Tbd,
+          }
+        }
+      };
+
+      let n = self.generate_unique_new_note(ncat, nst, ncnt);
+      // define the abovoe function!
+
+    };
+    
   }
   fn create_note_get_id(&mut self) -> Option<u32> {
     let note_template = loop {

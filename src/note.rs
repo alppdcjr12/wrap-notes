@@ -169,10 +169,7 @@ impl NoteTemplate {
   fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
     for b in Blank::iterator() {
-      content_slice = str::replace(&content_slice, b.encode(), b);
-    }
-    for b in BLANKS.iter() {
-      content_slice = str::replace(&content_slice, b.0, b.1);
+      content_slice = content_slice.replace(&format!("{}", b), b.display_to_user());
     }
     content_slice.clone()
   }
@@ -329,7 +326,7 @@ pub struct Note {
   pub structure: StructureType,
   pub content: String,
   pub blank: Vec<(Blank, String, u32)> // blank type, display string, foreign key
-  pub blanks: Vec<(Blank, String, Vec<u32>)> // blank type, display_string, foreign keys
+  pub blanks: Vec<(Blank, String, Vec<u32>)> // blank type, display string, foreign keys
 }
 
 impl Note {
@@ -383,18 +380,18 @@ impl Note {
     }
     length_adjusted_vec
   }
-  fn generate_display_content_string(&self) -> String {
-    let mut content_slice = self.content.clone();
+  pub fn generate_display_content_string(&self) -> String {
+    let mut content_string = self.content.clone();
     for (blank_type, display_string, _) in self.blank.iter() {
-      content_slice = content_slice.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
+      content_string = content_string.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
     }
     for (blank_type, display_string, _) in self.blanks.iter() {
-      content_slice = content_slice.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
+      content_string = content_string.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
     }
     for blank_type in Blank::iterator() {
-      content_slice = str::replace(&content_slice, &format!("{}", blank_type)[..], "_______________");
+      content_string = str::replace(&content_string, &format!("{}", blank_type)[..], "_______________");
     }
-    content_slice
+    content_string
   }
   pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
     Self::get_content_vec_from_string(self.generate_display_content_string())
@@ -412,14 +409,26 @@ impl PartialEq for Note {
 
 impl fmt::Display for Note {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let blanks_str: String = self.blanks.iter().map(|(t, id)| format!("{}-{}", t, id) ).collect::<Vec<String>>().join("#");
+    let blank_str: String = self.blank.iter().map(|(b, t, id)| format!("{}%{}%{}", b, t, id) ).collect::<Vec<String>>().join("#");
+    let mut formatted_blanks = vec![];
+    for blanks_tup in self.blanks.iter() {
+      let blanks_string = format!(
+        "{}%{}%{}",
+        blanks_tup.0,
+        blanks_tup.1,
+        blanks_tup.2.iter().map(|id| id.to_string() ).collect::<Vec<String>>().join("-")
+      );
+      formatted_blanks.push(blanks_string);
+    }
+    let blanks_str: String = formatted_blanks.join("#");
     write!(
       f,
-      "{} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {}\n",
       &self.id,
       &self.category,
       &self.structure,
       &self.content,
+      blank_str,
       blanks_str,
     )
   }
@@ -533,6 +542,6 @@ impl Blank {
 
 impl fmt::Display for Blank {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "-#-{}-#-", self.abbreviate())
+    write!(f, "(---{}---)", self.abbreviate())
   }
 }
