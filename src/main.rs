@@ -1,6 +1,20 @@
 // use std::fs::File;
 // use std::io::prelude::*;
-use wrap_notes::note_archive::*;
+pub mod note_archive;
+pub use note_archive::*;
+
+pub mod user;
+pub mod client;
+pub mod collateral;
+pub mod pronouns;
+pub mod note_day;
+pub mod note;
+pub mod utils;
+pub mod constants;
+
+pub use user::EmployeeRole::{FP, ICC};
+pub use collateral::SupportType::{Natural, Formal};
+pub use note::StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
 
 pub const USR_FL: &str = "users.txt";
 pub const CLT_FL: &str = "clients.txt";

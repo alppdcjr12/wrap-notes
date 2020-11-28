@@ -50,6 +50,9 @@ impl Client {
     name.push_str(&self.last_name);
     name
   }
+  pub fn full_name_with_label(&self) -> String {
+    format!("{} (youth)", self.full_name())
+  }
   pub fn fmt_dob(&self) -> String {
     self.dob.format("%Y-%m-%d").to_string()
   }

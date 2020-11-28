@@ -1,4 +1,4 @@
-use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc};
+use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc, Weekday};
 use std::fmt;
 use std::fs;
 use std::fs::File;
@@ -16,9 +16,9 @@ use crate::collateral::*;
 use crate::pronouns::*;
 use crate::note_day::*;
 use crate::note::*;
-use crate::EmployeeRole::{FP, ICC};
-use crate::SupportType::{Natural, Formal};
-use crate::StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
+use EmployeeRole::{FP, ICC};
+use SupportType::{Natural, Formal};
+use StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
 use crate::utils::*;
 use crate::constants::*;
 
@@ -2583,6 +2583,63 @@ impl NoteArchive {
               Ok(_) => self.choose_collateral(),
               Err(e) => {
                 println!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_get_client_collateral(&mut self) -> Option<&Collateral> {
+    loop {
+      let input = loop {
+        self.display_client_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "NEW" | "new" | "New" | "n" | "N" => {
+          let maybe_new_id = self.create_collateral_get_id();
+          match maybe_new_id {
+            Some(new_id) => self.update_current_collaterals(new_id),
+            None => (),
+          }
+          continue;
+        },
+        "ADD" | "add" | "Add" | "a" | "A" => {
+          self.add_collateral();
+          continue;
+        },
+        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+          self.choose_edit_client_collaterals();
+          continue;
+        },
+        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+          break None;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            match !self.get_current_collaterals().iter().find(|co| co.id == num) {
+              Some(collat) => {
+                break Some(collat);
+              },
+              None => {
+                println!("Please select one of the listed IDs.");
+                thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
@@ -5952,12 +6009,16 @@ impl NoteArchive {
       }
     }
   }
+  fn choose_fill_in_blank(&self, b: Blank) -> (Blank, String, Vec<u32>) {
+
+  }
   fn create_note_from_template_get_id(&mut self) -> Option<u32> {
     let note = loop {
       let nt_id = self.select_note_template().unwrap();
       let nt = self.get_note_template_option_by_id(nt_id).unwrap();
-      let nst = nt.structure.clone();
+      let nst = nt.structure;
       let ncnt = nt.content.clone();
+
       let ncat = match self.current_user().role {
         ICC => {
           match nst {
@@ -5993,8 +6054,178 @@ impl NoteArchive {
         }
       };
 
-      let n = self.generate_unique_new_note(ncat, nst, ncnt);
-      // define the abovoe function!
+      let n = self.generate_note(ncat, nst, ncnt).unwrap();
+      let n_blanks = n.get_blank_types();
+      let nd = self.get_note_day_by_note_id(n.id).unwrap();
+      let nd_date = nd.date;
+      let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
+
+      // autofill blanks that do not require user input
+      for (i, b) in n_blanks.iter().enumerate() {
+        let i = i as u32;
+        let mut blank_string = String::new();
+        let mut id_vec: Vec<u32>; 
+        match b {
+          // can clearly determine output
+          CurrentClientName => {
+            let client = self.current_client();
+            blank_string = client.full_name_with_label();
+            id_vec = vec![client.id];
+          }
+          AllCollaterals => {
+            let client = self.current_client();
+            let collaterals = self.get_current_collaterals();
+
+            blank_string = if collaterals.len() > 1 {
+              format!(
+                "{} {} {}",
+                collaterals[..collaterals.len()-1].iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", "),
+                "and",
+                collaterals[collaterals.len()-1].full_name_and_title(),
+              )
+            } else {
+              collaterals[0].full_name_and_title()
+            };
+            id_vec = client.foreign_keys[&String::from("collaterals")];
+          },
+          Pronoun1ForUser => {
+            let u = self.current_user();
+            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+            blank_string = p.subject;
+            id_vec = vec![u.pronouns];
+          },
+          Pronoun2ForUser => {
+            let u = self.current_user();
+            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+            blank_string = p.object;
+            id_vec = vec![u.pronouns];
+          },
+          Pronoun3ForUser => {
+            let u = self.current_user();
+            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+            blank_string = p.possessive_determiner;
+            id_vec = vec![u.pronouns];
+          },
+          Pronoun4ForUser => {
+            let u = self.current_user();
+            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+            blank_string = p.possessive;
+            id_vec = vec![u.pronouns];
+          },
+          Pronoun1ForClient => {
+            let c = self.current_client();
+            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+            blank_string = p.subject;
+            id_vec = vec![c.pronouns];
+          },
+          Pronoun2ForClient => {
+            let c = self.current_client();
+            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+            blank_string = p.object;
+            id_vec = vec![c.pronouns];
+          },
+          Pronoun3ForClient => {
+            let c = self.current_client();
+            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+            blank_string = p.possessive_determiner;
+            id_vec = vec![c.pronouns];
+          },
+          Pronoun4ForClient => {
+            let c = self.current_client();
+            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+            blank_string = p.possessive;
+            id_vec = vec![c.pronouns];
+          },
+          TodayDate => {
+            let today = Local::now().naive_local().date();
+            blank_string = format!("{}, {}-{}-{}", today.weekday(), today.year(), today.month(), today.day());
+            id_vec = vec![];
+          },
+          NoteDayDate => {
+            blank_string = nd_date_string.clone();
+            id_vec = vec![nd.id];
+          },
+          _ => (), // all others need to be filled in based on user input
+        }
+        n.blanks[&i] = (b.clone(), blank_string, id_vec);
+      }
+      
+      // allow user to manually choose the information to put into the blanks
+      for (i, b) in n_blanks.iter().enumerate() {
+        let i = i as u32;
+        let mut blank_string = String::new();
+        let mut id_vec: Vec<u32>; 
+        match b {
+          Collaterals => {
+            // Add in a route for the user to fill this in now or later.
+            // Actually, all these should be in a separate match statement.
+            // The user should first be shown the note with all of the auto blanks filled in.
+            // Then, going through in order should be the default.
+            // The current blank is selected and that blank is the one that's being edited.
+            // But users can also enter "SKIP", parsing it to INT in order to select a blank
+            // (including one that was autofilled - and possibly create a new template and offer user to save it),
+            //  and "CANCEL" (at least those options)
+            // perhaps also browsing collaterals and terms, selecting one and then adding it to a blank in that order
+            let collats: Vec<&Collateral> = vec![];
+            'keep_adding: loop {
+              let collat = self.choose_get_client_collateral();
+
+              if !collats.iter().any(|co| co == collat ) {
+                collats.push(collat);
+              } else {
+                println!("Collateral already included in present ")
+              }
+              println!("Add another collateral? (y/n)");
+              let add_another = 'another: loop {
+                let mut add_another_choice = String::new();
+                let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
+                match maybe_add_another {
+                  Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
+                  Err(e) => {
+                    println!("Failed to read line: {}", e);
+                    continue;
+                  }
+                }
+              };
+              match &add_another[..] {
+                "yes" | "y" => {
+                  continue 'keep_adding;
+                },
+                "no" | "n" => {
+                  break 'keep_adding;
+                }
+              }
+            }
+
+          },
+          Document => {
+
+          },
+          Meeting => {
+
+          },
+          Action => {
+
+          },
+          Phrase => {
+
+          },
+          Custom => {
+
+          },
+          // requires checking if the blank has been filled and another iteration
+          Pronoun1ForBlank => n.blanks[&i] = (),
+          Pronoun2ForBlank => n.blanks[&i] = (),
+          Pronoun3ForBlank => n.blanks[&i] = (),
+          Pronoun4ForBlank => n.blanks[&i] = (),
+        }
+          n.blanks[&i] = (b.clone(), blank_string, id_vec);
+      }
+
+      while n.has_unfilled_blanks() {
+
+      }
+      
 
     };
     
@@ -6107,32 +6338,15 @@ impl NoteArchive {
     self.save_note_template(note_template);
     Some(id)
   }
-  fn note_template_dup_id_option(&self, structure: &StructureType, content: String, user_id: u32) -> Option<u32> {
-    let template_fields: Vec<(&StructureType, &str, u32, u32)> = self
-      .note_templates
-      .iter()
-      .map(|nt| (&nt.structure, &nt.content[..], nt.foreign_key["user_id"], nt.id))
-      .collect();
-
-    match template_fields
-      .iter()
-      .find(|(s, c, u, _)| s == &structure && c == &&content[..] && u == &user_id) {
-        Some(field_tup) => Some(field_tup.3),
-        None => None,
-      }
-  }
-  fn generate_unique_new_note_template(
+  fn generate_note(
     &mut self,
+    category: NoteCategory,
     structure: StructureType,
     content: String,
-    user_id: u32,
-  ) -> Result<NoteTemplate, String> {
-    let id: u32 = self.note_templates.len() as u32 + 1;
+  ) -> Result<Note, String> {
+    let id: u32 = self.notes.len() as u32 + 1;
 
-    match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
-      Some(dup_id) => Err(String::from("A template exists for the same user with matching type and content.")),
-      None => Ok(NoteTemplate::new(id, structure, true, content, Some(user_id)))
-    }
+    Ok(Note::new(id, category, structure, content)
   }
   pub fn read_note_templates(filepath: &str) -> Result<Vec<NoteTemplate>, Error> {
     let file = OpenOptions::new()

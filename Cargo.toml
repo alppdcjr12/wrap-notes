@@ -4,9 +4,19 @@ version = "0.1.0"
 authors = ["Peter <petercharlandsilence@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name = "wrap_notes"
+path = "src/main.rs"
+
+[lib]
+name = "wrap_notes"
+path = "src/lib.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chrono = "0.4"
 chrono-tz = "0.4"
 aes = "0.6.0"
+regex = "1"
+lazy_static = "1.4.0"
