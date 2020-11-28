@@ -170,7 +170,7 @@ impl NoteTemplate {
       current_i = i;
     }
   }
-  fn generate_display_content_string(&self) -> String {
+  pub fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
     for b in Blank::iterator() {
       content_slice = content_slice.replace(&format!("{}", b), b.display_to_user());
@@ -391,8 +391,52 @@ impl Note {
     }
     content_string
   }
+  pub fn generate_display_content_string_with_blanks(&self) -> String {
+    let mut content_string = self.content.clone();
+    for (i, (blank_type, display_string, _)) in self.blanks.iter() {
+      content_string = content_string.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
+    }
+
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
+    }
+    
+    let i: u32 = 1;
+    let unfilled = 0;
+    loop {
+      if self.blanks.keys().any(|ki| ki == &i ) {
+        i += 1;
+        continue;
+      }
+      unfilled += 1;
+      let m = RE_BLANK.find(&content_string);
+      let m = match m {
+        None => break,
+        Some(m) => m,
+      };
+
+      let display_blank = if unfilled == 1 {
+        format!("[=======| {} |=======]", i);
+      } else {
+        format!("_______{}_______", i);
+      };
+
+      content_string = format!(
+        "{}{}{}",
+        &content_string[..m.start()],
+        display_blank,
+        &content_string[m.end()..]
+      );
+
+      i += 1;
+    }
+    content_string
+  }
   pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
     Self::get_content_vec_from_string(self.generate_display_content_string())
+  }
+  pub fn get_display_content_vec_and_blanks(&self) -> Vec<(usize, String)> {
+    Self::get_content_vec_from_string(self.generate_display_content_string_with_blanks())
   }
   pub fn get_blank_types(&self) -> Vec<Blank> {
     lazy_static! {
@@ -407,22 +451,29 @@ impl Note {
     }
     blanks
   }
+  pub fn get_empty_blanks_and_indexes(&self) -> Vec<(u32, Blank)> {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
+    }
+    let num_total_blanks = RE_BLANK.find_iter(&self.content).count();
+    let ordered_blanks = self.get_blank_types();
+    let blanks: Vec<(u32, Blank)> = vec![];
+    for i in 1..num_total_blanks {
+      let i = i as u32;
+      match self.blanks.get(&i) {
+        Some(b_tup) => (),
+        None => {
+          blanks.push((i, ordered_blanks[i as usize]));
+        }
+      }
+    }
+    blanks
+  }
   pub fn has_unfilled_blanks(&self) -> bool {
     lazy_static! {
       static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
     }
     RE_BLANK.find_iter(&self.content[..]).collect::<Vec<Match>>().len() < self.blanks.len()
-  }
-  pub fn fill_in_blank(&mut self, b_idx: u32, fill: (Blank, String, Vec<u32>)) -> Result<(), String> {
-    lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
-    }
-    if RE_BLANK.find_iter(&self.content[..]).collect::<Vec<Match>>().len() < b_idx {
-      Err(String::from("Blank index out of bounds: not that many blanks in given note."))
-    } else {
-      self.blanks[&b_idx] = fill;
-      Ok(())
-    }
   }
 }
 

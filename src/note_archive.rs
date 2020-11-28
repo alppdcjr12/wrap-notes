@@ -5948,6 +5948,41 @@ impl NoteArchive {
     }
     println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
   }
+  fn display_note_sentences_and_blanks(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^163}", "-");
+
+    let n = self.current_note();
+    let nd = self.get_note_day_by_note_id(n.id).unwrap();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    let nt = self.get_note_template_by_note_id(n.id).unwrap();
+    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
+    println!("{:-^163}", heading);
+    println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
+    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
+    println!("{:-^163}", "-");
+    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println!("{:-^163}", "-");
+    let mut current_i = 0;
+    for (i, cont) in n.get_display_content_vec_and_blanks() {
+      let display_i = if i == current_i {
+        String::from("   ")
+      } else {
+        format!(" {} ", i)
+      };
+      println!("{:-^20} | {:-^140}", display_i, cont);
+      current_i = i;
+    }
+    println!(
+      "| {} \n| {} \n| {} \n| {} \n| {} \n| {}",
+      "Press ENTER to add data to the currently selected blank (indicated by '[=======| n |=======]').",
+      "SKIP / S: Skip to the next blank",
+      "EDIT / E: Edit a different blank by ID",
+      "DELETE / D: Delete data from blank by ID",
+      "CLEAR / C: Delete data from all notes",
+      "QUIT / Q: Save progress and quit",
+    );
+  }
   fn display_note(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
@@ -6009,9 +6044,6 @@ impl NoteArchive {
       }
     }
   }
-  fn choose_fill_in_blank(&self, b: Blank) -> (Blank, String, Vec<u32>) {
-
-  }
   fn create_note_from_template_get_id(&mut self) -> Option<u32> {
     let note = loop {
       let nt_id = self.select_note_template().unwrap();
@@ -6055,13 +6087,29 @@ impl NoteArchive {
       };
 
       let n = self.generate_note(ncat, nst, ncnt).unwrap();
-      let n_blanks = n.get_blank_types();
       let nd = self.get_note_day_by_note_id(n.id).unwrap();
       let nd_date = nd.date;
       let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
 
       // autofill blanks that do not require user input
-      for (i, b) in n_blanks.iter().enumerate() {
+      let mut n_blanks = n.get_empty_blanks_and_indexes();
+      for (i, b) in n_blanks {
+        let mut current_blank_choice = String::new();
+        let cb_choice = loop {
+          self.display_note_sentences_and_blanks();
+          let cb_option = io::stdin().read_line(&mut current_blank_choice);
+          match cb_option {
+            Ok(_) => break current_blank_choice.trim();
+            Err(e) => {
+              println!("Failed to read line: {}", e);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          };
+        };
+
+
+
         let i = i as u32;
         let mut blank_string = String::new();
         let mut id_vec: Vec<u32>; 
@@ -6149,85 +6197,142 @@ impl NoteArchive {
         }
         n.blanks[&i] = (b.clone(), blank_string, id_vec);
       }
-      
-      // allow user to manually choose the information to put into the blanks
-      for (i, b) in n_blanks.iter().enumerate() {
-        let i = i as u32;
-        let mut blank_string = String::new();
-        let mut id_vec: Vec<u32>; 
-        match b {
-          Collaterals => {
-            // Add in a route for the user to fill this in now or later.
-            // Actually, all these should be in a separate match statement.
-            // The user should first be shown the note with all of the auto blanks filled in.
-            // Then, going through in order should be the default.
-            // The current blank is selected and that blank is the one that's being edited.
-            // But users can also enter "SKIP", parsing it to INT in order to select a blank
-            // (including one that was autofilled - and possibly create a new template and offer user to save it),
-            //  and "CANCEL" (at least those options)
-            // perhaps also browsing collaterals and terms, selecting one and then adding it to a blank in that order
-            let collats: Vec<&Collateral> = vec![];
-            'keep_adding: loop {
-              let collat = self.choose_get_client_collateral();
+      n_blanks = n.get_empty_blanks_and_indexes();
 
-              if !collats.iter().any(|co| co == collat ) {
-                collats.push(collat);
-              } else {
-                println!("Collateral already included in present ")
-              }
-              println!("Add another collateral? (y/n)");
-              let add_another = 'another: loop {
-                let mut add_another_choice = String::new();
-                let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
-                match maybe_add_another {
-                  Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
-                  Err(e) => {
-                    println!("Failed to read line: {}", e);
-                    continue;
+      let note = loop {
+        let choice = loop {
+          let mut note_choice = String::new();
+          self.display_note_sentences_and_blanks();
+          let note_attempt = io::stdin().read_line(&mut note_choice);
+          match note_attempt {
+            Ok(_) => break note_choice.trim().to_ascii_lowercase(),
+            Err(e) {
+              println!("Failed to read line: {}", e);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            },
+          }
+        };
+        match &choice[..] {
+          "skip" | "s" => {
+
+          },
+          "edit" | "e" => {
+
+          },
+          "delete" | "d" => {
+
+          },
+          "clear" | "c" => {
+
+          },
+          "quit" | "q" => {
+            return None;
+          },
+          "" => {
+            let blanks = n.get_empty_blanks_and_indexes();
+            if blanks.len() == 0 {
+              break n;
+            } else {
+              let i = blanks[0].0;
+              let b = blanks[0].1;
+              let i = i as u32;
+              let mut blank_string = String::new();
+              let mut id_vec: Vec<u32>; 
+              match b {
+                Collaterals => {
+                  // SKIP option, CANCEL, enter int
+                  // also eventually browsing collaterals and other menus to add instead of vice versa
+                  // probably under an 'OPTIONS' submenu
+                  // This can be done by collecting the indexes of the blanks that are in that category on the first iteration
+                  // and checking for them on every second iteration.
+                  let collats: Vec<&Collateral> = vec![];
+                  'keep_adding: loop {
+                    let collat = match self.choose_get_client_collateral() {
+                      Some(co) => co,
+                      None => {
+                        println!("Please select a collateral for this blank, skip, or cancel the note.");
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue;
+                      }
+                    };
+
+                    if !collats.iter().any(|co| co == &collat ) {
+                      collats.push(collat);
+                    } else {
+                      println!("Collateral already added to blank.");
+                    }
+
+                    let add_another = 'another: loop {
+                      println!("Add another collateral? (y/n)");
+                      let mut add_another_choice = String::new();
+                      let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
+                      match maybe_add_another {
+                        Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
+                        Err(e) => {
+                          println!("Failed to read line: {}", e);
+                          continue;
+                        }
+                      }
+                    };
+                    match &add_another[..] {
+                      "yes" | "y" => {
+                        continue 'keep_adding;
+                      },
+                      "no" | "n" => {
+                        break 'keep_adding;
+                      }
+                    }
                   }
-                }
-              };
-              match &add_another[..] {
-                "yes" | "y" => {
-                  continue 'keep_adding;
+                  if collats.len() > 1 {
+                    blank_string = format!(
+                      "{}{}{}",
+                      collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).join(" "),
+                      "and",
+                      collats[collats.len()-1].full_name_and_title(),
+                    ); 
+                  } else {
+                    blank_string = collats[0].full_name_and_title();
+                  }
+                  id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
                 },
-                "no" | "n" => {
-                  break 'keep_adding;
-                }
+                Document => {
+
+                },
+                Meeting => {
+
+                },
+                Action => {
+
+                },
+                Phrase => {
+
+                },
+                Custom => {
+
+                },
+                // requires checking if the blank has been filled and another iteration
+                Pronoun1ForBlank => n.blanks[&i] = (),
+                Pronoun2ForBlank => n.blanks[&i] = (),
+                Pronoun3ForBlank => n.blanks[&i] = (),
+                Pronoun4ForBlank => n.blanks[&i] = (),
+                _ => {
+                  // actually, I should write this because it could be the case that they deleted a previously filled blank
+                  // and want to overwrite it.
+                },
               }
+              n.blanks[&i] = (b.clone(), blank_string, id_vec);
             }
-
           },
-          Document => {
-
-          },
-          Meeting => {
-
-          },
-          Action => {
-
-          },
-          Phrase => {
-
-          },
-          Custom => {
-
-          },
-          // requires checking if the blank has been filled and another iteration
-          Pronoun1ForBlank => n.blanks[&i] = (),
-          Pronoun2ForBlank => n.blanks[&i] = (),
-          Pronoun3ForBlank => n.blanks[&i] = (),
-          Pronoun4ForBlank => n.blanks[&i] = (),
         }
-          n.blanks[&i] = (b.clone(), blank_string, id_vec);
-      }
-
-      while n.has_unfilled_blanks() {
 
       }
-      
 
     };
+
+    let note_id = note.id;
+    self.notes.push(note);
+    Some(note_id)
     
   }
   fn create_note_get_id(&mut self) -> Option<u32> {
