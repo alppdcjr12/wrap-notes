@@ -19,6 +19,10 @@ use crate::note::*;
 use EmployeeRole::{FP, ICC};
 use SupportType::{Natural, Formal};
 use StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
+use NoteCategory::{ICCNote, FPNote};
+use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
+use FPNoteCategory::{Tbd};
+
 use crate::utils::*;
 use crate::constants::*;
 
@@ -6045,293 +6049,290 @@ impl NoteArchive {
     }
   }
   fn create_note_from_template_get_id(&mut self) -> Option<u32> {
-    let note = loop {
-      let nt_id = self.select_note_template().unwrap();
-      let nt = self.get_note_template_option_by_id(nt_id).unwrap();
-      let nst = nt.structure;
-      let ncnt = nt.content.clone();
+    let nt_id = self.select_note_template().unwrap();
+    let nt = self.get_note_template_option_by_id(nt_id).unwrap();
+    let nst = nt.structure;
+    let ncnt = nt.content.clone();
 
-      let ncat = match self.current_user().role {
-        ICC => {
-          match nst {
-            CarePlanMeeting => FaceToFaceContactWithClient,
-            CarePlanMeetingVerbose => FaceToFaceContactWithClient,
-            Intake => FaceToFaceContactWithClient,
-            Assessment => FaceToFaceContactWithClient,
-            SNCD => FaceToFaceContactWithClient,
-            HomeVisit => FaceToFaceContactWithClient,
-            AgendaPrep => FaceToFaceContactWithClient,
-            Debrief => FaceToFaceContactWithClient,
-            PhoneCall => TelephoneContactWithClient,
-            Scheduling => CareCoordination,
-            SentEmail => CareCoordination,
-            Referral => CareCoordination,
-          }
+    let ncat = match self.current_user().role {
+      ICC => {
+        match nst {
+          CarePlanMeeting => ICCNote(FaceToFaceContactWithClient),
+          CarePlanMeetingVerbose => ICCNote(FaceToFaceContactWithClient),
+          Intake => ICCNote(FaceToFaceContactWithClient),
+          Assessment => ICCNote(FaceToFaceContactWithClient),
+          SNCD => ICCNote(FaceToFaceContactWithClient),
+          HomeVisit => ICCNote(FaceToFaceContactWithClient),
+          AgendaPrep => ICCNote(FaceToFaceContactWithClient),
+          Debrief => ICCNote(FaceToFaceContactWithClient),
+          PhoneCall => ICCNote(TelephoneContactWithClient),
+          Scheduling => ICCNote(CareCoordination),
+          SentEmail => ICCNote(CareCoordination),
+          Referral => ICCNote(CareCoordination),
         }
-        FP => {
-          match nst {
-            CarePlanMeeting => Tbd,
-            CarePlanMeetingVerbose => Tbd,
-            Intake => Tbd,
-            Assessment => Tbd,
-            SNCD => Tbd,
-            HomeVisit => Tbd,
-            AgendaPrep => Tbd,
-            Debrief => Tbd,
-            PhoneCall => Tbd,
-            Scheduling => Tbd,
-            SentEmail => Tbd,
-            Referral => Tbd,
-          }
-        }
-      };
-
-      let n = self.generate_note(ncat, nst, ncnt).unwrap();
-      let nd = self.get_note_day_by_note_id(n.id).unwrap();
-      let nd_date = nd.date;
-      let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
-
-      // autofill blanks that do not require user input
-      let mut n_blanks = n.get_empty_blanks_and_indexes();
-      for (i, b) in n_blanks {
-        let mut current_blank_choice = String::new();
-        let cb_choice = loop {
-          self.display_note_sentences_and_blanks();
-          let cb_option = io::stdin().read_line(&mut current_blank_choice);
-          match cb_option {
-            Ok(_) => break current_blank_choice.trim();
-            Err(e) => {
-              println!("Failed to read line: {}", e);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          };
-        };
-
-
-
-        let i = i as u32;
-        let mut blank_string = String::new();
-        let mut id_vec: Vec<u32>; 
-        match b {
-          // can clearly determine output
-          CurrentClientName => {
-            let client = self.current_client();
-            blank_string = client.full_name_with_label();
-            id_vec = vec![client.id];
-          }
-          AllCollaterals => {
-            let client = self.current_client();
-            let collaterals = self.get_current_collaterals();
-
-            blank_string = if collaterals.len() > 1 {
-              format!(
-                "{} {} {}",
-                collaterals[..collaterals.len()-1].iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", "),
-                "and",
-                collaterals[collaterals.len()-1].full_name_and_title(),
-              )
-            } else {
-              collaterals[0].full_name_and_title()
-            };
-            id_vec = client.foreign_keys[&String::from("collaterals")];
-          },
-          Pronoun1ForUser => {
-            let u = self.current_user();
-            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-            blank_string = p.subject;
-            id_vec = vec![u.pronouns];
-          },
-          Pronoun2ForUser => {
-            let u = self.current_user();
-            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-            blank_string = p.object;
-            id_vec = vec![u.pronouns];
-          },
-          Pronoun3ForUser => {
-            let u = self.current_user();
-            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-            blank_string = p.possessive_determiner;
-            id_vec = vec![u.pronouns];
-          },
-          Pronoun4ForUser => {
-            let u = self.current_user();
-            let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-            blank_string = p.possessive;
-            id_vec = vec![u.pronouns];
-          },
-          Pronoun1ForClient => {
-            let c = self.current_client();
-            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-            blank_string = p.subject;
-            id_vec = vec![c.pronouns];
-          },
-          Pronoun2ForClient => {
-            let c = self.current_client();
-            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-            blank_string = p.object;
-            id_vec = vec![c.pronouns];
-          },
-          Pronoun3ForClient => {
-            let c = self.current_client();
-            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-            blank_string = p.possessive_determiner;
-            id_vec = vec![c.pronouns];
-          },
-          Pronoun4ForClient => {
-            let c = self.current_client();
-            let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-            blank_string = p.possessive;
-            id_vec = vec![c.pronouns];
-          },
-          TodayDate => {
-            let today = Local::now().naive_local().date();
-            blank_string = format!("{}, {}-{}-{}", today.weekday(), today.year(), today.month(), today.day());
-            id_vec = vec![];
-          },
-          NoteDayDate => {
-            blank_string = nd_date_string.clone();
-            id_vec = vec![nd.id];
-          },
-          _ => (), // all others need to be filled in based on user input
-        }
-        n.blanks[&i] = (b.clone(), blank_string, id_vec);
       }
-      n_blanks = n.get_empty_blanks_and_indexes();
-
-      let note = loop {
-        let choice = loop {
-          let mut note_choice = String::new();
-          self.display_note_sentences_and_blanks();
-          let note_attempt = io::stdin().read_line(&mut note_choice);
-          match note_attempt {
-            Ok(_) => break note_choice.trim().to_ascii_lowercase(),
-            Err(e) {
-              println!("Failed to read line: {}", e);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            },
-          }
-        };
-        match &choice[..] {
-          "skip" | "s" => {
-
-          },
-          "edit" | "e" => {
-
-          },
-          "delete" | "d" => {
-
-          },
-          "clear" | "c" => {
-
-          },
-          "quit" | "q" => {
-            return None;
-          },
-          "" => {
-            let blanks = n.get_empty_blanks_and_indexes();
-            if blanks.len() == 0 {
-              break n;
-            } else {
-              let i = blanks[0].0;
-              let b = blanks[0].1;
-              let i = i as u32;
-              let mut blank_string = String::new();
-              let mut id_vec: Vec<u32>; 
-              match b {
-                Collaterals => {
-                  // SKIP option, CANCEL, enter int
-                  // also eventually browsing collaterals and other menus to add instead of vice versa
-                  // probably under an 'OPTIONS' submenu
-                  // This can be done by collecting the indexes of the blanks that are in that category on the first iteration
-                  // and checking for them on every second iteration.
-                  let collats: Vec<&Collateral> = vec![];
-                  'keep_adding: loop {
-                    let collat = match self.choose_get_client_collateral() {
-                      Some(co) => co,
-                      None => {
-                        println!("Please select a collateral for this blank, skip, or cancel the note.");
-                        thread::sleep(time::Duration::from_secs(2));
-                        continue;
-                      }
-                    };
-
-                    if !collats.iter().any(|co| co == &collat ) {
-                      collats.push(collat);
-                    } else {
-                      println!("Collateral already added to blank.");
-                    }
-
-                    let add_another = 'another: loop {
-                      println!("Add another collateral? (y/n)");
-                      let mut add_another_choice = String::new();
-                      let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
-                      match maybe_add_another {
-                        Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
-                        Err(e) => {
-                          println!("Failed to read line: {}", e);
-                          continue;
-                        }
-                      }
-                    };
-                    match &add_another[..] {
-                      "yes" | "y" => {
-                        continue 'keep_adding;
-                      },
-                      "no" | "n" => {
-                        break 'keep_adding;
-                      }
-                    }
-                  }
-                  if collats.len() > 1 {
-                    blank_string = format!(
-                      "{}{}{}",
-                      collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).join(" "),
-                      "and",
-                      collats[collats.len()-1].full_name_and_title(),
-                    ); 
-                  } else {
-                    blank_string = collats[0].full_name_and_title();
-                  }
-                  id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
-                },
-                Document => {
-
-                },
-                Meeting => {
-
-                },
-                Action => {
-
-                },
-                Phrase => {
-
-                },
-                Custom => {
-
-                },
-                // requires checking if the blank has been filled and another iteration
-                Pronoun1ForBlank => n.blanks[&i] = (),
-                Pronoun2ForBlank => n.blanks[&i] = (),
-                Pronoun3ForBlank => n.blanks[&i] = (),
-                Pronoun4ForBlank => n.blanks[&i] = (),
-                _ => {
-                  // actually, I should write this because it could be the case that they deleted a previously filled blank
-                  // and want to overwrite it.
-                },
-              }
-              n.blanks[&i] = (b.clone(), blank_string, id_vec);
-            }
-          },
+      FP => {
+        match nst {
+          CarePlanMeeting => FPNote(Tbd),
+          CarePlanMeetingVerbose => FPNote(Tbd),
+          Intake => FPNote(Tbd),
+          Assessment => FPNote(Tbd),
+          SNCD => FPNote(Tbd),
+          HomeVisit => FPNote(Tbd),
+          AgendaPrep => FPNote(Tbd),
+          Debrief => FPNote(Tbd),
+          PhoneCall => FPNote(Tbd),
+          Scheduling => FPNote(Tbd),
+          SentEmail => FPNote(Tbd),
+          Referral => FPNote(Tbd),
         }
-
       }
-
     };
 
-    let note_id = note.id;
-    self.notes.push(note);
+    let n = self.generate_note(ncat, nst, ncnt).unwrap();
+    let nd = self.get_note_day_by_note_id(n.id).unwrap();
+    let nd_date = nd.date;
+    let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
+
+    // autofill blanks that do not require user input
+    let mut n_blanks = n.get_empty_blanks_and_indexes();
+    for (i, b) in n_blanks {
+      let mut current_blank_choice = String::new();
+      let cb_choice = loop {
+        self.display_note_sentences_and_blanks();
+        let cb_option = io::stdin().read_line(&mut current_blank_choice);
+        match cb_option {
+          Ok(_) => break current_blank_choice.trim();
+          Err(e) => {
+            println!("Failed to read line: {}", e);
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+        };
+      };
+
+
+
+      let i = i as u32;
+      let mut blank_string = String::new();
+      let mut id_vec: Vec<u32>; 
+      match b {
+        // can clearly determine output
+        CurrentClientName => {
+          let client = self.current_client();
+          blank_string = client.full_name_with_label();
+          id_vec = vec![client.id];
+        }
+        AllCollaterals => {
+          let client = self.current_client();
+          let collaterals = self.get_current_collaterals();
+
+          blank_string = if collaterals.len() > 1 {
+            format!(
+              "{} {} {}",
+              collaterals[..collaterals.len()-1].iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", "),
+              "and",
+              collaterals[collaterals.len()-1].full_name_and_title(),
+            )
+          } else {
+            collaterals[0].full_name_and_title()
+          };
+          id_vec = client.foreign_keys[&String::from("collaterals")];
+        },
+        Pronoun1ForUser => {
+          let u = self.current_user();
+          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+          blank_string = p.subject;
+          id_vec = vec![u.pronouns];
+        },
+        Pronoun2ForUser => {
+          let u = self.current_user();
+          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+          blank_string = p.object;
+          id_vec = vec![u.pronouns];
+        },
+        Pronoun3ForUser => {
+          let u = self.current_user();
+          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+          blank_string = p.possessive_determiner;
+          id_vec = vec![u.pronouns];
+        },
+        Pronoun4ForUser => {
+          let u = self.current_user();
+          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
+          blank_string = p.possessive;
+          id_vec = vec![u.pronouns];
+        },
+        Pronoun1ForClient => {
+          let c = self.current_client();
+          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+          blank_string = p.subject;
+          id_vec = vec![c.pronouns];
+        },
+        Pronoun2ForClient => {
+          let c = self.current_client();
+          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+          blank_string = p.object;
+          id_vec = vec![c.pronouns];
+        },
+        Pronoun3ForClient => {
+          let c = self.current_client();
+          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+          blank_string = p.possessive_determiner;
+          id_vec = vec![c.pronouns];
+        },
+        Pronoun4ForClient => {
+          let c = self.current_client();
+          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
+          blank_string = p.possessive;
+          id_vec = vec![c.pronouns];
+        },
+        TodayDate => {
+          let today = Local::now().naive_local().date();
+          blank_string = format!("{}, {}-{}-{}", today.weekday(), today.year(), today.month(), today.day());
+          id_vec = vec![];
+        },
+        NoteDayDate => {
+          blank_string = nd_date_string.clone();
+          id_vec = vec![nd.id];
+        },
+        _ => (), // all others need to be filled in based on user input
+      }
+      n.blanks[&i] = (b.clone(), blank_string, id_vec);
+    }
+    n_blanks = n.get_empty_blanks_and_indexes();
+
+    loop {
+      let choice = loop {
+        let mut note_choice = String::new();
+        self.display_note_sentences_and_blanks();
+        let note_attempt = io::stdin().read_line(&mut note_choice);
+        match note_attempt {
+          Ok(_) => break note_choice.trim().to_ascii_lowercase(),
+          Err(e) {
+            println!("Failed to read line: {}", e);
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          },
+        }
+      };
+      match &choice[..] {
+        "skip" | "s" => {
+
+        },
+        "edit" | "e" => {
+
+        },
+        "delete" | "d" => {
+
+        },
+        "clear" | "c" => {
+
+        },
+        "quit" | "q" => {
+          return None;
+        },
+        "" => {
+          let blanks = n.get_empty_blanks_and_indexes();
+          if blanks.len() == 0 {
+            break;
+          } else {
+            let i = blanks[0].0;
+            let b = blanks[0].1;
+            let i = i as u32;
+            let mut blank_string = String::new();
+            let mut id_vec: Vec<u32>; 
+            match b {
+              Collaterals => {
+                // SKIP option, CANCEL, enter int
+                // also eventually browsing collaterals and other menus to add instead of vice versa
+                // probably under an 'OPTIONS' submenu
+                // This can be done by collecting the indexes of the blanks that are in that category on the first iteration
+                // and checking for them on every second iteration.
+                let collats: Vec<&Collateral> = vec![];
+                'keep_adding: loop {
+                  let collat = match self.choose_get_client_collateral() {
+                    Some(co) => co,
+                    None => {
+                      println!("Please select a collateral for this blank, skip, or cancel the note.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+
+                  if !collats.iter().any(|co| co == &collat ) {
+                    collats.push(collat);
+                  } else {
+                    println!("Collateral already added to blank.");
+                  }
+
+                  let add_another = 'another: loop {
+                    println!("Add another collateral? (y/n)");
+                    let mut add_another_choice = String::new();
+                    let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
+                    match maybe_add_another {
+                      Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
+                      Err(e) => {
+                        println!("Failed to read line: {}", e);
+                        continue;
+                      }
+                    }
+                  };
+                  match &add_another[..] {
+                    "yes" | "y" => {
+                      continue 'keep_adding;
+                    },
+                    "no" | "n" => {
+                      break 'keep_adding;
+                    }
+                  }
+                }
+                if collats.len() > 1 {
+                  blank_string = format!(
+                    "{}{}{}",
+                    collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).join(" "),
+                    "and",
+                    collats[collats.len()-1].full_name_and_title(),
+                  ); 
+                } else {
+                  blank_string = collats[0].full_name_and_title();
+                }
+                id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
+              },
+              Document => {
+
+              },
+              Meeting => {
+
+              },
+              Action => {
+
+              },
+              Phrase => {
+
+              },
+              Custom => {
+
+              },
+              // requires checking if the blank has been filled and another iteration
+              Pronoun1ForBlank => {},
+              Pronoun2ForBlank => {},
+              Pronoun3ForBlank => {},
+              Pronoun4ForBlank => {},
+              _ => {
+                // actually, I should write this because it could be the case that they deleted a previously filled blank
+                // and want to overwrite it, in which case, those categories would require manual input.
+              },
+            }
+            n.blanks[&i] = (b.clone(), blank_string, id_vec);
+          }
+        },
+      }
+
+    }
+
+    let note_id = n.id;
+    self.notes.push(n);
     Some(note_id)
     
   }
