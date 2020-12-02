@@ -11,10 +11,7 @@ pub mod note_day;
 pub mod note;
 pub mod utils;
 pub mod constants;
-
-pub use user::EmployeeRole::{FP, ICC};
-pub use collateral::SupportType::{Natural, Formal};
-pub use note::StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
+pub mod blank_enums;
 
 pub const USR_FL: &str = "users.txt";
 pub const CLT_FL: &str = "clients.txt";

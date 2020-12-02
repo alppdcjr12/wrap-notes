@@ -9,8 +9,8 @@ pub use user::*;
 pub use crate::EmployeeRole::{FP, ICC};
 pub use crate::SupportType::{Natural, Formal};
 pub use crate::StructureType::{
-  CarePlanMeeting,
-  CarePlanMeetingVerbose,
+  CarePlan,
+  CarePlanVerbose,
   Intake,
   Assessment,
   SNCD,
@@ -46,3 +46,6 @@ pub use utils::*;
 
 pub mod constants;
 pub use constants::*;
+
+pub mod blank_enums;
+pub use blank_enums::*;

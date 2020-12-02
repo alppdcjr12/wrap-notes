@@ -16,12 +16,66 @@ use crate::collateral::*;
 use crate::pronouns::*;
 use crate::note_day::*;
 use crate::note::*;
+use crate::blank_enums::*;
 use EmployeeRole::{FP, ICC};
 use SupportType::{Natural, Formal};
-use StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
+use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 use FPNoteCategory::{Tbd};
+
+// blank fill-ins (likely to be updated later on)
+use InternalDocumentFillIn::{
+  Referral,
+  TelehealthConsent,
+  TechnologyPlan,
+  FinancialAgreement,
+  InformedConsent,
+  ComprehensiveAssessment,
+  ChildAndAdolescentNeedsAndStrengths,
+  StrengthsNeedsAndCulturalDiscovery,
+  IndividualCarePlan,
+  TransitionSummary,
+};
+use ExternalDocumentFillIn::{
+  NeuropsychologicalAssessment,
+  IndividualEducationPlan,
+  Other
+};
+use InternalMeetingFillIn::{
+  IntakeMeeting,
+  AssessmentMeeting,
+  SNCDMeeting,
+  HomeVisitMeeting,
+  AgendaPrepMeeting,
+  CarePlanMeeting,
+  DebriefMeeting,
+  CheckInMeeting,
+  TransitionMeeting,
+  Other
+};
+use ExternalMeetingFillIn::{
+  IEPMeeting,
+  SchoolAssessmentMeeting,
+  Consult,
+  TreatmentTeamMeeting,
+};
+use ActionFillIn::{
+  Called,
+  Emailed,
+  Texted,
+  Elicited,
+  Reflected,
+  Summarized,
+  Scheduled,
+  Affirmed,
+  Brainstormed,
+  Reviewed,
+};
+use PhraseFillIn::{
+  AllTeamMembersPresentAtMeeting,
+  AllTeamMembers,
+};
 
 use crate::utils::*;
 use crate::constants::*;
@@ -328,7 +382,7 @@ impl NoteArchive {
 
     let nt1 = NoteTemplate::new(
       1,
-      CarePlanMeeting,
+      CarePlan,
       true,
       String::from("ICC met with (---co---) for a Care Plan Meeting for (---c---)."),
       Some(2)
@@ -5595,8 +5649,8 @@ impl NoteArchive {
         }
         let structure = structure_choice.trim();
         break match &structure[..] {
-          "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => CarePlanMeeting,
-          "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanMeetingVerbose,
+          "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => CarePlan,
+          "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanVerbose,
           "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Intake,
           "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Assessment,
           "5" | "SNCD" | "sncd" | "Sncd" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => SNCD,
@@ -5737,8 +5791,8 @@ impl NoteArchive {
     for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
       let i = i as u32;
       let structure = match def.0 {
-        "Care Plan Meeting" => CarePlanMeeting,
-        "Care Plan Meeting Verbose" => CarePlanMeetingVerbose,
+        "Care Plan Meeting" => CarePlan,
+        "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => SNCD,
@@ -5769,8 +5823,8 @@ impl NoteArchive {
       let id: u32 = values[0].parse().unwrap();
 
       let structure = match &values[1][..] {
-        "Care Plan Meeting" => CarePlanMeeting,
-        "Care Plan Meeting Verbose" => CarePlanMeetingVerbose,
+        "Care Plan Meeting" => CarePlan,
+        "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => SNCD,
@@ -5952,7 +6006,7 @@ impl NoteArchive {
     }
     println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
   }
-  fn display_note_sentences_and_blanks(&self) {
+  fn display_note_sentences_and_blanks(&self, focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
 
@@ -5968,7 +6022,7 @@ impl NoteArchive {
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
     let mut current_i = 0;
-    for (i, cont) in n.get_display_content_vec_and_blanks() {
+    for (i, cont) in n.get_display_content_vec_and_blanks(focus_id) {
       let display_i = if i == current_i {
         String::from("   ")
       } else {
@@ -5979,11 +6033,11 @@ impl NoteArchive {
     }
     println!(
       "| {} \n| {} \n| {} \n| {} \n| {} \n| {}",
-      "Press ENTER to add data to the currently selected blank (indicated by '[=======| n |=======]').",
+      "Press ENTER to add data to the currently selected blank (indicated by '[===|   |===]').",
+      "Enter ID of blank to skip directly to that blank.",
       "SKIP / S: Skip to the next blank",
-      "EDIT / E: Edit a different blank by ID",
-      "DELETE / D: Delete data from blank by ID",
-      "CLEAR / C: Delete data from all notes",
+      "DELETE / D: Delete data from current blank",
+      "CLEAR / C: Delete data from all blanks",
       "QUIT / Q: Save progress and quit",
     );
   }
@@ -6048,6 +6102,55 @@ impl NoteArchive {
       }
     }
   }
+  fn display_blank_fill_in(fill_ins: Box<dyn Iterator>) {
+    let display_category = fill_ins.cloned().next().fill_in_category();
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^113}", "-");
+    println!("{:-^113}", format!(" Fill in blank with {} ", display_category));
+    println!("{:-^113}", "-");
+    println!("{:-^10} | {:-^100}", " ID ", " Content ");
+    for (i, fi) in fill_ins.enumerate() {
+      println!("{:-^10} | {:-^100}", i, fi);
+    }
+    println!("{:-^113}", "-");
+    println!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
+  }
+  fn choose_blank_fill_in(fill_ins: Box<dyn Iterator>) -> Option<Box<dyn BlankIterator>> {
+    loop {
+      NoteArchive::display_blank_fill_in(fill_ins.cloned());
+      let fill_in_choice = String::new();
+      let fill_in_attempt = io::stdin().read_line(&mut fill_in_choice);
+      let selected_option = match fill_in_attempt {
+        Ok(_) => fill_in_choice.trim().to_ascii_lowercase(),
+        Err(e) => {
+          println!("Failed to read line: {}", e);
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      };
+      match &selected_option[..] {
+        "cancel" | "c" => return None,
+        _ => (),
+      }
+      let chosen_id: usize = match selected_option.parse() {
+        Ok(num) => num,
+        Err(e) => {
+          println!("Failed to parse '{}' as int: {}", selected_option, e);
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      };
+      let selected_content = fill_ins.enumerate().find(|(i, f)| i == &chosen_id );
+      match selected_content {
+        Some(fill_in_tup) => return Some(fill_in_tup.1),
+        None => {
+          println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      }
+    }
+  }
   fn create_note_from_template_get_id(&mut self) -> Option<u32> {
     let nt_id = self.select_note_template().unwrap();
     let nt = self.get_note_template_option_by_id(nt_id).unwrap();
@@ -6057,8 +6160,8 @@ impl NoteArchive {
     let ncat = match self.current_user().role {
       ICC => {
         match nst {
-          CarePlanMeeting => ICCNote(FaceToFaceContactWithClient),
-          CarePlanMeetingVerbose => ICCNote(FaceToFaceContactWithClient),
+          CarePlan => ICCNote(FaceToFaceContactWithClient),
+          CarePlanVerbose => ICCNote(FaceToFaceContactWithClient),
           Intake => ICCNote(FaceToFaceContactWithClient),
           Assessment => ICCNote(FaceToFaceContactWithClient),
           SNCD => ICCNote(FaceToFaceContactWithClient),
@@ -6073,8 +6176,8 @@ impl NoteArchive {
       }
       FP => {
         match nst {
-          CarePlanMeeting => FPNote(Tbd),
-          CarePlanMeetingVerbose => FPNote(Tbd),
+          CarePlan => FPNote(Tbd),
+          CarePlanVerbose => FPNote(Tbd),
           Intake => FPNote(Tbd),
           Assessment => FPNote(Tbd),
           SNCD => FPNote(Tbd),
@@ -6095,29 +6198,13 @@ impl NoteArchive {
     let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
 
     // autofill blanks that do not require user input
-    let mut n_blanks = n.get_empty_blanks_and_indexes();
-    for (i, b) in n_blanks {
-      let mut current_blank_choice = String::new();
-      let cb_choice = loop {
-        self.display_note_sentences_and_blanks();
-        let cb_option = io::stdin().read_line(&mut current_blank_choice);
-        match cb_option {
-          Ok(_) => break current_blank_choice.trim();
-          Err(e) => {
-            println!("Failed to read line: {}", e);
-            thread::sleep(time::Duration::from_secs(2));
-            continue;
-          }
-        };
-      };
-
-
-
+    // (can clearly determine output)
+    let mut empty_blanks = n.get_empty_blanks_and_indexes();
+    for (i, b) in empty_blanks {
       let i = i as u32;
       let mut blank_string = String::new();
-      let mut id_vec: Vec<u32>; 
+      let mut id_vec: Vec<u32>;
       match b {
-        // can clearly determine output
         CurrentClientName => {
           let client = self.current_client();
           blank_string = client.full_name_with_label();
@@ -6200,16 +6287,31 @@ impl NoteArchive {
       }
       n.blanks[&i] = (b.clone(), blank_string, id_vec);
     }
-    n_blanks = n.get_empty_blanks_and_indexes();
-
+    
+    let focus_id_option: Option<u32> = None;
     loop {
+
+      // increments the current blank by going to the next one only when the current is filled,
+      // or alternatively when focus_id_option is set to Some(id) because the user selected it
+
+      empty_blanks = n.get_empty_blanks_and_indexes();
+
+      let (i, b) = match focus_id_option {
+        Some(f_id) => {
+          let f_id_b = empty_blanks.iter().find(|b_tup| b_tup.0 == f_id_b ).unwrap().1;
+          (f_id, f_id_b)
+        },
+        None => (empty_blanks[0].0, empty_blanks[0].1)
+      };
+      let i = i as u32;
+
       let choice = loop {
         let mut note_choice = String::new();
-        self.display_note_sentences_and_blanks();
+        self.display_note_sentences_and_blanks(focus_id_option);
         let note_attempt = io::stdin().read_line(&mut note_choice);
         match note_attempt {
           Ok(_) => break note_choice.trim().to_ascii_lowercase(),
-          Err(e) {
+          Err(e) => {
             println!("Failed to read line: {}", e);
             thread::sleep(time::Duration::from_secs(2));
             continue;
@@ -6218,117 +6320,392 @@ impl NoteArchive {
       };
       match &choice[..] {
         "skip" | "s" => {
-
-        },
-        "edit" | "e" => {
-
+          match focus_id_option {
+            Some(focus_id) => {
+              focus_id_option = Some(focus_id + 1);
+              continue;
+            },
+            None => {
+              if empty_blanks.len() > 1 {
+                focus_id_option = Some(empty_blanks[2].0);
+                continue;
+              }
+            },
+          }
         },
         "delete" | "d" => {
-
+          match n.blanks.get(&i) {
+            Some(b_tup) => {
+              loop {
+                let delete_choice = String::new();
+                println!("Delete blank currently filled in with '{}'?", b_tup.1);
+                let delete_choice_attempt = io::stdin().read_line(&mut delete_choice);
+                let delete_choice_content = match delete_choice_attempt {
+                  Ok(_) => delete_choice.trim().to_ascii_lowercase(),
+                  Err(e) => {
+                    println!("Failed to read line: {}", e);
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                };
+                match &fill_choice_content[..] {
+                  "yes" | "y" => {
+                    n.blanks.remove(&i);
+                    break;
+                  },
+                  "no" | "n" => {
+                    break;
+                  },
+                  _ => {
+                    println!("Invalid command.");
+                    continue;
+                  },
+                }
+              }
+            },
+            None => {
+              println!("Current blank is already empty.");
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            },
+          }
         },
         "clear" | "c" => {
-
+          if n.blanks.len() == 0 {
+            println!("All blanks are already empty.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            loop {
+              let clear_choice = String::new();
+              println!("Delete all blanks from the current template and start over?");
+              let clear_choice_attempt = io::stdin().read_line(&mut clear_choice);
+              let clear_choice_content = match clear_choice_attempt {
+                Ok(_) => clear_choice.trim().to_ascii_lowercase(),
+                Err(e) => {
+                  println!("Failed to read line: {}", e);
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              };
+              match &fill_choice_content[..] {
+                "yes" | "y" => {
+                  n.blanks.clear();
+                  break;
+                },
+                "no" | "n" => {
+                  break;
+                },
+                _ => {
+                  println!("Invalid command.");
+                  continue;
+                },
+              }
+            }
+          }
         },
         "quit" | "q" => {
           return None;
         },
         "" => {
-          let blanks = n.get_empty_blanks_and_indexes();
-          if blanks.len() == 0 {
+          self.display_note_sentences_and_blanks(focus_id_option);
+          if empty_blanks.len() == 0 {
             break;
-          } else {
-            let i = blanks[0].0;
-            let b = blanks[0].1;
-            let i = i as u32;
-            let mut blank_string = String::new();
-            let mut id_vec: Vec<u32>; 
-            match b {
-              Collaterals => {
-                // SKIP option, CANCEL, enter int
-                // also eventually browsing collaterals and other menus to add instead of vice versa
-                // probably under an 'OPTIONS' submenu
-                // This can be done by collecting the indexes of the blanks that are in that category on the first iteration
-                // and checking for them on every second iteration.
-                let collats: Vec<&Collateral> = vec![];
-                'keep_adding: loop {
-                  let collat = match self.choose_get_client_collateral() {
-                    Some(co) => co,
-                    None => {
-                      println!("Please select a collateral for this blank, skip, or cancel the note.");
-                      thread::sleep(time::Duration::from_secs(2));
+          }
+          let mut blank_string = String::new();
+          let mut id_vec: Vec<u32>; 
+          match b {
+            Collaterals => {
+              // SKIP option, CANCEL, enter int
+              // also eventually browsing collaterals and other menus to add instead of vice versa
+              // probably under an 'OPTIONS' submenu
+              // This can be done by collecting the indexes of the blanks that are in that category on the first iteration
+              // and checking for them on every second iteration.
+              let collats: Vec<&Collateral> = vec![];
+              'keep_adding: loop {
+                let collat = match self.choose_get_client_collateral() {
+                  Some(co) => co,
+                  None => {
+                    println!("Please select a collateral for this blank, skip, or cancel the note.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                };
+
+                if !collats.iter().any(|co| co == &collat ) {
+                  collats.push(collat);
+                } else {
+                  println!("Collateral already added to blank.");
+                }
+
+                let add_another = 'another: loop {
+                  println!("Add another collateral? (y/n)");
+                  let mut add_another_choice = String::new();
+                  let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
+                  match maybe_add_another {
+                    Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
+                    Err(e) => {
+                      println!("Failed to read line: {}", e);
                       continue;
                     }
-                  };
-
-                  if !collats.iter().any(|co| co == &collat ) {
-                    collats.push(collat);
-                  } else {
-                    println!("Collateral already added to blank.");
                   }
-
-                  let add_another = 'another: loop {
-                    println!("Add another collateral? (y/n)");
-                    let mut add_another_choice = String::new();
-                    let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
-                    match maybe_add_another {
-                      Ok(_) => break 'another add_another_choice.trim().to_ascii_lowercase(),
-                      Err(e) => {
-                        println!("Failed to read line: {}", e);
-                        continue;
+                };
+                match &add_another[..] {
+                  "yes" | "y" => {
+                    continue 'keep_adding;
+                  },
+                  "no" | "n" => {
+                    break 'keep_adding;
+                  }
+                }
+              }
+              if collats.len() > 1 {
+                blank_string = format!(
+                  "{}{}{}",
+                  collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).collect::<Vec<String>>().join(" "),
+                  "and",
+                  collats[collats.len()-1].full_name_and_title(),
+                ); 
+              } else {
+                blank_string = collats[0].full_name_and_title();
+              }
+              id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
+            },
+            InternalDocument => {
+              blank_string = Self::choose_blank_fill_in(InternalDocumentFillIn::iterator()).display_fill_in();
+              id_vec = vec![];
+            },
+            ExternalDocument => {
+              blank_string = Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator()).display_fill_in();
+              id_vec = vec![];
+            },
+            InternalMeeting => {
+              blank_string = Self::choose_blank_fill_in(InternalMeetingFillIn::iterator()).display_fill_in();
+              id_vec = vec![];
+            },
+            ExternalMeeting => {
+              blank_string = Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator()).display_fill_in();
+              id_vec = vec![];
+            },
+            Action => {
+              blank_string = Self::choose_blank_fill_in(ActionFillIn::iterator()).display_fill_in();
+              id_vec = vec![];
+            },
+            Phrase => {
+              blank_string = Self::choose_blank_fill_in(PhraseFillIn::iterator()).display_fill_in();
+              id_vec = vec![];
+            },
+            Custom => {
+              loop {
+                let custom_choice = String::new();
+                println!("Enter custom content for the current blank.");
+                let custom_attempt = io::stdin().read_line(&mut custom_choice);
+                let custom_content = match custom_attempt {
+                  Ok(_) => custom_choice.trim(),
+                  Err(e) => {
+                    println!("Failed to read line: {}", e);
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                };
+                blank_string = custom_content;
+                id_vec = vec![];
+                break;
+              }
+            },
+            // requires checking if the blank has been filled
+            Pronoun1ForBlank(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentClientName => {
+                      blank_string = self.get_pronouns_by_id(self.current_client().pronouns).subject;
+                      id_vec = vec![];
+                    },
+                    Collaterals => {
+                      let collats = b_tup.2;
+                      blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).subject
+                      };
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client().collaterals;
+                      if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).subject
+                      }
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            },
+            Pronoun2ForBlank(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentClientName => {
+                      blank_string = self.get_pronouns_by_id(self.current_client().pronouns).object;
+                      id_vec = vec![];
+                    },
+                    Collaterals => {
+                      let collats = b_tup.2;
+                      blank_string = if collats.len() > 1 {
+                        String::from("them")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).object
+                      };
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client().collaterals;
+                      if collats.len() > 1 {
+                        String::from("them")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).object
+                      }
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            },
+            Pronoun3ForBlank(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentClientName => {
+                      blank_string = self.get_pronouns_by_id(self.current_client().pronouns).possessive_determiner;
+                      id_vec = vec![];
+                    },
+                    Collaterals => {
+                      let collats = b_tup.2;
+                      blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).possessive_determiner
+                      };
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client().collaterals;
+                      if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).possessive_determiner
+                      }
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            },
+            Pronoun4ForBlank(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentClientName => {
+                      blank_string = self.get_pronouns_by_id(self.current_client().pronouns).possessive;
+                      id_vec = vec![];
+                    },
+                    Collaterals => {
+                      let collats = b_tup.2;
+                      blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).possessive
+                      };
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client().collaterals;
+                      if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        self.get_pronouns_by_id(collats[0]).possessive
+                      }
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            },
+            _ => (),
+          }
+          n.blanks[&i] = (b.clone(), blank_string, id_vec);
+        },
+        _ => {
+          let blank_id = match choice.parse() {
+            Ok(num) => num,
+            Err(e) => {
+              match b {
+                Custom => {
+                  'blank_content: loop {
+                    loop {
+                      let fill_choice = String::new();
+                      println!("Fill custom blank with '{}'? ( Y / N )", choice);
+                      let fill_choice_attempt = io::stdin().read_line(&mut custom_choice);
+                      let fill_choice_content = match fill_choice_attempt {
+                        Ok(_) => fill_choice.trim().to_ascii_lowercase(),
+                        Err(e) => {
+                          println!("Failed to read line: {}", e);
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        }
+                      };
+                      match &fill_choice_content[..] {
+                        "yes" | "y" => {
+                          blank_string = choice;
+                          id_vec = vec![];
+                          break 'blank_content;
+                        },
+                        "no" | "n" => {
+                          break;
+                        },
+                        _ => {
+                          println!("Invalid command.");
+                          continue;
+                        },
                       }
                     }
-                  };
-                  match &add_another[..] {
-                    "yes" | "y" => {
-                      continue 'keep_adding;
-                    },
-                    "no" | "n" => {
-                      break 'keep_adding;
+                    loop {
+                      let custom_choice = String::new();
+                      println!("Enter custom content for the current blank.");
+                      let custom_attempt = io::stdin().read_line(&mut custom_choice);
+                      let custom_content = match custom_attempt {
+                        Ok(_) => custom_choice.trim(),
+                        Err(e) => {
+                          println!("Failed to read line: {}", e);
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        }
+                      };
+                      blank_string = custom_content;
+                      id_vec = vec![];
+                      break 'blank_content;
                     }
                   }
+                },
+                _ => {
+                  println!("Invalid command.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
                 }
-                if collats.len() > 1 {
-                  blank_string = format!(
-                    "{}{}{}",
-                    collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).join(" "),
-                    "and",
-                    collats[collats.len()-1].full_name_and_title(),
-                  ); 
-                } else {
-                  blank_string = collats[0].full_name_and_title();
-                }
-                id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
-              },
-              Document => {
-
-              },
-              Meeting => {
-
-              },
-              Action => {
-
-              },
-              Phrase => {
-
-              },
-              Custom => {
-
-              },
-              // requires checking if the blank has been filled and another iteration
-              Pronoun1ForBlank => {},
-              Pronoun2ForBlank => {},
-              Pronoun3ForBlank => {},
-              Pronoun4ForBlank => {},
-              _ => {
-                // actually, I should write this because it could be the case that they deleted a previously filled blank
-                // and want to overwrite it, in which case, those categories would require manual input.
-              },
-            }
-            n.blanks[&i] = (b.clone(), blank_string, id_vec);
+              }
+            },
+          };
+          if num < 0 || num > n.number_of_blanks() {
+            println!("Invalid blank ID.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
           }
+          focus_id_option = Some(num)
         },
       }
-
     }
 
     let note_id = n.id;
@@ -6353,8 +6730,8 @@ impl NoteArchive {
         }
         let structure = structure_choice.trim();
         break match &structure[..] {
-          "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => CarePlanMeeting,
-          "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanMeetingVerbose,
+          "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => CarePlan,
+          "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanVerbose,
           "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Intake,
           "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Assessment,
           "5" | "SNCD" | "sncd" | "Sncd" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => SNCD,
@@ -6478,8 +6855,8 @@ impl NoteArchive {
     for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
       let i = i as u32;
       let structure = match def.0 {
-        "Care Plan Meeting" => CarePlanMeeting,
-        "Care Plan Meeting Verbose" => CarePlanMeetingVerbose,
+        "Care Plan Meeting" => CarePlan,
+        "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => SNCD,
@@ -6510,8 +6887,8 @@ impl NoteArchive {
       let id: u32 = values[0].parse().unwrap();
 
       let structure = match &values[1][..] {
-        "Care Plan Meeting" => CarePlanMeeting,
-        "Care Plan Meeting Verbose" => CarePlanMeetingVerbose,
+        "Care Plan Meeting" => CarePlan,
+        "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => SNCD,

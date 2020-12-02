@@ -5,12 +5,12 @@ use crate::constants::*;
 
 #[macro_use] use lazy_static::lazy_static;
 use regex::Regex;
-use regex::re_unicode::Match;
+use regex::Match;
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum StructureType {
-  CarePlanMeeting,
-  CarePlanMeetingVerbose,
+  CarePlan,
+  CarePlanVerbose,
   Intake,
   Assessment,
   SNCD,
@@ -24,15 +24,15 @@ pub enum StructureType {
 }
 
 
-use StructureType::{CarePlanMeeting, CarePlanMeetingVerbose, Intake,
+use StructureType::{CarePlan, CarePlanVerbose, Intake,
 Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling,
 SentEmail, Referral};
 
 impl StructureType {
   pub fn iterator() -> impl Iterator<Item = StructureType> {
     [
-      CarePlanMeeting,
-      CarePlanMeetingVerbose,
+      CarePlan,
+      CarePlanVerbose,
       Intake,
       Assessment,
       SNCD,
@@ -47,8 +47,8 @@ impl StructureType {
   }
   pub fn abbreviate(&self) -> &str {
     match self {
-      CarePlanMeeting => "CPM",
-      CarePlanMeetingVerbose => "CPM-V",
+      CarePlan => "CPM",
+      CarePlanVerbose => "CPM-V",
       Intake => "I",
       Assessment => "A",
       SNCD => "S",
@@ -66,8 +66,8 @@ impl StructureType {
 impl fmt::Display for StructureType {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display = match self {
-      CarePlanMeeting => "Care Plan Meeting",
-      CarePlanMeetingVerbose => "Care Plan Meeting Verbose",
+      CarePlan => "Care Plan Meeting",
+      CarePlanVerbose => "Care Plan Meeting Verbose",
       Intake => "Intake",
       Assessment => "Assessment",
       SNCD => "SNCD",
@@ -391,14 +391,14 @@ impl Note {
     }
     content_string
   }
-  pub fn generate_display_content_string_with_blanks(&self) -> String {
+  pub fn generate_display_content_string_with_blanks(&self, focus_id: Option<u32>) -> String {
     let mut content_string = self.content.clone();
     for (i, (blank_type, display_string, _)) in self.blanks.iter() {
-      content_string = content_string.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
+      content_string = content_string.replacen(&format!("{}", blank_type)[..], &format!("[{}] {}", i, &display_string[..])[..], 1);
     }
 
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
     
     let i: u32 = 1;
@@ -415,10 +415,21 @@ impl Note {
         Some(m) => m,
       };
 
-      let display_blank = if unfilled == 1 {
-        format!("[=======| {} |=======]", i);
-      } else {
-        format!("_______{}_______", i);
+      let display_blank = match focus_id {
+        None => {
+          if unfilled == 1 {
+            format!("[===| {} |===]", i)
+          } else {
+            format!("_______{}_______", i)
+          }
+        },
+        Some(f_id) => {
+          if i == f_id {
+            format!("[===| {} |===]", i)
+          } else {
+            format!("_______{}_______", i)
+          }
+        }
       };
 
       content_string = format!(
@@ -435,12 +446,12 @@ impl Note {
   pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
     Self::get_content_vec_from_string(self.generate_display_content_string())
   }
-  pub fn get_display_content_vec_and_blanks(&self) -> Vec<(usize, String)> {
-    Self::get_content_vec_from_string(self.generate_display_content_string_with_blanks())
+  pub fn get_display_content_vec_and_blanks(&self, focus_id: Option<u32>) -> Vec<(usize, String)> {
+    Self::get_content_vec_from_string(self.generate_display_content_string_with_blanks(focus_id))
   }
   pub fn get_blank_types(&self) -> Vec<Blank> {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
     let blank_content = self.content.clone();
     let blanks: Vec<Blank> = vec![];
@@ -453,7 +464,7 @@ impl Note {
   }
   pub fn get_empty_blanks_and_indexes(&self) -> Vec<(u32, Blank)> {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
     let num_total_blanks = RE_BLANK.find_iter(&self.content).count();
     let ordered_blanks = self.get_blank_types();
@@ -471,9 +482,15 @@ impl Note {
   }
   pub fn has_unfilled_blanks(&self) -> bool {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("(---\w+---)").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
-    RE_BLANK.find_iter(&self.content[..]).collect::<Vec<Match>>().len() < self.blanks.len()
+    RE_BLANK.find_iter(&self.content[..]).count() < self.blanks.len()
+  }
+  pub fn number_of_blanks(&self) -> usize {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+    }
+    RE_BLANK.find_iter(&self.content[..]).count()
   }
 }
 
@@ -516,10 +533,10 @@ pub enum Blank {
   CurrentClientName,
   Collaterals,
   AllCollaterals,
-  Pronoun1ForBlank,
-  Pronoun2ForBlank,
-  Pronoun3ForBlank,
-  Pronoun4ForBlank,
+  Pronoun1ForBlank(Option<u32>),
+  Pronoun2ForBlank(Option<u32>),
+  Pronoun3ForBlank(Option<u32>),
+  Pronoun4ForBlank(Option<u32>),
   Pronoun1ForUser,
   Pronoun2ForUser,
   Pronoun3ForUser,
@@ -530,8 +547,10 @@ pub enum Blank {
   Pronoun4ForClient,
   TodayDate,
   NoteDayDate,
-  Document,
-  Meeting,
+  InternalDocument,
+  ExternalDocument,
+  InternalMeeting,
+  ExternalMeeting,
   Action,
   Phrase,
   Custom
@@ -556,8 +575,10 @@ use Blank::{
   Pronoun4ForClient,
   TodayDate,
   NoteDayDate,
-  Document,
-  Meeting,
+  InternalDocument,
+  ExternalDocument,
+  InternalMeeting,
+  ExternalMeeting,
   Action,
   Phrase,
   Custom
@@ -569,10 +590,10 @@ impl Blank {
       CurrentClientName,
       Collaterals,
       AllCollaterals,
-      Pronoun1ForBlank,
-      Pronoun2ForBlank,
-      Pronoun3ForBlank,
-      Pronoun4ForBlank,
+      Pronoun1ForBlank(None),
+      Pronoun2ForBlank(None),
+      Pronoun3ForBlank(None),
+      Pronoun4ForBlank(None),
       Pronoun1ForUser,
       Pronoun2ForUser,
       Pronoun3ForUser,
@@ -583,8 +604,10 @@ impl Blank {
       Pronoun4ForClient,
       TodayDate,
       NoteDayDate,
-      Document,
-      Meeting,
+      InternalDocument,
+      ExternalDocument,
+      InternalMeeting,
+      ExternalMeeting,
       Action,
       Phrase,
       Custom,
@@ -595,10 +618,10 @@ impl Blank {
       CurrentClientName,
       Collaterals,
       AllCollaterals,
-      Pronoun1ForBlank,
-      Pronoun2ForBlank,
-      Pronoun3ForBlank,
-      Pronoun4ForBlank,
+      Pronoun1ForBlank(None),
+      Pronoun2ForBlank(None),
+      Pronoun3ForBlank(None),
+      Pronoun4ForBlank(None),
       Pronoun1ForUser,
       Pronoun2ForUser,
       Pronoun3ForUser,
@@ -609,8 +632,10 @@ impl Blank {
       Pronoun4ForClient,
       TodayDate,
       NoteDayDate,
-      Document,
-      Meeting,
+      InternalDocument,
+      ExternalDocument,
+      InternalMeeting,
+      ExternalMeeting,
       Action,
       Phrase,
       Custom,
@@ -621,10 +646,10 @@ impl Blank {
       CurrentClientName => "c",
       Collaterals => "co",
       AllCollaterals => "allco",
-      Pronoun1ForBlank => "pb1",
-      Pronoun2ForBlank => "pb2",
-      Pronoun3ForBlank => "pb3",
-      Pronoun4ForBlank => "pb4",
+      Pronoun1ForBlank(id) => &format!("pb1#{}#", id)[..],
+      Pronoun2ForBlank(id) => &format!("pb2#{}#", id)[..],
+      Pronoun3ForBlank(id) => &format!("pb3#{}#", id)[..],
+      Pronoun4ForBlank(id) => &format!("pb4#{}#", id)[..],
       Pronoun1ForUser => "pu1",
       Pronoun2ForUser => "pu2",
       Pronoun3ForUser => "pu3",
@@ -635,8 +660,10 @@ impl Blank {
       Pronoun4ForClient => "pc4",
       TodayDate => "td",
       NoteDayDate => "ndd",
-      Document => "d",
-      Meeting => "m",
+      InternalDocument => "id",
+      ExternalDocument => "ed",
+      InternalMeeting => "im",
+      ExternalMeeting => "em",
       Action => "a",
       Phrase => "p",
       Custom => "cu",
@@ -647,10 +674,6 @@ impl Blank {
       "(---c---)" => CurrentClientName,
       "(---co---)" => Collaterals,
       "(---allco---)" => AllCollaterals,
-      "(---pb1---)" => Pronoun1ForBlank,
-      "(---pb2---)" => Pronoun2ForBlank,
-      "(---pb3---)" => Pronoun3ForBlank,
-      "(---pb4---)" => Pronoun4ForBlank,
       "(---pu1---)" => Pronoun1ForUser,
       "(---pu2---)" => Pronoun2ForUser,
       "(---pu3---)" => Pronoun3ForUser,
@@ -661,11 +684,26 @@ impl Blank {
       "(---pc4---)" => Pronoun4ForClient,
       "(---td---)" => TodayDate,
       "(---ndd---)" => NoteDayDate,
-      "(---d---)" => Document,
-      "(---m---)" => Meeting,
+      "(---id---)" => InternalDocument,
+      "(---ed---)" => ExternalDocument,
+      "(---im---)" => InternalMeeting,
+      "(---em---)" => ExternalMeeting,
       "(---a---)" => Action,
       "(---p---)" => Phrase,
       "(---cu---)" => Custom,
+      _ => {
+        let components = s.split("#").collect::<Vec<String>>();
+
+        let blank_id = components[1].parse().unwrap();
+
+        match &format!("{}{}", components[0], components[2])[..] {
+          "(---pb1---)" => Pronoun1ForBlank(blank_id),
+          "(---pb2---)" => Pronoun2ForBlank(blank_id),
+          "(---pb3---)" => Pronoun3ForBlank(blank_id),
+          "(---pb4---)" => Pronoun4ForBlank(blank_id),
+
+        }
+      },
     }
   }
   pub fn display_to_user(&self) -> &str {
@@ -673,10 +711,10 @@ impl Blank {
       CurrentClientName => "Name of client",
       Collaterals => "One or more collaterals",
       AllCollaterals => "All collaterals for the current client",
-      Pronoun1ForBlank => "Subject pronouns of the person in another blank (he, she, they)",
-      Pronoun2ForBlank => "Object pronouns of the person in another blank (him, her, them)",
-      Pronoun3ForBlank => "Possessive detemriner pronouns of the person in another blank (his, her, their)",
-      Pronoun4ForBlank => "Possessive pronouns of the person in another blank (his, hers, theirs)",
+      Pronoun1ForBlank(b_id) => &format!("Subject pronouns of the person in blank #{} (he, she, they)", b_id)[..],
+      Pronoun2ForBlank(b_id) => &format!("Object pronouns of the person in blank #{} (him, her, them)", b_id)[..],
+      Pronoun3ForBlank(b_id) => &format!("Possessive detemriner pronouns of the person in blank #{} (his, her, their)", b_id)[..],
+      Pronoun4ForBlank(b_id) => &format!("Possessive pronouns of the person in blank #{} (his, hers, theirs)", b_id)[..],
       Pronoun1ForUser => "Subject pronoun of the current user",
       Pronoun2ForUser => "Object pronoun of the current user",
       Pronoun3ForUser => "Possessive determiner of the current user",
@@ -687,8 +725,10 @@ impl Blank {
       Pronoun4ForClient => "Possessive pronoun of the current client",
       TodayDate => "Today's date",
       NoteDayDate => "The date of the current note",
-      Document => "Document name",
-      Meeting => "Meeting title",
+      InternalDocument => "Internal document",
+      ExternalDocument => "External document",
+      InternalMeeting => "Wraparound meeting title",
+      ExternalMeeting => "External meeting title",
       Action => "General action",
       Phrase => "Other phrase",
       Custom => "Custom input",
