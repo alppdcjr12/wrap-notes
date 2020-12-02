@@ -20,7 +20,8 @@ pub use crate::StructureType::{
   PhoneCall,
   Scheduling,
   SentEmail,
-  Referral
+  Referral,
+  CustomStructure
 };
 
 pub mod note_archive;

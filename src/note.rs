@@ -21,12 +21,13 @@ pub enum StructureType {
   Scheduling,
   SentEmail,
   Referral,
+  CustomStructure,
 }
 
 
 use StructureType::{CarePlan, CarePlanVerbose, Intake,
 Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling,
-SentEmail, Referral};
+SentEmail, Referral, CustomStructure};
 
 impl StructureType {
   pub fn iterator() -> impl Iterator<Item = StructureType> {
@@ -42,7 +43,8 @@ impl StructureType {
       PhoneCall,
       Scheduling,
       SentEmail,
-      Referral
+      Referral,
+      CustomStructure,
     ].iter().copied()
   }
   pub fn abbreviate(&self) -> &str {
@@ -59,6 +61,7 @@ impl StructureType {
       Scheduling => "SCH",
       SentEmail => "SE",
       Referral => "R",
+      CustomStructure => "C",
     }
   }
 }
@@ -78,6 +81,7 @@ impl fmt::Display for StructureType {
       Scheduling => "Scheduling",
       SentEmail => "Sent Email",
       Referral => "Referral",
+      CustomStructure => "Custom",
     };
     write!(f, "{}", display)
   }
@@ -266,6 +270,20 @@ pub enum ICCNoteCategory {
   MemberOutreachNoShow,
 }
 
+impl ICCNoteCategory {
+  pub fn iterator() -> impl Iterator<Item = ICCNoteCategory> {
+    [
+      FaceToFaceContactWithClient,
+      TelephoneContactWithClient,
+      CareCoordination,
+      Documentation,
+      CarePlanningTeam,
+      TransportClient,
+      MemberOutreachNoShow,
+    ].iter().copied()
+  }
+}
+
 impl PartialEq for ICCNoteCategory {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
@@ -302,6 +320,14 @@ CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutrea
 #[derive(Debug, Clone)]
 pub enum FPNoteCategory {
   Tbd,
+}
+
+impl FPNoteCategory {
+  pub fn iterator() -> impl Iterator<Item = ICCNoteCategory> {
+    [
+      Tbd,
+    ].iter().copied()
+  }
 }
 
 impl fmt::Display for FPNoteCategory {
@@ -553,7 +579,7 @@ pub enum Blank {
   ExternalMeeting,
   Action,
   Phrase,
-  Custom
+  CustomBlank
 }
 
 
@@ -581,7 +607,7 @@ use Blank::{
   ExternalMeeting,
   Action,
   Phrase,
-  Custom
+  CustomBlank,
 };
 
 impl Blank {
@@ -610,7 +636,7 @@ impl Blank {
       ExternalMeeting,
       Action,
       Phrase,
-      Custom,
+      CustomBlank,
     ].iter().copied()
   }
   pub fn vector_of_variants() -> Vec<Blank> {
@@ -638,7 +664,7 @@ impl Blank {
       ExternalMeeting,
       Action,
       Phrase,
-      Custom,
+      CustomBlank,
     ]
   }
   pub fn abbreviate(&self) -> &str {
@@ -666,7 +692,7 @@ impl Blank {
       ExternalMeeting => "em",
       Action => "a",
       Phrase => "p",
-      Custom => "cu",
+      CustomBlank => "cu",
     }
   }
   pub fn get_blank_from_str(s: &str) -> Blank {
@@ -690,7 +716,7 @@ impl Blank {
       "(---em---)" => ExternalMeeting,
       "(---a---)" => Action,
       "(---p---)" => Phrase,
-      "(---cu---)" => Custom,
+      "(---cu---)" => CustomBlank,
       _ => {
         let components = s.split("#").collect::<Vec<String>>();
 
@@ -731,7 +757,7 @@ impl Blank {
       ExternalMeeting => "External meeting title",
       Action => "General action",
       Phrase => "Other phrase",
-      Custom => "Custom input",
+      CustomBlank => "Custom input",
     }
   }
 }

@@ -19,14 +19,14 @@ use crate::note::*;
 use crate::blank_enums::*;
 use EmployeeRole::{FP, ICC};
 use SupportType::{Natural, Formal};
-use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral};
+use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral, CustomStructure};
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 use FPNoteCategory::{Tbd};
 
 // blank fill-ins (likely to be updated later on)
 use InternalDocumentFillIn::{
-  Referral,
+  ReferralForm,
   TelehealthConsent,
   TechnologyPlan,
   FinancialAgreement,
@@ -5661,6 +5661,7 @@ impl NoteArchive {
           "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Scheduling,
           "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => SentEmail,
           "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Referral,
+          "13" | "Custom" | "CUSTOM" | "custom" | "C" | "c" => CustomStructure,
           "cancel" | "CANCEL" | "Cancel" => return None,
           _ => {
             println!("Invalid choice.");
@@ -5803,7 +5804,8 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
-        _t => {
+        "Custom" => CustomStructure,
+        _ => {
           panic!("Support not added for reading default Structure Type from constant.");
         }
       };
@@ -5835,6 +5837,7 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
+        "Custom" => CustomStructure,
         _ => return Err(Error::new(
           ErrorKind::Other,
           "Unsupported StructureType saved to file.",
@@ -6151,6 +6154,86 @@ impl NoteArchive {
       }
     }
   }
+  fn display_ICC_note_categories() {
+    println!("{:-^58}", "-");
+    println!("{:-^58}", " ICC Note Categories ");
+    println!("{:-^58}", "-");
+    println!("{:-^5} | {:-^50}", " ID ", " Note Category ");
+    for (i, cat) in ICCNoteCategory::iterator().enumerate() {
+      println!("{:-^5} | {:-<50}", i, cat);
+    }
+    println!("{:-^58}", "-");
+    println!(
+      "| {} | {}",
+      "Enter ID to select a note category.",
+      "QUIT / Q: Quit menu",
+    );
+  }
+  fn display_FP_note_categories() {
+    println!("{:-^58}", "-");
+    println!("{:-^58}", " FP Note Categories ");
+    println!("{:-^58}", "-");
+    println!("{:-^5} | {:-^50}", " ID ", " Note Category ");
+    for (i, cat) in FPNoteCategory::iterator().enumerate() {
+      println!("{:-^5} | {:-<50}", i, cat);
+    }
+    println!("{:-^58}", "-");
+    println!(
+      "| {} | {}",
+      "Enter ID to select a note category.",
+      "QUIT / Q: Quit menu",
+    );
+  }
+  fn choose_note_category() -> Option<NoteCategory> {
+    let ICC_cat: Option<ICCNoteCategory>;
+    let FP_cat: Option<FPNoteCategory>;
+    let current_role = self.current_user().role()
+    match current_role {
+      ICC => {
+        self.display_ICC_note_categories();
+      },
+      FP => {
+        self.display_FP_note_categories();
+      },
+    }
+
+    let mut ncat_choice = String::new();
+    loop {
+      let ncat_attempt = io::stdin().read_line(&mut ncat_choice);
+      let ncat_input = match ncat_attempt {
+        Ok(_) => ncat_choice.trim().to_ascii_lowercase(),
+        Err(e) => {
+          println!("Failed to read input.");
+          continue;
+        }
+      };
+      match &ncat_input[..] {
+        "quit" | "q" => return None,
+        _ => match ncat_input.parse() {
+          Err(e) => {
+            println!("Failed to parse input as a number: {}. Try again.", e);
+            continue;
+          },
+          Ok(num) => {
+            match current_role {
+              ICC => {
+                let ncat = ICCNoteCategory::iterator().nth(num-1);
+                match ncat {
+                  Some(cat) => ICCNote(*cat)
+                }
+              },
+              FP => {
+                let ncat = FPNoteCategory::iterator().nth(num-1);
+                match ncat {
+                  Some(cat) => FPNote(*cat)
+                }
+              },
+            }
+          }
+        }
+      }
+    }
+  }
   fn create_note_from_template_get_id(&mut self) -> Option<u32> {
     let nt_id = self.select_note_template().unwrap();
     let nt = self.get_note_template_option_by_id(nt_id).unwrap();
@@ -6172,6 +6255,44 @@ impl NoteArchive {
           Scheduling => ICCNote(CareCoordination),
           SentEmail => ICCNote(CareCoordination),
           Referral => ICCNote(CareCoordination),
+          Custom_Structure => {
+            loop {
+              match self.choose_note_category {
+                Some(ncat) => break ncat,
+                None => {
+                  let decision = loop {
+                    let cancel_choice = String::new();
+                    println!("You must select a note category to fill in a custom note template.");
+                    println!("Cancel writing note? ( Y / N )");
+                    let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+                    let cancel_choice_content = match cancel_choice_attempt {
+                      Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+                      Err(e) => {
+                        println!("Failed to read line: {}", e);
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue;
+                      }
+                    };
+                    break cancel_choice_content;
+                  }
+                  match &decision[..] {
+                    "yes" | "y" => {
+                      return None;
+                    },
+                    "no" | "n" => {
+                      break;
+                    },
+                    _ => {
+                      println!("Invalid command.");
+                      continue;
+                    },
+                  }
+                }
+                }
+              }
+
+            }
+          }
         }
       }
       FP => {
@@ -6713,6 +6834,106 @@ impl NoteArchive {
     Some(note_id)
     
   }
+  fn display_blank_menus() {
+
+    let internal_docs = InternalDocumentFillIn::iterator();
+    let external_docs = ExternalDocumentFillIn::iterator();
+    let internal_meetings = InternalMeetingFillIn::iterator();
+    let external_meetings = ExternalMeetingFillIn::iterator();
+    let actions = ActionFillIn::iterator();
+    let phrases = PhraseFillIn::iterator();
+
+    let menus = vec![internal_docs, external_docs, internal_meetings, external_meetings, actions, phrases];
+  
+    let highest_length = menus.iter().map(|iter| iter.len() ).max();
+
+    let initial_display_values = vec![];
+
+    for i in (1..highest_length) {
+      let values = vec![];
+      for menu in menus {
+        if i < m.len() {
+          values.push(Some(format!("{}", m.nth(i))))
+        } else {
+          values.push(None);
+        }
+      }
+      initial_display_values.push(values);
+    }
+
+    // adjusting the display values so that nothing will overflow the column
+
+    let length_adjusted_display_values = initial_display_values.clone();
+
+    let c_idx: usize = 0;
+    while length_adjusted_display_values.iter().any(|new_row| new_row.iter().any(|new_so| match new_so {Some(s) => s.len() > 24,None => false,} ) ) {
+
+      for (i, row) in initial_display_values.iter().enumerate() {
+        if row.iter().any(|so| match so {
+          Some(s) => s.len() > 24,
+        None => false,
+      } ) {
+        let increment = 1;
+        let zipped_rows = row.iter().map(|so|
+          match so {
+            None => {
+              (None, None)
+            },
+            Some(s) => {
+              if s.len() > 24 {
+                increment = 2;
+                let rightmost = format!("{}", &new_value[..26]).rfind(' ');
+                match rightmost {
+                  Some(space) => {
+                    (Some(format!("{}", &s[..space])), Some(format!("{}", &s[space..])))
+                  },
+                  None => {
+                    (Some(format!("{}", &s[..24])), Some(format!("{}", &s[24..])))
+                  }
+                }
+              } else {
+                (Some(s), None)
+              }
+            }
+          }
+        ).collect::<Vec<(Option<String>, Option<String>)>>();
+        
+        let v1 = zipped_rows.iter().map(|(val1, val2)| val1 ).collect::<Vec<Option<String>>>();
+        let v2 = zipped_rows.iter().map(|(val1, val2)| vals ).collect::<Vec<Option<String>>>();
+        
+        length_adjusted_display_values.remove(c_idx);
+        length_adjusted_display_values.insert(c_idx, v2);
+        length_adjusted_display_values.insert(c_idx, v1);
+        
+        c_idx += increment;
+        
+      }
+    }
+
+    println!("{:-^58}", "-");
+    println!("{:-^58}", " All fill-ins for blanks ");
+    println!("{:-^58}", "-");
+    println!(
+      "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
+      " Riverside documents ",
+      " External documents ",
+      " Riverside meetings ",
+      " External meetings ",
+      " General actions ",
+      " Other phrases ",
+    );
+
+    for row in length_adjusted_display_values {
+      // print value in each row, match because the value is an Option
+    }
+
+  }
+  fn create_note_manually_get_id(&mut self) -> Option<u32> {
+
+    loop {
+      self.display_blank_menus();
+    }
+  }
   fn create_note_get_id(&mut self) -> Option<u32> {
     let note_template = loop {
       let structure = loop {
@@ -6742,6 +6963,7 @@ impl NoteArchive {
           "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Scheduling,
           "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => SentEmail,
           "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Referral,
+          "13" | "Custom" | "CUSTOM" | "custom" | "C" | "c" => CustomStructure,
           "cancel" | "CANCEL" | "Cancel" => return None,
           _ => {
             println!("Invalid choice.");
@@ -6867,7 +7089,8 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
-        _t => {
+        "Custom" => CustomStructure,
+        _ => {
           panic!("Support not added for reading default Structure Type from constant.");
         }
       };
@@ -6899,6 +7122,7 @@ impl NoteArchive {
         "Scheduling" => Scheduling,
         "Sent Email" => SentEmail,
         "Referral" => Referral,
+        "Custom" => CustomStructure,
         _ => return Err(Error::new(
           ErrorKind::Other,
           "Unsupported StructureType saved to file.",

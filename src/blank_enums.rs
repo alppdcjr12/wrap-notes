@@ -8,7 +8,7 @@ trait BlankIterator {
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum InternalDocumentFillIn {
-  Referral,
+  ReferralForm,
   TelehealthConsent,
   TechnologyPlan,
   FinancialAgreement,
@@ -21,7 +21,7 @@ pub enum InternalDocumentFillIn {
 }
 
 use InternalDocumentFillIn::{
-  Referral,
+  ReferralForm,
   TelehealthConsent,
   TechnologyPlan,
   FinancialAgreement,
@@ -36,7 +36,7 @@ use InternalDocumentFillIn::{
 impl BlankIterator for InternalDocumentFillIn {
   pub fn iterator() -> Box<dyn Iterator<Item = InternalDocumentFillIn>> {
     Box::new([
-      Referral,
+      ReferralForm,
       TelehealthConsent,
       TechnologyPlan,
       FinancialAgreement,
@@ -56,7 +56,7 @@ impl BlankIterator for InternalDocumentFillIn {
 impl fmt::Display for InternalDocumentFillIn {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display_string = match self {
-      Referral => "referral",
+      ReferralForm => "referral form",
       TelehealthConsent => "Telehealth Consent Form",
       TechnologyPlan => "Technology Plan",
       FinancialAgreement => "Financial Agreement",
