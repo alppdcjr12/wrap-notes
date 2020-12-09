@@ -6062,7 +6062,6 @@ impl NoteArchive {
     println!("{:-^163}", "-");
     println!("{}", n.generate_display_content_string());
     println!("{:-^163}", "-");
-    println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
   }
   fn load_note(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
@@ -6079,6 +6078,7 @@ impl NoteArchive {
   }
   fn choose_note(&mut self) {
     self.display_note();
+    println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
     loop {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
@@ -6187,7 +6187,7 @@ impl NoteArchive {
   fn choose_note_category() -> Option<NoteCategory> {
     let ICC_cat: Option<ICCNoteCategory>;
     let FP_cat: Option<FPNoteCategory>;
-    let current_role = self.current_user().role()
+    let current_role = self.current_user().role();
     match current_role {
       ICC => {
         self.display_ICC_note_categories();
@@ -6235,7 +6235,40 @@ impl NoteArchive {
     }
   }
   fn create_note_from_template_get_id(&mut self) -> Option<u32> {
-    let nt_id = self.select_note_template().unwrap();
+    let nt_id = loop {
+      let nt_id_opt = self.select_note_template();
+      match nt_id_opt {
+        Some(id) => break id,
+        None => {
+          let decision = loop {
+            let cancel_choice = String::new();
+            println!("You must select a note template to build a note from a template.");
+            println!("Cancel writing note? ( Y / N )");
+            let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+            break match cancel_choice_attempt {
+              Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+              Err(e) => {
+                println!("Failed to read line: {}", e);
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              }
+            };
+          };
+          match &decision[..] {
+            "yes" | "y" => {
+              return None;
+            },
+            "no" | "n" => {
+              continue;
+            },
+            _ => {
+              println!("Invalid command.");
+              continue;
+            },
+          }
+        }
+      }
+    }
     let nt = self.get_note_template_option_by_id(nt_id).unwrap();
     let nst = nt.structure;
     let ncnt = nt.content.clone();
@@ -6274,7 +6307,7 @@ impl NoteArchive {
                       }
                     };
                     break cancel_choice_content;
-                  }
+                  };
                   match &decision[..] {
                     "yes" | "y" => {
                       return None;
@@ -6287,7 +6320,6 @@ impl NoteArchive {
                       continue;
                     },
                   }
-                }
                 }
               }
 
@@ -6593,27 +6625,45 @@ impl NoteArchive {
               id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
             },
             InternalDocument => {
-              blank_string = Self::choose_blank_fill_in(InternalDocumentFillIn::iterator()).display_fill_in();
+              blank_string = match Self::choose_blank_fill_in(InternalDocumentFillIn::iterator()) {
+                Some(s) => s.display_fill_in(),
+                None => continue,
+              };
               id_vec = vec![];
             },
             ExternalDocument => {
-              blank_string = Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator()).display_fill_in();
+              blank_string = match Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator()) {
+                Some(s) => s.display_fill_in(),
+                None => continue,
+              };
               id_vec = vec![];
             },
             InternalMeeting => {
-              blank_string = Self::choose_blank_fill_in(InternalMeetingFillIn::iterator()).display_fill_in();
+              blank_string = match Self::choose_blank_fill_in(InternalMeetingFillIn::iterator()) {
+                Some(s) => s.display_fill_in(),
+                None => continue,
+              };
               id_vec = vec![];
             },
             ExternalMeeting => {
-              blank_string = Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator()).display_fill_in();
+              blank_string = match Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator()) {
+                Some(s) => s.display_fill_in(),
+                None => continue,
+              };
               id_vec = vec![];
             },
             Action => {
-              blank_string = Self::choose_blank_fill_in(ActionFillIn::iterator()).display_fill_in();
+              blank_string = match Self::choose_blank_fill_in(ActionFillIn::iterator()) {
+                Some(s) => s.display_fill_in(),
+                None => continue,
+              };
               id_vec = vec![];
             },
             Phrase => {
-              blank_string = Self::choose_blank_fill_in(PhraseFillIn::iterator()).display_fill_in();
+              blank_string = match Self::choose_blank_fill_in(PhraseFillIn::iterator()) {
+                Some(s) => s.display_fill_in(),
+                None => continue,
+              };
               id_vec = vec![];
             },
             Custom => {
@@ -6853,7 +6903,8 @@ impl NoteArchive {
       let values = vec![];
       for menu in menus {
         if i < m.len() {
-          values.push(Some(format!("{}", m.nth(i))))
+          let this_blank = m.nth(i-1).unwrap();
+          values.push(Some(format!("[{}{}] {}", this_blank.alpha_index(), i, this_blank )))
         } else {
           values.push(None);
         }
@@ -6866,53 +6917,59 @@ impl NoteArchive {
     let length_adjusted_display_values = initial_display_values.clone();
 
     let c_idx: usize = 0;
-    while length_adjusted_display_values.iter().any(|new_row| new_row.iter().any(|new_so| match new_so {Some(s) => s.len() > 24,None => false,} ) ) {
+    while length_adjusted_display_values.iter().any(|new_row|
+      new_row.iter().any(|new_so| match new_so {
+          Some(s) => s.len() > 24,
+          None => false,
+        } )
+      ) {
 
       for (i, row) in initial_display_values.iter().enumerate() {
         if row.iter().any(|so| match so {
           Some(s) => s.len() > 24,
-        None => false,
-      } ) {
-        let increment = 1;
-        let zipped_rows = row.iter().map(|so|
-          match so {
-            None => {
-              (None, None)
-            },
-            Some(s) => {
-              if s.len() > 24 {
-                increment = 2;
-                let rightmost = format!("{}", &new_value[..26]).rfind(' ');
-                match rightmost {
-                  Some(space) => {
-                    (Some(format!("{}", &s[..space])), Some(format!("{}", &s[space..])))
-                  },
-                  None => {
-                    (Some(format!("{}", &s[..24])), Some(format!("{}", &s[24..])))
+          None => false,
+          } ) {
+          let increment = 1;
+          let zipped_rows = row.iter().map(|so|
+            match so {
+              None => {
+                (None, None)
+              },
+              Some(s) => {
+                if s.len() > 24 {
+                  increment = 2;
+                  let rightmost = format!("{}", &new_value[..26]).rfind(' ');
+                  match rightmost {
+                    Some(space) => {
+                      (Some(format!("{}", &s[..space])), Some(format!("{}", &s[space..])))
+                    },
+                    None => {
+                      (Some(format!("{}", &s[..24])), Some(format!("{}", &s[24..])))
+                    }
                   }
+                } else {
+                  (Some(s), None)
                 }
-              } else {
-                (Some(s), None)
               }
             }
-          }
-        ).collect::<Vec<(Option<String>, Option<String>)>>();
-        
-        let v1 = zipped_rows.iter().map(|(val1, val2)| val1 ).collect::<Vec<Option<String>>>();
-        let v2 = zipped_rows.iter().map(|(val1, val2)| vals ).collect::<Vec<Option<String>>>();
-        
-        length_adjusted_display_values.remove(c_idx);
-        length_adjusted_display_values.insert(c_idx, v2);
-        length_adjusted_display_values.insert(c_idx, v1);
-        
-        c_idx += increment;
-        
+          ).collect::<Vec<(Option<String>, Option<String>)>>();
+          
+          let v1 = zipped_rows.iter().map(|(val1, val2)| val1 ).collect::<Vec<Option<String>>>();
+          let v2 = zipped_rows.iter().map(|(val1, val2)| vals ).collect::<Vec<Option<String>>>();
+          
+          length_adjusted_display_values.remove(c_idx);
+          length_adjusted_display_values.insert(c_idx, v2);
+          length_adjusted_display_values.insert(c_idx, v1);
+          
+          c_idx += increment;
+        }
       }
     }
 
-    println!("{:-^58}", "-");
-    println!("{:-^58}", " All fill-ins for blanks ");
-    println!("{:-^58}", "-");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^195}", "-");
+    println!("{:-^195}", " All fill-ins for blanks ");
+    println!("{:-^195}", "-");
     println!(
       "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
       " Riverside documents ",
@@ -6923,16 +6980,243 @@ impl NoteArchive {
       " Other phrases ",
     );
 
+    // print value in each row, match because the value is an Option
     for row in length_adjusted_display_values {
-      // print value in each row, match because the value is an Option
+      let (s1, s2, s3, s4, s5, s6) = row.iter().map(|s_vec|
+        (
+          s_vec[0].unwrap_or_else(|_| String::new() ),
+          s_vec[1].unwrap_or_else(|_| String::new() ),
+          s_vec[2].unwrap_or_else(|_| String::new() ),
+          s_vec[3].unwrap_or_else(|_| String::new() ),
+          s_vec[4].unwrap_or_else(|_| String::new() ),
+          s_vec[5].unwrap_or_else(|_| String::new() ),
+        )    
+      ).collect::<Vec<String>>();
+      println!(
+        "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
+        s0,
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+      );
     }
 
+    println!("{:-^195}", "-");
+    println!("Select menu item by ID (seen above in brackets).");
+    println!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
+    println!(
+      "| {}",
+      "CANCEL / C: Cancel",
+    );
+  }
+  fn get_blank_from_menu() -> Option<(Blank, Box<dyn BlankIterator>)> {
+    loop {
+      self.display_blank_menus();
+
+      let buffer = String::new();
+      let idx_attempt = io::stdin().read_line(&mut buffer);
+      let idx = match idx_attempt {
+        Ok(_) => idx.trim().to_ascii_lowercase(),
+        Err(e) => {
+          println!("Failed to read line.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      };
+
+      return match &idx[..] {
+        "cancel" | "c" => None,
+        "rd" => {
+          match Self::choose_blank_fill_in(InternalDocumentFillIn::iterator()) {
+            Some(s) => Some((InternalDocument, Box::new(s))),
+            None => continue,
+          };
+        },
+        "ed" => {
+          match Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator()) {
+            Some(s) => Some((ExternalDocument, Box::new(s))),
+            None => continue,
+          };
+        },
+        "rm" => {
+          match Self::choose_blank_fill_in(InternalMeetingFillIn::iterator()) {
+            Some(s) => Some((InternalMeeting, Box::new(s))),
+            None => continue,
+          };
+        },
+        "em" => {
+          match Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator()) {
+            Some(s) => Some((ExternalMeeting, Box::new(s))),
+            None => continue,
+          };
+        },
+        "a" => {
+          match Self::choose_blank_fill_in(ActionFillIn::iterator()) {
+            Some(s) => Some((Action, Box::new(s))),
+            None => continue,
+          };
+        },
+        "p" => {
+          match Self::choose_blank_fill_in(PhraseFillIn::iterator()) {
+            Some(s) => Some((Phrase, Box::new(s))),
+            None => continue,
+          };
+        },
+        _ => {
+          let selected_blank_tup: Option<dyn BlankIterator> = loop {
+            let num_opt = idx.split(char::is_alphabetic()).collect::<Vec<String>>()[0].parse();
+            let num = match num_opt {
+              Ok(num) => num,
+              Err(e) => {
+                println!("Invalid index.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              }
+            };
+            match idx.find("rd") {
+              Some(_) => match InternalDocumentFillIn::iterator().nth(num) {
+                Some(b) => break Some((InternalDocument, Box::new(b))),
+                None => break None,
+              },
+              None => (),
+            }
+            match idx.find("ed") {
+              Some(_) => match ExternalDocumentFillIn::iterator().nth(num) {
+                Some(b) => break Some((ExternalDocument, Box::new(b))),
+                None => break None,
+              },
+              None => (),
+            }
+            match idx.find("rm") {
+              Some(_) => match InternalMeetingFillIn::iterator().nth(num) {
+                Some(b) => break Some((InternalMeeting, Box::new(b))),
+                None => break None,
+              },
+              None => (),
+            }
+            match idx.find("em") {
+              Some(_) => match ExternalMeetingFillIn::iterator().nth(num) {
+                Some(b) => break Some((ExternalMeeting, Box::new(b))),
+                None => break None,
+              },
+              None => (),
+            }
+            match idx.find("a") {
+              Some(_) => match ActionFillIn::iterator().nth(num) {
+                Some(b) => break Some((Action, Box::new(b))),
+                None => break None,
+              },
+              None => (),
+            }
+            match idx.find("p") {
+              Some(_) => match PhraseFillIn::iterator().nth(num) {
+                Some(b) => break Some((Phrase, Box::new(b))),
+                None => break None,
+              },
+              None => {
+                println!("Invalid ID. Please use the alphanumeric IDs provided to select a phrase to add to your note.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              }
+            }
+          };
+
+          match selected_blank_tup {
+            Some(_) => selected_blank_tup,
+            None => {
+              println!("Valid ID format, but ID not found in the given list.");
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        }
+      }
+    }
   }
   fn create_note_manually_get_id(&mut self) -> Option<u32> {
 
+    let ncat = self.choose_note_category();
+    
+    let n = self.generate_note(ncat, CustomStructure, String::new());
+    
+    // add blanks
     loop {
-      self.display_blank_menus();
+      if n.content != String::new() {
+        self.display_note();
+        println!("Press ENTER to choose a phrase from the saved menus.");
+        println!("Enter text to add data directly to the note record.");
+        println!(
+          "| {} | {}",
+          "SAVE / S: Finish writing, save, and add to current record",
+          "CANCEL / C: Cancel and discard data"
+        );
+        let choice = String::new();
+        let choice_att = io::stdin().read_line(&mut choice);
+        match choice_att {
+          Ok(_) => {
+            match &choice.trim().to_ascii_lowercase()[..] {
+              "" => (),
+              "save" | "s" => {
+                let note_id = n.id;
+                self.notes.push(n);
+                return Some(note_id)
+              },
+              "cancel" | "c" => return None,
+              _ => {
+                n.content.push_str(&choice.trim()[..]);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Failed to read line: {}", e);
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+        }
+      }
+
+      let b_opt = NoteArchive::get_blank_from_menu();
+      let (blank, blank_fill) = match b_opt {
+        Some((b, bf)) => (b, bf),
+        None => {
+          println!("Cancel writing note?");
+          let choice = String::new();
+          let choice_att = io::stdin().read_line(&mut choice);
+          match choice_att {
+            Ok(_) => {
+              match &choice.trim().to_ascii_lowercase()[..] {
+                "y" | "yes" => return None,
+                "n" | "no" => continue,
+                _ => {
+                  println!("Invalid command.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              }
+            },
+            Err(e) => {
+              println!("Failed to read line: {}", e);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        }
+      };
+      n.blanks.insert(1, (blank, blank_fill.display_string(), vec![]));
+      n.content.push_str(&format!(" {}", blank));
+      break;
     }
+
+
+
+
+    n.content.push_str()
+
+
+
   }
   fn create_note_get_id(&mut self) -> Option<u32> {
     let note_template = loop {
@@ -7051,7 +7335,7 @@ impl NoteArchive {
   ) -> Result<Note, String> {
     let id: u32 = self.notes.len() as u32 + 1;
 
-    Ok(Note::new(id, category, structure, content)
+    Ok(Note::new(id, category, structure, content))
   }
   pub fn read_note_templates(filepath: &str) -> Result<Vec<NoteTemplate>, Error> {
     let file = OpenOptions::new()

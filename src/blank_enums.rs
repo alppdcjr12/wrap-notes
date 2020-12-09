@@ -4,6 +4,7 @@ trait BlankIterator {
   pub fn display_fill_in(&self) -> String {
     format!("{}", self)
   }
+  pub fn alpha_index(&self) -> String;
 }
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
@@ -51,6 +52,9 @@ impl BlankIterator for InternalDocumentFillIn {
   pub fn fill_in_category(&self) -> String {
     String::from("internal document")
   }
+  pub fn alpha_index(&self) -> String {
+    String::from("rd")
+  }
 }
 
 impl fmt::Display for InternalDocumentFillIn {
@@ -94,6 +98,9 @@ impl BlankIterator for ExternalDocumentFillIn {
   }
   pub fn fill_in_category(&self) -> String {
     String::from("external document")
+  }
+  pub fn alpha_index(&self) -> String {
+    String::from("ed")
   }
 }
 
@@ -154,6 +161,9 @@ impl BlankIterator for InternalMeetingFillIn {
   pub fn fill_in_category(&self) -> String {
     String::from("Wraparound meeting title")
   }
+  pub fn alpha_index(&self) -> String {
+    String::from("rm")
+  }
 }
 
 impl fmt::Display for InternalMeetingFillIn {
@@ -200,6 +210,9 @@ impl BlankIterator for ExternalMeetingFillIn {
   }
   pub fn fill_in_category(&self) -> String {
     String::from("external meeting title")
+  }
+  pub fn alpha_index(&self) -> String {
+    String::from("em")
   }
 }
 
@@ -260,6 +273,9 @@ impl BlankIterator for ActionFillIn {
   pub fn fill_in_category(&self) -> String {
     String::from("general action")
   }
+  pub fn alpha_index(&self) -> String {
+    String::from("a")
+  }
 }
 
 impl fmt::Display for ActionFillIn {
@@ -300,6 +316,9 @@ impl BlankIterator for PhraseFillIn {
   }
   pub fn fill_in_category(&self) -> String {
     String::from("other phrase")
+  }
+  pub fn alpha_index(&self) -> String {
+    String::from("p")
   }
 }
 
