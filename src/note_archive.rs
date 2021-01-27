@@ -23,6 +23,7 @@ use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, SNCD, HomeVis
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 use FPNoteCategory::{Tbd};
+use Blank::{  CurrentClientName, Collaterals, AllCollaterals, Pronoun1ForBlank, Pronoun2ForBlank, Pronoun3ForBlank, Pronoun4ForBlank, Pronoun1ForUser, Pronoun2ForUser, Pronoun3ForUser, Pronoun4ForUser, Pronoun1ForClient, Pronoun2ForClient, Pronoun3ForClient, Pronoun4ForClient, TodayDate, NoteDayDate, InternalDocument, ExternalDocument, InternalMeeting, ExternalMeeting, Action, Phrase, CustomBlank};
 
 // blank fill-ins (likely to be updated later on)
 use InternalDocumentFillIn::{
@@ -36,11 +37,12 @@ use InternalDocumentFillIn::{
   StrengthsNeedsAndCulturalDiscovery,
   IndividualCarePlan,
   TransitionSummary,
+  OtherInternalDocument,
 };
 use ExternalDocumentFillIn::{
   NeuropsychologicalAssessment,
   IndividualEducationPlan,
-  Other
+  OtherExternalDocument,
 };
 use InternalMeetingFillIn::{
   IntakeMeeting,
@@ -52,13 +54,14 @@ use InternalMeetingFillIn::{
   DebriefMeeting,
   CheckInMeeting,
   TransitionMeeting,
-  Other
+  OtherInternalMeeting
 };
 use ExternalMeetingFillIn::{
   IEPMeeting,
   SchoolAssessmentMeeting,
   Consult,
   TreatmentTeamMeeting,
+  OtherExternalMeeting,
 };
 use ActionFillIn::{
   Called,
@@ -482,7 +485,7 @@ impl NoteArchive {
       collateral_result,
       pronouns_result,
       note_day_result,
-      note_template_result
+      note_template_result,
       note_result
     ) {
       (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
@@ -4998,8 +5001,7 @@ impl NoteArchive {
           println!("          // self.choose_edit_note();");
         }
         "NEW" | "new" | "New" | "n" | "N" => {
-          // let n_id = self.create_note_get_id();
-          println!("          let n_id = self.create_note_get_id();");
+          let n_id = self.create_note_get_id();
         }
         _ => println!("Invalid command."),
       }
@@ -6105,8 +6107,37 @@ impl NoteArchive {
       }
     }
   }
-  fn display_blank_fill_in(fill_ins: Box<dyn Iterator>) {
-    let display_category = fill_ins.cloned().next().fill_in_category();
+  fn display_blank_fill_in(blank_type: String) {
+    let display_category = match &blank_type[..] {
+      "internal document" => String::from("internal document"),
+      "external document" => String::from("external document"),
+      "internal meeting" => String::from("Wraparound meeting title"),
+      "external meeting" => String::from("external meeting title"),
+      "action" => String::from("general action"),
+      "phrase" => String::from("other phrase"),
+      _ => panic!("Incompatible blank fill in string passed to fn 'display_blank_fill_in'")
+    };
+    let fill_ins = match &blank_type[..] {
+      "internal document" => {
+        InternalDocumentFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+      },
+      "external document" => {
+        ExternalDocumentFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+      },
+      "internal meeting" => {
+        InternalDocumentFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+      },
+      "external meeting" => {
+        ExternalMeetingFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+      },
+      "action" => {
+        ActionFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+      },
+      "phrase" => {
+        PhraseFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+      },
+      _ => panic!("Incompatible blank fill in string passed to fn 'display_blank_fill_in'")
+    };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^113}", "-");
     println!("{:-^113}", format!(" Fill in blank with {} ", display_category));
@@ -6118,9 +6149,9 @@ impl NoteArchive {
     println!("{:-^113}", "-");
     println!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
   }
-  fn choose_blank_fill_in(fill_ins: Box<dyn Iterator>) -> Option<Box<dyn BlankIterator>> {
+  fn choose_blank_fill_in(blank_type: String) -> Option<String> {
     loop {
-      NoteArchive::display_blank_fill_in(fill_ins.cloned());
+      NoteArchive::display_blank_fill_in(blank_type);
       let fill_in_choice = String::new();
       let fill_in_attempt = io::stdin().read_line(&mut fill_in_choice);
       let selected_option = match fill_in_attempt {
@@ -6143,15 +6174,70 @@ impl NoteArchive {
           continue;
         }
       };
-      let selected_content = fill_ins.enumerate().find(|(i, f)| i == &chosen_id );
-      match selected_content {
-        Some(fill_in_tup) => return Some(fill_in_tup.1),
-        None => {
-          println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-          thread::sleep(time::Duration::from_secs(2));
-          continue;
-        }
-      }
+      let selected_content = match &blank_type[..] {
+        "internal meeting" => {
+          match InternalMeetingFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
+            Some(b_tup) => format!("{}", b_tup.1),
+            None => {
+              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        "external meeting" => {
+          match ExternalMeetingFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
+            Some(b_tup) => format!("{}", b_tup.1),
+            None => {
+              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        "internal document" => {
+          match InternalDocumentFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
+            Some(b_tup) => format!("{}", b_tup.1),
+            None => {
+              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        "external document" => {
+          match ExternalDocumentFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
+            Some(b_tup) => format!("{}", b_tup.1),
+            None => {
+              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        "action" => {
+          match ActionFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
+            Some(b_tup) => format!("{}", b_tup.1),
+            None => {
+              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        "phrase" => {
+          match PhraseFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
+            Some(b_tup) => format!("{}", b_tup.1),
+            None => {
+              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        _ => panic!("Incompatible fill in type passed to fn 'choose_phrase_fll_in'"),
+      };
+      return Some(selected_content)
     }
   }
   fn display_ICC_note_categories() {
@@ -6184,26 +6270,27 @@ impl NoteArchive {
       "QUIT / Q: Quit menu",
     );
   }
-  fn choose_note_category() -> Option<NoteCategory> {
+  fn choose_note_category(&self) -> Option<NoteCategory> {
     let ICC_cat: Option<ICCNoteCategory>;
     let FP_cat: Option<FPNoteCategory>;
-    let current_role = self.current_user().role();
-    match current_role {
-      ICC => {
-        self.display_ICC_note_categories();
-      },
-      FP => {
-        self.display_FP_note_categories();
-      },
-    }
-
-    let mut ncat_choice = String::new();
+    let current_role = self.current_user().role;
     loop {
+      match current_role {
+        ICC => {
+          NoteArchive::display_ICC_note_categories();
+        },
+        FP => {
+          NoteArchive::display_FP_note_categories();
+        },
+      }
+
+      let mut ncat_choice = String::new();
       let ncat_attempt = io::stdin().read_line(&mut ncat_choice);
       let ncat_input = match ncat_attempt {
         Ok(_) => ncat_choice.trim().to_ascii_lowercase(),
         Err(e) => {
           println!("Failed to read input.");
+          thread::sleep(time::Duration::from_secs(1));
           continue;
         }
       };
@@ -6212,20 +6299,31 @@ impl NoteArchive {
         _ => match ncat_input.parse() {
           Err(e) => {
             println!("Failed to parse input as a number: {}. Try again.", e);
+            thread::sleep(time::Duration::from_secs(1));
             continue;
           },
           Ok(num) => {
             match current_role {
               ICC => {
-                let ncat = ICCNoteCategory::iterator().nth(num-1);
-                match ncat {
-                  Some(cat) => ICCNote(*cat)
+                let iccncat = ICCNoteCategory::iterator().nth(num-1);
+                match iccncat {
+                  Some(icccat) => return Some(ICCNote(icccat)),
+                  None => {
+                    println!("Index out of bounds for available Note Categories. Please identify a Note Category by valid ID.");
+                    thread::sleep(time::Duration::from_secs(1));
+                    continue;
+                  }
                 }
               },
               FP => {
-                let ncat = FPNoteCategory::iterator().nth(num-1);
-                match ncat {
-                  Some(cat) => FPNote(*cat)
+                let fpncat = FPNoteCategory::iterator().nth(num-1);
+                match fpncat {
+                  Some(fpcat) => return Some(FPNote(fpcat)),
+                  None => {
+                    println!("Index out of bounds for available Note Categories. Please identify a Note Category by valid ID.");
+                    thread::sleep(time::Duration::from_secs(1));
+                    continue;
+                  }
                 }
               },
             }
@@ -6234,42 +6332,51 @@ impl NoteArchive {
       }
     }
   }
-  fn create_note_from_template_get_id(&mut self) -> Option<u32> {
-    let nt_id = loop {
-      let nt_id_opt = self.select_note_template();
-      match nt_id_opt {
-        Some(id) => break id,
-        None => {
-          let decision = loop {
-            let cancel_choice = String::new();
-            println!("You must select a note template to build a note from a template.");
-            println!("Cancel writing note? ( Y / N )");
-            let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
-            break match cancel_choice_attempt {
-              Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
-              Err(e) => {
-                println!("Failed to read line: {}", e);
-                thread::sleep(time::Duration::from_secs(2));
-                continue;
-              }
+  fn create_note_from_template_get_id(&mut self, nt_id: Option<u32>) -> Option<u32> {
+    let nt_id = match nt_id {
+      Some(id) => id,
+      None => loop {
+        let nt_id_opt = self.select_note_template();
+        match nt_id_opt {
+          Some(id) => break id,
+          None => {
+            let decision = loop {
+              let cancel_choice = String::new();
+              println!("You must select a note template to build a note from a template.");
+              println!("Cancel writing note? ( Y / N )");
+              let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+              break match cancel_choice_attempt {
+                Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+                Err(e) => {
+                  println!("Failed to read line: {}", e);
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              };
             };
-          };
-          match &decision[..] {
-            "yes" | "y" => {
-              return None;
-            },
-            "no" | "n" => {
-              continue;
-            },
-            _ => {
-              println!("Invalid command.");
-              continue;
-            },
+            match &decision[..] {
+              "yes" | "y" => {
+                return None;
+              },
+              "no" | "n" => {
+                continue;
+              },
+              _ => {
+                println!("Invalid command.");
+                continue;
+              },
+            }
           }
         }
       }
-    }
-    let nt = self.get_note_template_option_by_id(nt_id).unwrap();
+    };
+    
+    let nt = match self.get_note_template_option_by_id(nt_id) {
+      Some(nt) => nt,
+      None => {
+        panic!("Failed to load a note template with the ID passed from the function that creates new Note Templates.");
+      }
+    };
     let nst = nt.structure;
     let ncnt = nt.content.clone();
 
@@ -6288,7 +6395,7 @@ impl NoteArchive {
           Scheduling => ICCNote(CareCoordination),
           SentEmail => ICCNote(CareCoordination),
           Referral => ICCNote(CareCoordination),
-          Custom_Structure => {
+          CustomStructure => {
             loop {
               match self.choose_note_category {
                 Some(ncat) => break ncat,
@@ -6442,7 +6549,7 @@ impl NoteArchive {
     }
     
     let focus_id_option: Option<u32> = None;
-    loop {
+    'choice: loop {
 
       // increments the current blank by going to the next one only when the current is filled,
       // or alternatively when focus_id_option is set to Some(id) because the user selected it
@@ -6451,7 +6558,7 @@ impl NoteArchive {
 
       let (i, b) = match focus_id_option {
         Some(f_id) => {
-          let f_id_b = empty_blanks.iter().find(|b_tup| b_tup.0 == f_id_b ).unwrap().1;
+          let f_id_b = empty_blanks.iter().find(|b_tup| b_tup.0 == f_id ).unwrap().1;
           (f_id, f_id_b)
         },
         None => (empty_blanks[0].0, empty_blanks[0].1)
@@ -6501,7 +6608,7 @@ impl NoteArchive {
                     continue;
                   }
                 };
-                match &fill_choice_content[..] {
+                match &delete_choice_content[..] {
                   "yes" | "y" => {
                     n.blanks.remove(&i);
                     break;
@@ -6541,7 +6648,7 @@ impl NoteArchive {
                   continue;
                 }
               };
-              match &fill_choice_content[..] {
+              match &clear_choice_content[..] {
                 "yes" | "y" => {
                   n.blanks.clear();
                   break;
@@ -6566,7 +6673,7 @@ impl NoteArchive {
             break;
           }
           let mut blank_string = String::new();
-          let mut id_vec: Vec<u32>; 
+          let mut id_vec: Vec<u32>;
           match b {
             Collaterals => {
               // SKIP option, CANCEL, enter int
@@ -6625,42 +6732,42 @@ impl NoteArchive {
               id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
             },
             InternalDocument => {
-              blank_string = match Self::choose_blank_fill_in(InternalDocumentFillIn::iterator()) {
+              blank_string = match Self::choose_blank_fill_in(Boxx::new(InternalDocumentFillIn::iterator_of_blanks())) {
                 Some(s) => s.display_fill_in(),
                 None => continue,
               };
               id_vec = vec![];
             },
             ExternalDocument => {
-              blank_string = match Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator()) {
+              blank_string = match Self::choose_blank_fill_in(Box::new(ExternalDocumentFillIn::iterator_of_blanks())) {
                 Some(s) => s.display_fill_in(),
                 None => continue,
               };
               id_vec = vec![];
             },
             InternalMeeting => {
-              blank_string = match Self::choose_blank_fill_in(InternalMeetingFillIn::iterator()) {
+              blank_string = match Self::choose_blank_fill_in(Box::new(InternalMeetingFillIn::iterator_of_blanks())) {
                 Some(s) => s.display_fill_in(),
                 None => continue,
               };
               id_vec = vec![];
             },
             ExternalMeeting => {
-              blank_string = match Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator()) {
+              blank_string = match Self::choose_blank_fill_in(Box::new(ExternalMeetingFillIn::iterator_of_blanks())) {
                 Some(s) => s.display_fill_in(),
                 None => continue,
               };
               id_vec = vec![];
             },
             Action => {
-              blank_string = match Self::choose_blank_fill_in(ActionFillIn::iterator()) {
+              blank_string = match Self::choose_blank_fill_in(Box::new(ActionFillIn::iterator_of_blanks())) {
                 Some(s) => s.display_fill_in(),
                 None => continue,
               };
               id_vec = vec![];
             },
             Phrase => {
-              blank_string = match Self::choose_blank_fill_in(PhraseFillIn::iterator()) {
+              blank_string = match Self::choose_blank_fill_in(Box::new(PhraseFillIn::iterator_of_blanks())) {
                 Some(s) => s.display_fill_in(),
                 None => continue,
               };
@@ -6679,7 +6786,7 @@ impl NoteArchive {
                     continue;
                   }
                 };
-                blank_string = custom_content;
+                blank_string = custom_content.to_string();
                 id_vec = vec![];
                 break;
               }
@@ -6810,16 +6917,18 @@ impl NoteArchive {
           n.blanks[&i] = (b.clone(), blank_string, id_vec);
         },
         _ => {
-          let blank_id = match choice.parse() {
+          let mut blank_string = String::new();
+          let mut id_vec: Vec<u32>;
+          let blank_id: usize = match choice.parse() {
             Ok(num) => num,
             Err(e) => {
               match b {
                 Custom => {
-                  'blank_content: loop {
+                  loop {
                     loop {
                       let fill_choice = String::new();
                       println!("Fill custom blank with '{}'? ( Y / N )", choice);
-                      let fill_choice_attempt = io::stdin().read_line(&mut custom_choice);
+                      let fill_choice_attempt = io::stdin().read_line(&mut fill_choice);
                       let fill_choice_content = match fill_choice_attempt {
                         Ok(_) => fill_choice.trim().to_ascii_lowercase(),
                         Err(e) => {
@@ -6832,7 +6941,8 @@ impl NoteArchive {
                         "yes" | "y" => {
                           blank_string = choice;
                           id_vec = vec![];
-                          break 'blank_content;
+                          n.blanks[&i] = (b.clone(), blank_string, id_vec);
+                          continue 'choice;
                         },
                         "no" | "n" => {
                           break;
@@ -6855,9 +6965,10 @@ impl NoteArchive {
                           continue;
                         }
                       };
-                      blank_string = custom_content;
+                      blank_string = custom_content.to_string();
                       id_vec = vec![];
-                      break 'blank_content;
+                      n.blanks[&i] = (b.clone(), blank_string, id_vec);
+                      continue 'choice;
                     }
                   }
                 },
@@ -6869,12 +6980,12 @@ impl NoteArchive {
               }
             },
           };
-          if num < 0 || num > n.number_of_blanks() {
+          if blank_id < 0 || blank_id > n.number_of_blanks() {
             println!("Invalid blank ID.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
-          focus_id_option = Some(num)
+          focus_id_option = Some(blank_id as u32)
         },
       }
     }
@@ -6886,82 +6997,95 @@ impl NoteArchive {
   }
   fn display_blank_menus() {
 
-    let internal_docs = InternalDocumentFillIn::iterator();
-    let external_docs = ExternalDocumentFillIn::iterator();
-    let internal_meetings = InternalMeetingFillIn::iterator();
-    let external_meetings = ExternalMeetingFillIn::iterator();
-    let actions = ActionFillIn::iterator();
-    let phrases = PhraseFillIn::iterator();
+    let internal_docs = InternalDocumentFillIn::iterator_of_blanks();
+    let external_docs = ExternalDocumentFillIn::iterator_of_blanks();
+    let internal_meetings = InternalMeetingFillIn::iterator_of_blanks();
+    let external_meetings = ExternalMeetingFillIn::iterator_of_blanks();
+    let actions = ActionFillIn::iterator_of_blanks();
+    let phrases = PhraseFillIn::iterator_of_blanks();
 
-    let menus = vec![internal_docs, external_docs, internal_meetings, external_meetings, actions, phrases];
-  
-    let highest_length = menus.iter().map(|iter| iter.len() ).max();
+    let row_vec: Vec<Vec<String>> = vec![];
 
-    let initial_display_values = vec![];
+    loop {
+      let idx = 1;
+      let internal_docs_string = String::new();
 
-    for i in (1..highest_length) {
-      let values = vec![];
-      for menu in menus {
-        if i < m.len() {
-          let this_blank = m.nth(i-1).unwrap();
-          values.push(Some(format!("[{}{}] {}", this_blank.alpha_index(), i, this_blank )))
-        } else {
-          values.push(None);
-        }
+      let this_id = internal_docs.nth(idx);
+      let this_ed = external_docs.nth(idx);
+      let this_im = internal_meetings.nth(idx);
+      let this_em = external_meetings.nth(idx);
+      let this_a = actions.nth(idx);
+      let this_p = phrases.nth(idx);
+
+      match (
+        this_id,
+        this_ed,
+        this_im,
+        this_em,
+        this_a,
+        this_p,
+      ) {
+        (None, None, None, None, None, None) => break,
+        _ => (),
       }
-      initial_display_values.push(values);
+
+      match this_id {
+        Some(val) => internal_docs_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
+        None => (),
+      }
+      let external_docs_string = String::new();
+      match this_ed {
+        Some(val) => external_docs_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
+        None => (),
+      }
+      let internal_meetings_string = String::new();
+      match this_im {
+        Some(val) => internal_meetings_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
+        None => (),
+      }
+      let external_meetings_string = String::new();
+      match this_em {
+        Some(val) => external_meetings_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
+        None => (),
+      }
+      let actions_string = String::new();
+      match this_a {
+        Some(val) => actions_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
+        None => (),
+      }
+      let phrases_string = String::new();
+      match this_p {
+        Some(val) => phrases_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
+        None => (),
+      }
+      row_vec.push(vec![internal_docs_string, external_docs_string, internal_meetings_string, external_meetings_string, actions_string, phrases_string]);
+      idx += 1;
     }
 
-    // adjusting the display values so that nothing will overflow the column
-
-    let length_adjusted_display_values = initial_display_values.clone();
-
-    let c_idx: usize = 0;
-    while length_adjusted_display_values.iter().any(|new_row|
-      new_row.iter().any(|new_so| match new_so {
-          Some(s) => s.len() > 24,
-          None => false,
-        } )
-      ) {
-
-      for (i, row) in initial_display_values.iter().enumerate() {
-        if row.iter().any(|so| match so {
-          Some(s) => s.len() > 24,
-          None => false,
-          } ) {
-          let increment = 1;
-          let zipped_rows = row.iter().map(|so|
-            match so {
-              None => {
-                (None, None)
-              },
-              Some(s) => {
-                if s.len() > 24 {
-                  increment = 2;
-                  let rightmost = format!("{}", &new_value[..26]).rfind(' ');
-                  match rightmost {
-                    Some(space) => {
-                      (Some(format!("{}", &s[..space])), Some(format!("{}", &s[space..])))
-                    },
-                    None => {
-                      (Some(format!("{}", &s[..24])), Some(format!("{}", &s[24..])))
-                    }
-                  }
-                } else {
-                  (Some(s), None)
-                }
-              }
-            }
-          ).collect::<Vec<(Option<String>, Option<String>)>>();
-          
-          let v1 = zipped_rows.iter().map(|(val1, val2)| val1 ).collect::<Vec<Option<String>>>();
-          let v2 = zipped_rows.iter().map(|(val1, val2)| vals ).collect::<Vec<Option<String>>>();
-          
-          length_adjusted_display_values.remove(c_idx);
-          length_adjusted_display_values.insert(c_idx, v2);
-          length_adjusted_display_values.insert(c_idx, v1);
-          
-          c_idx += increment;
+    let rows: HashMap<u32, Vec<String>> = HashMap::new();
+    let row_idx = 1;
+    let n_chars = 20;
+    for s_vec in row_vec {
+      if !s_vec.iter().any(|s| s.chars().count() > 24 ) {
+        rows.insert(row_idx, s_vec);
+      } else {
+        let new_vecs: Vec<Vec<String>> = vec![];
+        // get the number of vectors needed by finding how many 20-char segments are in the longest string
+        let number_of_vecs = s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count() + 21 / n_chars;
+        for vec_i in 1..number_of_vecs {
+          let new_vec = s_vec.iter().map(|s|
+            let chars: Vec<Char> = s.chars()
+              .enumerate()
+              .filter(|i, _| i > vec_i - 1 * n_chars && i < vec_i * n_chars  )
+              .map(|_, out| out )
+              .collect();
+            chars.join("")
+          );
+          new_vecs.push(new_vec);
+        }
+        for n_vec in new_vecs {
+          rows.insert(row_idx, n_vec);
+          row_idx += 1;
         }
       }
     }
@@ -6980,26 +7104,25 @@ impl NoteArchive {
       " Other phrases ",
     );
 
-    // print value in each row, match because the value is an Option
-    for row in length_adjusted_display_values {
-      let (s1, s2, s3, s4, s5, s6) = row.iter().map(|s_vec|
-        (
-          s_vec[0].unwrap_or_else(|_| String::new() ),
-          s_vec[1].unwrap_or_else(|_| String::new() ),
-          s_vec[2].unwrap_or_else(|_| String::new() ),
-          s_vec[3].unwrap_or_else(|_| String::new() ),
-          s_vec[4].unwrap_or_else(|_| String::new() ),
-          s_vec[5].unwrap_or_else(|_| String::new() ),
-        )    
-      ).collect::<Vec<String>>();
+    // print value in each row
+    for row_i in 1..*rows.keys().max().unwrap() {
+      let i = row_i as u32;
+      let (s1, s2, s3, s4, s5, s6) = (
+        rows[&i][0],
+        rows[&i][1],
+        rows[&i][2],
+        rows[&i][3],
+        rows[&i][4],
+        rows[&i][5],
+      );
       println!(
         "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
-        s0,
         s1,
         s2,
         s3,
         s4,
         s5,
+        s6,
       );
     }
 
@@ -7011,14 +7134,14 @@ impl NoteArchive {
       "CANCEL / C: Cancel",
     );
   }
-  fn get_blank_from_menu() -> Option<(Blank, Box<dyn BlankIterator>)> {
+  fn get_blank_from_menu(&self) -> Option<(Blank, Box<dyn BlankIterator>)> {
     loop {
-      self.display_blank_menus();
+      NoteArchive::display_blank_menus();
 
       let buffer = String::new();
       let idx_attempt = io::stdin().read_line(&mut buffer);
       let idx = match idx_attempt {
-        Ok(_) => idx.trim().to_ascii_lowercase(),
+        Ok(_) => buffer.trim().to_ascii_lowercase(),
         Err(e) => {
           println!("Failed to read line.");
           thread::sleep(time::Duration::from_secs(2));
@@ -7026,46 +7149,46 @@ impl NoteArchive {
         }
       };
 
-      return match &idx[..] {
+      let return_value = match &idx[..] {
         "cancel" | "c" => None,
         "rd" => {
-          match Self::choose_blank_fill_in(InternalDocumentFillIn::iterator()) {
+          match Self::choose_blank_fill_in(InternalDocumentFillIn::iterator_of_blanks()) {
             Some(s) => Some((InternalDocument, Box::new(s))),
             None => continue,
           };
         },
         "ed" => {
-          match Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator()) {
+          match Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator_of_blanks()) {
             Some(s) => Some((ExternalDocument, Box::new(s))),
             None => continue,
           };
         },
         "rm" => {
-          match Self::choose_blank_fill_in(InternalMeetingFillIn::iterator()) {
+          match Self::choose_blank_fill_in(InternalMeetingFillIn::iterator_of_blanks()) {
             Some(s) => Some((InternalMeeting, Box::new(s))),
             None => continue,
           };
         },
         "em" => {
-          match Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator()) {
+          match Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator_of_blanks()) {
             Some(s) => Some((ExternalMeeting, Box::new(s))),
             None => continue,
           };
         },
         "a" => {
-          match Self::choose_blank_fill_in(ActionFillIn::iterator()) {
+          match Self::choose_blank_fill_in(ActionFillIn::iterator_of_blanks()) {
             Some(s) => Some((Action, Box::new(s))),
             None => continue,
           };
         },
         "p" => {
-          match Self::choose_blank_fill_in(PhraseFillIn::iterator()) {
+          match Self::choose_blank_fill_in(PhraseFillIn::iterator_of_blanks()) {
             Some(s) => Some((Phrase, Box::new(s))),
             None => continue,
           };
         },
         _ => {
-          let selected_blank_tup: Option<dyn BlankIterator> = loop {
+          let selected_blank_tup: Option<Box<dyn BlankIterator>> = loop {
             let num_opt = idx.split(char::is_alphabetic()).collect::<Vec<String>>()[0].parse();
             let num = match num_opt {
               Ok(num) => num,
@@ -7076,42 +7199,42 @@ impl NoteArchive {
               }
             };
             match idx.find("rd") {
-              Some(_) => match InternalDocumentFillIn::iterator().nth(num) {
+              Some(_) => match InternalDocumentFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((InternalDocument, Box::new(b))),
                 None => break None,
               },
               None => (),
             }
             match idx.find("ed") {
-              Some(_) => match ExternalDocumentFillIn::iterator().nth(num) {
+              Some(_) => match ExternalDocumentFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((ExternalDocument, Box::new(b))),
                 None => break None,
               },
               None => (),
             }
             match idx.find("rm") {
-              Some(_) => match InternalMeetingFillIn::iterator().nth(num) {
+              Some(_) => match InternalMeetingFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((InternalMeeting, Box::new(b))),
                 None => break None,
               },
               None => (),
             }
             match idx.find("em") {
-              Some(_) => match ExternalMeetingFillIn::iterator().nth(num) {
+              Some(_) => match ExternalMeetingFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((ExternalMeeting, Box::new(b))),
                 None => break None,
               },
               None => (),
             }
             match idx.find("a") {
-              Some(_) => match ActionFillIn::iterator().nth(num) {
+              Some(_) => match ActionFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((Action, Box::new(b))),
                 None => break None,
               },
               None => (),
             }
             match idx.find("p") {
-              Some(_) => match PhraseFillIn::iterator().nth(num) {
+              Some(_) => match PhraseFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((Phrase, Box::new(b))),
                 None => break None,
               },
@@ -7132,7 +7255,8 @@ impl NoteArchive {
             }
           }
         }
-      }
+      };
+      return_value
     }
   }
   fn create_note_manually_get_id(&mut self) -> Option<u32> {
@@ -7142,6 +7266,7 @@ impl NoteArchive {
     let n = self.generate_note(ncat, CustomStructure, String::new());
     
     // add blanks
+    let current_blank = 1;
     loop {
       if n.content != String::new() {
         self.display_note();
@@ -7165,7 +7290,11 @@ impl NoteArchive {
               },
               "cancel" | "c" => return None,
               _ => {
-                n.content.push_str(&choice.trim()[..]);
+                if n.content.trim_right() != n.content {
+                  n.content.push_str(&choice.trim()[..]);
+                } else {
+                  n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
+                }
                 continue;
               }
             }
@@ -7181,151 +7310,45 @@ impl NoteArchive {
       let b_opt = NoteArchive::get_blank_from_menu();
       let (blank, blank_fill) = match b_opt {
         Some((b, bf)) => (b, bf),
-        None => {
-          println!("Cancel writing note?");
-          let choice = String::new();
-          let choice_att = io::stdin().read_line(&mut choice);
-          match choice_att {
-            Ok(_) => {
-              match &choice.trim().to_ascii_lowercase()[..] {
-                "y" | "yes" => return None,
-                "n" | "no" => continue,
-                _ => {
-                  println!("Invalid command.");
-                  thread::sleep(time::Duration::from_secs(2));
-                  continue;
-                }
-              }
-            },
-            Err(e) => {
-              println!("Failed to read line: {}", e);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        }
+        None => continue,
       };
-      n.blanks.insert(1, (blank, blank_fill.display_string(), vec![]));
+      n.blanks.insert(current_blank, (blank, blank_fill.display_string(), vec![]));
       n.content.push_str(&format!(" {}", blank));
+      current_blank += 1;
       break;
     }
 
-
-
-
-    n.content.push_str()
-
-
-
   }
-  fn create_note_get_id(&mut self) -> Option<u32> {
-    let note_template = loop {
-      let structure = loop {
-        self.display_structure_types();
-        println!("Enter 'CANCEL' at any time to cancel.");
-        println!("Build a template for what kind of record?");
-        let mut structure_choice = String::new();
-        let structure_attempt = io::stdin().read_line(&mut structure_choice);
-        match structure_attempt {
-          Ok(_) => (),
-          Err(e) => {
-            println!("Invalid repsonse: {}", e);
-            continue;
-          }
-        }
-        let structure = structure_choice.trim();
-        break match &structure[..] {
-          "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => CarePlan,
-          "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanVerbose,
-          "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Intake,
-          "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Assessment,
-          "5" | "SNCD" | "sncd" | "Sncd" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => SNCD,
-          "6" | "Home Visit" | "home visit" | "Home visit" | "HV" | "hv" | "Hv" => HomeVisit,
-          "7" | "Agenda Prep" | "Agenda prep" | "agenda prep" | "AGENDA PREP" | "AP" | "ap" | "Ap" => AgendaPrep,
-          "8" | "Debrief" | "debrief" | "DEBRIEF" | "D" | "d" => Debrief,
-          "9" | "Phone call" | "Phone Call" | "PHONE CALL" | "phone call" | "PC" | "pc" => PhoneCall,
-          "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Scheduling,
-          "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => SentEmail,
-          "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Referral,
-          "13" | "Custom" | "CUSTOM" | "custom" | "C" | "c" => CustomStructure,
-          "cancel" | "CANCEL" | "Cancel" => return None,
-          _ => {
-            println!("Invalid choice.");
-            thread::sleep(time::Duration::from_secs(2));
-            continue;
-          },
-        }
-      };
-      let mut content = String::new();
-      let mut display_content = String::new();
-      loop {
-        let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
-        NoteTemplate::display_content_from_vec(display_content_vec);
-        println!("Add text or blank?");
-        println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
-        let mut custom_choice = String::new();
-        let custom_attempt = io::stdin().read_line(&mut custom_choice);
-        match custom_attempt {
-          Ok(_) => (),
-          Err(e) => {
-            println!("Invalid repsonse: {}", e);
-            continue;
-          }
-        }
-        let custom = custom_choice.trim();
-        match &custom[..] {
-          "TEXT" | "text" | "Text" | "T" | "t" => {
-            loop {
-              println!("Enter custom text as you would like it to appear.");
-              let mut text_choice = String::new();
-              let text_attempt = io::stdin().read_line(&mut text_choice);
-              match text_attempt {
-                Ok(_) => {
-                  content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                  display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                },
-                Err(e) => {
-                  println!("Invalid repsonse: {}", e);
-                  continue;
-                }
-              }   
-            }
-          },
-          "BLANK" | "blank" | "Blank" | "B" | "b" => {
-            let blank_idx = choose_blanks();
-            content.push_str(&format!(" {}", BLANKS[blank_idx].0));
-            display_content.push_str(&format!(" [ {}{}", BLANKS[blank_idx].1, " ]"));
-          },
-          "SAVE" | "save" | "Save" | "S" | "s" => {
-            if display_content.len() == 0 {
-              println!("You must add at least one field to the content of a template. Please add either some text or at least one blank.");
-              thread::sleep(time::Duration::from_secs(4));
-              continue;
-            }
-            break;
-          },
-          "CANCEL" | "cancel" | "Cancel" => return None,
-          _ => {
-            println!("Invalid command.");
-            thread::sleep(time::Duration::from_secs(2));
-            continue;
-          }
-        }
-      };
-
-      match self.generate_unique_new_note_template(structure, content, self.current_user().id) {
-        Ok(nt) => break nt,
+  fn create_note_get_id(&self, nt_id: Option<u32>) -> Option<u32> {
+    // first check if there was a nt_id passed and create from that template
+    match nt_id {
+      None => (),
+      Some(id) => return self.create_note_from_template_get_id(Some(id)),
+    }
+    loop {
+      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+      println!(
+        "| {} | {} | {} ",
+        "TEMPLATE / T: build from template",
+        "SCRATCH / S: build from scratch",
+        "CANCEL / C: cancel",
+      );
+      let input = String::new();
+      let input_attempt = io::stdin().read_line(&mut input);
+      let input_val = match input_attempt {
+        Ok(_) => input.trim().to_ascii_lowercase(),
         Err(e) => {
-          println!("Failed to generate template: {}", e);
-          thread::sleep(time::Duration::from_secs(3));
+          println!("Failed to read line: {}", e);
+          thread::sleep(time::Duration::from_secs(2));
           continue;
         }
+      };
+      match &input_val[..] {
+        "template" | "t" => return self.create_note_from_template_get_id(None),
+        "scratch" | "s" => return self.create_note_manually_get_id(),
+        "cancel" => return None,
       }
-    };
-
-    let id = note_template.id;
-    self.save_note_template(note_template);
-    Some(id)
+    }
   }
   fn generate_note(
     &mut self,
@@ -7337,7 +7360,7 @@ impl NoteArchive {
 
     Ok(Note::new(id, category, structure, content))
   }
-  pub fn read_note_templates(filepath: &str) -> Result<Vec<NoteTemplate>, Error> {
+  pub fn read_notes(filepath: &str) -> Result<Vec<Note>, Error> {
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -7356,32 +7379,7 @@ impl NoteArchive {
       lines.remove(lines.len() - 1)?;
     }
 
-    let mut note_templates: Vec<NoteTemplate> = vec![];
-
-    for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
-      let i = i as u32;
-      let structure = match def.0 {
-        "Care Plan Meeting" => CarePlan,
-        "Care Plan Meeting Verbose" => CarePlanVerbose,
-        "Intake" => Intake,
-        "Assessment" => Assessment,
-        "SNCD" => SNCD,
-        "Home Visit" => HomeVisit,
-        "Agenda Prep" => AgendaPrep,
-        "Debrief" => Debrief,
-        "Phone Call" => PhoneCall,
-        "Scheduling" => Scheduling,
-        "Sent Email" => SentEmail,
-        "Referral" => Referral,
-        "Custom" => CustomStructure,
-        _ => {
-          panic!("Support not added for reading default Structure Type from constant.");
-        }
-      };
-      let content = String::from(def.1);
-      let nt = NoteTemplate::new(i, structure, false, content, None);
-      note_templates.push(nt);
-    }
+    let mut notes: Vec<Note> = vec![];
 
     for line in lines {
       let line_string = line?;
@@ -7393,7 +7391,43 @@ impl NoteArchive {
 
       let id: u32 = values[0].parse().unwrap();
 
-      let structure = match &values[1][..] {
+      let category_strings: Vec<String> = values[1].split(" - ").collect();
+      let (category_string, subcategory_string) = (category_strings[0], category_strings[1]);
+      
+      let category = match &category_string[..] {
+        "ICC Note" => {
+          let subcategory = match &subcategory_string[..] {
+            "Face to face contact with client" => FaceToFaceContactWithClient,
+            "Telephone contact with client" => TelephoneContactWithClient,
+            "Care coordination" => CareCoordination,
+            "Documentation" => Documentation,
+            "Care planning team" => CarePlanningTeam,
+            "Transport client" => TransportClient,
+            "Member outreach/no-show" => MemberOutreachNoShow,
+            _ => return Err(Error::new(
+              ErrorKind::Other,
+              "Unsupported ICC note subcategory saved to file.",
+            )),
+          };
+          ICCNote(subcategory)
+        },
+        "FP Note" => {
+          let subcategory = match &subcategory_string[..] {
+            "Tbd" => Tbd,
+            _ => return Err(Error::new(
+              ErrorKind::Other,
+              "Unsupported FP note subcategory saved to file.",
+            )),
+          };
+          FPNote(subcategory)
+        },
+        _ => return Err(Error::new(
+          ErrorKind::Other,
+          "Unsupported note category saved to file.",
+        )),
+      };
+
+      let structure = match &values[2][..] {
         "Care Plan Meeting" => CarePlan,
         "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
@@ -7413,66 +7447,60 @@ impl NoteArchive {
         )),
       };
 
-      let content = values[2].clone();
+      let content = values[3].clone();
 
-      let user_id = Some(values[3].parse().unwrap());
+      let blanks_strings: Vec<String> = values[4].split('#').collect();
+      let blanks: HashMap<u32, (Blank, String, Vec<u32>)> = HashMap::new();
 
-      let note_ids: Vec<u32> = match &values[4][..] {
-        "" => vec![],
-        _ => values[4]
-          .split("#")
-          .map(|val| val.parse().unwrap())
-          .collect(),
-      };
-      let nt = NoteTemplate::new(id, structure, true, content, user_id);
-      note_templates.push(nt);
-    }
-    note_templates.sort_by(|a, b| a.id.cmp(&b.id));
-    note_templates.sort_by(|a, b|
-      match (&a.foreign_key.get("user_id"), &b.foreign_key.get("user_id")) {
-        (Some(anum), Some(bnum)) => anum.cmp(&bnum),
-        _ => b.foreign_key.get("user_id").cmp(&a.foreign_key.get("user_id")),
+        // pub blanks: HashMap<u32, (Blank, String, Vec<u32>)> 
+
+      for b_string in blanks_strings {
+        let blank_values: Vec<String> = b_string.split('%').collect();
+
+        let blank_position: u32 = blank_values[0].parse()?;
+        let blank = Blank::get_blank_from_str(blank_values[1]);
+        let blank_content = blank_values[2];
+        let blank_foreign_keys: Vec<u32> = blank_values[3].split('-').map(|b_id| b_id.parse().unwrap() ).collect();
+
+        blanks.insert(blank_position, (blank, blank_content, blank_foreign_keys));
       }
-    );
-    note_templates.sort_by(|a, b| a.structure.cmp(&b.structure));
-    Ok(note_templates)
+
+      let n = Note::new(id, category, structure);
+      n.blanks = blanks;
+
+      notes.push(n);
+    }
+    notes.sort_by(|a, b| a.id.cmp(&b.id));
+    Ok(notes)
   }
-  pub fn write_note_templates(&self) -> std::io::Result<()> {
-    let mut lines = String::from("##### note_templates #####\n");
-    for nt in &self.note_templates {
-      if nt.custom {
-        lines.push_str(&nt.to_string()[..]);
-      }
+  pub fn write_notes(&self) -> std::io::Result<()> {
+    let mut lines = String::from("##### notes #####\n");
+    for n in &self.notes {
+      lines.push_str(&n.to_string()[..]);
     }
-    lines.push_str("##### note_templates #####");
-    let mut file = File::create(self.filepaths["note_template_filepath"].clone()).unwrap();
+    lines.push_str("##### notes #####");
+    let mut file = File::create(self.filepaths["note_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
-  fn save_note_template(&mut self, note_template: NoteTemplate) {
+  fn save_note(&mut self, note: Note) {
 
-    let pos = self.note_templates.binary_search_by(|nt| nt.structure.cmp(&note_template.structure)
-      .then_with(|| match (&nt.foreign_key.get("user_id"), &note_template.foreign_key.get("user_id")) {
-        (Some(anum), Some(bnum)) => anum.cmp(&bnum),
-        _ => note_template.foreign_key["user_id"].cmp(&nt.foreign_key["user_id"]),
-      } )
-      .then_with(|| nt.id.cmp(&note_template.id))
-    ).unwrap_or_else(|e| e);
+    let pos = self.note_templates.binary_search_by(|n| n.id.cmp(&note.id) ).unwrap_or_else(|e| e);
 
-    self.note_templates.insert(pos, note_template);
-    self.write_note_templates().unwrap();
+    self.notes.insert(pos, note);
+    self.write_notes().unwrap();
   }
-  fn current_user_custom_note_templates(&self) -> Vec<&NoteTemplate> {
-    self.note_templates.iter().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == self.current_user().id).collect()
+  fn current_user_notes(&self) -> Vec<&Note> {
+    self.notes.iter().filter(|n| n.foreign_key["user_id"] == self.current_user().id).collect()
   }
-  fn current_user_custom_note_templates_mut(&mut self) -> Vec<&mut NoteTemplate> {
+  fn current_user_custom_notes_mut(&mut self) -> Vec<&mut NoteTemplate> {
     let current_id = self.current_user().id;
-    self.note_templates.iter_mut().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == current_id).collect()
+    self.note_templates.iter_mut().filter(|n| n.foreign_key["user_id"] == current_id).collect()
   }
-  fn choose_delete_note_template(&mut self) {
+  fn choose_delete_note(&mut self) {
     loop {
-      self.display_delete_note_template();
-      println!("Are you sure you want to delete this note template?");
+      self.display_delete_note();
+      println!("Are you sure you want to delete this note?");
       println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
@@ -7486,7 +7514,7 @@ impl NoteArchive {
       };
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
-          self.delete_current_note_template();
+          self.delete_current_note();
           break;
         }
         _ => {
@@ -7495,27 +7523,27 @@ impl NoteArchive {
       }
     }
   }
-  fn display_delete_note_template(&self) {
-    let heading = String::from(" DELETE NOTE TEMPLATE ");
+  fn display_delete_note(&self) {
+    let heading = String::from(" DELETE NOTE ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^146}", "-");
     println!("{:-^146}", heading);
     println!("{:-^146}", "-");
 
-    self.current_note_template().display_content();
+    self.current_note().display_content();
 
     println!("{:-^146}", "-");
   }
-  fn delete_current_note_template(&mut self) {
-    let id = self.foreign_key.get("current_note_template_id").unwrap();
-    self.note_templates.retain(|nd| nd.id != *id);
-    self.foreign_key.remove("current_note_template_id");
+  fn delete_current_note(&mut self) {
+    let id = self.foreign_key.get("current_note_id").unwrap();
+    self.notes.retain(|n| n.id != *id);
+    self.foreign_key.remove("current_note_id");
   }
-  fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
-    self.note_templates.iter().find(|nt| nt.id == id)
+  fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
+    self.notes.iter().find(|n| n.id == id)
   }
-  fn get_note_template_option_by_id_mut(&mut self, id: u32) -> Option<&mut NoteTemplate> {
-    self.note_templates.iter_mut().find(|nt| nt.id == id)
+  fn get_note_option_by_id_mut(&mut self, id: u32) -> Option<&mut Note> {
+    self.notes.iter_mut().find(|n| n.id == id)
   }
 }
 

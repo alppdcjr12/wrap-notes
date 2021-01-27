@@ -532,9 +532,10 @@ impl PartialEq for Note {
 impl fmt::Display for Note {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut formatted_blanks = vec![];
-    for blanks_tup in self.blanks.iter() {
+    for (order, blanks_tup) in &*self.blanks {
       let blanks_string = format!(
-        "{}%{}%{}",
+        "{}%{}%{}%{}",
+        order,
         blanks_tup.0,
         blanks_tup.1,
         blanks_tup.2.iter().map(|id| id.to_string() ).collect::<Vec<String>>().join("-")
@@ -727,7 +728,7 @@ impl Blank {
           "(---pb2---)" => Pronoun2ForBlank(blank_id),
           "(---pb3---)" => Pronoun3ForBlank(blank_id),
           "(---pb4---)" => Pronoun4ForBlank(blank_id),
-
+          _ => panic!("Failed to read Blank type from string."),
         }
       },
     }

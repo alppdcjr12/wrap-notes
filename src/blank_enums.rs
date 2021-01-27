@@ -1,10 +1,11 @@
-trait BlankIterator {
-  pub fn iterator() -> Box<dyn Iterator>;
-  pub fn fill_in_category(&self) -> String;
-  pub fn display_fill_in(&self) -> String {
-    format!("{}", self)
+use std::fmt;
+
+pub trait BlankIterator {
+  fn fill_in_category(&self) -> String;
+  fn display_fill_in(&self) -> String {
+    format!("{}", &self)
   }
-  pub fn alpha_index(&self) -> String;
+  fn alpha_index(&self) -> String;
 }
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
@@ -19,6 +20,7 @@ pub enum InternalDocumentFillIn {
   StrengthsNeedsAndCulturalDiscovery,
   IndividualCarePlan,
   TransitionSummary,
+  OtherInternalDocument,
 }
 
 use InternalDocumentFillIn::{
@@ -34,8 +36,8 @@ use InternalDocumentFillIn::{
   TransitionSummary,
 };
 
-impl BlankIterator for InternalDocumentFillIn {
-  pub fn iterator() -> Box<dyn Iterator<Item = InternalDocumentFillIn>> {
+impl InternalDocumentFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = InternalDocumentFillIn>> {
     Box::new([
       ReferralForm,
       TelehealthConsent,
@@ -49,10 +51,13 @@ impl BlankIterator for InternalDocumentFillIn {
       TransitionSummary,
     ].iter().copied())
   }
-  pub fn fill_in_category(&self) -> String {
+}
+
+impl BlankIterator for InternalDocumentFillIn {
+  fn fill_in_category(&self) -> String {
     String::from("internal document")
   }
-  pub fn alpha_index(&self) -> String {
+  fn alpha_index(&self) -> String {
     String::from("rd")
   }
 }
@@ -79,27 +84,30 @@ impl fmt::Display for InternalDocumentFillIn {
 pub enum ExternalDocumentFillIn {
   NeuropsychologicalAssessment,
   IndividualEducationPlan,
-  Other
+  OtherExternalDocument,
 }
 
 use ExternalDocumentFillIn::{
   NeuropsychologicalAssessment,
   IndividualEducationPlan,
-  Other,
+  OtherExternalDocument,
 };
 
-impl BlankIterator for ExternalDocumentFillIn {
-  pub fn iterator() -> Box<dyn Iterator<Item = ExternalDocumentFillIn>> {
+impl ExternalDocumentFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ExternalDocumentFillIn>> {
     Box::new([
       NeuropsychologicalAssessment,
       IndividualEducationPlan,
-      Other
+      OtherExternalDocument
     ].iter().copied())
   }
-  pub fn fill_in_category(&self) -> String {
+}
+
+impl BlankIterator for ExternalDocumentFillIn {
+  fn fill_in_category(&self) -> String {
     String::from("external document")
   }
-  pub fn alpha_index(&self) -> String {
+  fn alpha_index(&self) -> String {
     String::from("ed")
   }
 }
@@ -110,7 +118,7 @@ impl fmt::Display for ExternalDocumentFillIn {
       NeuropsychologicalAssessment => "neuropsychological assessment",
       SchoolAssessment => "school assessment",
       IndividualEducationPlan => "IEP",
-      Other => "other exxternal document",
+      OtherExternalDocument => "other exxternal document",
     };
     write!(f, "{}", display_string)
   }
@@ -127,7 +135,7 @@ pub enum InternalMeetingFillIn {
   DebriefMeeting,
   CheckInMeeting,
   TransitionMeeting,
-  Other
+  OtherInternalMeeting
 }
 
 use InternalMeetingFillIn::{
@@ -140,11 +148,11 @@ use InternalMeetingFillIn::{
   DebriefMeeting,
   CheckInMeeting,
   TransitionMeeting,
-  Other
+  OtherInternalMeeting
 };
 
-impl BlankIterator for InternalMeetingFillIn {
-  pub fn iterator() -> Box<dyn Iterator<Item = InternalMeetingFillIn>> {
+impl InternalMeetingFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = InternalMeetingFillIn>> {
     Box::new([
       IntakeMeeting,
       AssessmentMeeting,
@@ -155,13 +163,16 @@ impl BlankIterator for InternalMeetingFillIn {
       DebriefMeeting,
       CheckInMeeting,
       TransitionMeeting,
-      Other
+      OtherInternalMeeting
     ].iter().copied())
   }
-  pub fn fill_in_category(&self) -> String {
+}
+
+impl BlankIterator for InternalMeetingFillIn {
+  fn fill_in_category(&self) -> String {
     String::from("Wraparound meeting title")
   }
-  pub fn alpha_index(&self) -> String {
+  fn alpha_index(&self) -> String {
     String::from("rm")
   }
 }
@@ -178,7 +189,7 @@ impl fmt::Display for InternalMeetingFillIn {
       DebriefMeeting => "debrief",
       CheckInMeeting => "check in",
       TransitionMeeting => "transition meeting",
-      Other => "other internal meeting",
+      OtherInternalMeeting => "other internal meeting",
     };
     write!(f, "{}", display_string)
   }
@@ -190,28 +201,34 @@ pub enum ExternalMeetingFillIn {
   SchoolAssessmentMeeting,
   Consult,
   TreatmentTeamMeeting,
+  OtherExternalMeeting
 }
 
-use ExternalMeetingFillIn {
+use ExternalMeetingFillIn::{
   IEPMeeting,
   SchoolAssessmentMeeting,
   Consult,
   TreatmentTeamMeeting,
+  OtherExternalMeeting,
 };
 
-impl BlankIterator for ExternalMeetingFillIn {
-  pub fn iterator() -> impl Iterator<Item = ExternalMeetingFillIn> {
+impl ExternalMeetingFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ExternalMeetingFillIn>> {
     Box::new([
       IEPMeeting,
       SchoolAssessmentMeeting,
       Consult,
       TreatmentTeamMeeting,
+      OtherExternalMeeting,
     ].iter().copied())
   }
-  pub fn fill_in_category(&self) -> String {
+}
+
+impl BlankIterator for ExternalMeetingFillIn {
+  fn fill_in_category(&self) -> String {
     String::from("external meeting title")
   }
-  pub fn alpha_index(&self) -> String {
+  fn alpha_index(&self) -> String {
     String::from("em")
   }
 }
@@ -223,6 +240,7 @@ impl fmt::Display for ExternalMeetingFillIn {
       SchoolAssessmentMeeting => "school assessment meeting",
       Consult => "consult",
       TreatmentTeamMeeting => "treatment team meeting",
+      OtherExternalMeeting => "other external meeting",
     };
     write!(f, "{}", display_string)
   }
@@ -242,7 +260,7 @@ pub enum ActionFillIn {
   Reviewed,
 }
 
-use ActionFillIn {
+use ActionFillIn::{
   Called,
   Emailed,
   Texted,
@@ -255,8 +273,8 @@ use ActionFillIn {
   Reviewed,
 };
 
-impl BlankIterator for ActionFillIn {
-  pub fn iterator() -> Box<dyn Iterator<Item = ActionFillIn>> {
+impl ActionFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ActionFillIn>> {
     Box::new([
       Called,
       Emailed,
@@ -270,10 +288,13 @@ impl BlankIterator for ActionFillIn {
       Reviewed,
     ].iter().copied())
   }
-  pub fn fill_in_category(&self) -> String {
+}
+
+impl BlankIterator for ActionFillIn {
+  fn fill_in_category(&self) -> String {
     String::from("general action")
   }
-  pub fn alpha_index(&self) -> String {
+  fn alpha_index(&self) -> String {
     String::from("a")
   }
 }
@@ -307,17 +328,20 @@ use PhraseFillIn::{
   AllTeamMembers,
 };
 
-impl BlankIterator for PhraseFillIn {
-  pub fn iterator() -> Box<dyn Iterator<Item = PhraseFillIn>> {
+impl PhraseFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = PhraseFillIn>> {
     Box::new([
       AllTeamMembersPresentAtMeeting,
       AllTeamMembers,
     ].iter().copied())
   }
-  pub fn fill_in_category(&self) -> String {
+}
+
+impl BlankIterator for PhraseFillIn {
+  fn fill_in_category(&self) -> String {
     String::from("other phrase")
   }
-  pub fn alpha_index(&self) -> String {
+  fn alpha_index(&self) -> String {
     String::from("p")
   }
 }
