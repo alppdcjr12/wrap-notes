@@ -1,5 +1,6 @@
 use std::fmt;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 use crate::constants::*;
 
@@ -127,7 +128,7 @@ impl NoteTemplate {
   }
   pub fn display_short(&self) -> String {
     let display_c = if self.custom { "custom" } else { "default" };
-    format!("{} ({})", self.structure, display_c);
+    format!("{} ({})", self.structure, display_c)
   }
   pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
@@ -231,7 +232,7 @@ impl fmt::Display for NoteTemplate {
   }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum NoteCategory {
   ICCNote(ICCNoteCategory),
   FPNote(FPNoteCategory),
@@ -259,7 +260,7 @@ impl fmt::Display for NoteCategory {
 
 use NoteCategory::{ICCNote, FPNote};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ICCNoteCategory {
   FaceToFaceContactWithClient,
   TelephoneContactWithClient,
@@ -317,13 +318,13 @@ impl fmt::Display for ICCNoteCategory {
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient,
 CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum FPNoteCategory {
   Tbd,
 }
 
 impl FPNoteCategory {
-  pub fn iterator() -> impl Iterator<Item = ICCNoteCategory> {
+  pub fn iterator() -> impl Iterator<Item = FPNoteCategory> {
     [
       Tbd,
     ].iter().copied()
@@ -355,7 +356,8 @@ pub struct Note {
   pub category: NoteCategory,
   pub structure: StructureType,
   pub content: String,
-  pub blanks: HashMap<u32, (Blank, String, Vec<u32>)> // blank type, display string, foreign keys - hashed by position of blank
+  pub blanks: HashMap<u32, (Blank, String, Vec<u32>)>, // blank type, display string, foreign keys - hashed by position of blank
+  pub foreign_key: HashMap<String, u32>,
 }
 
 impl Note {
@@ -363,14 +365,20 @@ impl Note {
     id: u32,
     category: NoteCategory,
     structure: StructureType,
-    content: String) -> Note {
+    content: String,
+    user_id: u32,
+  ) -> Note {
     let blanks = HashMap::new();
+    let foreign_key: HashMap<String, u32> = [
+      (String::from("user_id"), user_id),
+    ].iter().cloned().collect();
     Note {
       id,
       category,
       structure,
       content,
       blanks,
+      foreign_key,
     }
   }
   pub fn preview(&self) -> &str {
@@ -397,7 +405,12 @@ impl Note {
               long_sent = String::from(&long_sent[141..]);
             },
             Some(idx) => {
-              length_adjusted_vec.push((i, String::from(&long_sent[..idx])));
+              let isize_idx_option = isize::try_from(*idx);
+              let isize_idx = match isize_idx_option {
+                Ok(i) => i,
+                Err(_) => panic!("Failed to cast index of string from REGEX match to isize in fn 'get_content_vec_from_string'"),
+              };
+              length_adjusted_vec.push((i, String::from_utf8(&long_sent.as_bytes()[0..isize_idx]).unwrap()));
               long_sent = String::from(&long_sent[idx+1..]);
             }
           }
@@ -482,7 +495,7 @@ impl Note {
     let blank_content = self.content.clone();
     let blanks: Vec<Blank> = vec![];
     while RE_BLANK.is_match(&blank_content) {
-      let m = RE_BLANK.find(&blank_content);
+      let m = RE_BLANK.find(&blank_content).unwrap();
       blanks.push(Blank::get_blank_from_str(&blank_content[m.start()..m.end()]));
       RE_BLANK.replace(&blank_content, "X");
     }
@@ -518,6 +531,29 @@ impl Note {
     }
     RE_BLANK.find_iter(&self.content[..]).count()
   }
+  pub fn display_content(&self) {
+    // print!("{esc}[2J{esc}[1;1H", esc = 27 as char); // this should not be included - Note doesn't know current user or client. Need separate heading
+    println!("{:-^163}", "-");
+    let cat_string = match self.category {
+      ICCNote(ncat) => format!("'{}' by ICC", ncat),
+      FPNote(ncat) => format!("'{}' by FP", ncat),
+    };
+    let heading = format!(" Current content of {} service entry note for {} ", self.structure, cat_string);
+    println!("{:-^163}", heading);
+    println!("{:-^163}", "-");
+    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println!("{:-^163}", "-");
+    let mut current_i = 0;
+    for (i, cont) in self.get_display_content_vec() {
+      let display_i = if i == current_i {
+        String::from("   ")
+      } else {
+        format!(" {} ", i)
+      };
+      println!("{:-^20} | {:-^140}", display_i, cont);
+      current_i = i;
+    }
+  }
 }
 
 impl PartialEq for Note {
@@ -532,7 +568,7 @@ impl PartialEq for Note {
 impl fmt::Display for Note {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut formatted_blanks = vec![];
-    for (order, blanks_tup) in &*self.blanks {
+    for (order, blanks_tup) in &self.blanks {
       let blanks_string = format!(
         "{}%{}%{}%{}",
         order,
@@ -545,12 +581,13 @@ impl fmt::Display for Note {
     let blanks_str: String = formatted_blanks.join("#");
     write!(
       f,
-      "{} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {}\n",
       &self.id,
       &self.category,
       &self.structure,
       &self.content,
       blanks_str,
+      &self.foreign_key["user_id"],
     )
   }
 }
@@ -719,7 +756,7 @@ impl Blank {
       "(---p---)" => Phrase,
       "(---cu---)" => CustomBlank,
       _ => {
-        let components = s.split("#").collect::<Vec<String>>();
+        let components = s.split("#").map(|st| st.to_string() ).collect::<Vec<String>>();
 
         let blank_id = components[1].parse().unwrap();
 
@@ -738,10 +775,22 @@ impl Blank {
       CurrentClientName => "Name of client",
       Collaterals => "One or more collaterals",
       AllCollaterals => "All collaterals for the current client",
-      Pronoun1ForBlank(b_id) => &format!("Subject pronouns of the person in blank #{} (he, she, they)", b_id)[..],
-      Pronoun2ForBlank(b_id) => &format!("Object pronouns of the person in blank #{} (him, her, them)", b_id)[..],
-      Pronoun3ForBlank(b_id) => &format!("Possessive detemriner pronouns of the person in blank #{} (his, her, their)", b_id)[..],
-      Pronoun4ForBlank(b_id) => &format!("Possessive pronouns of the person in blank #{} (his, hers, theirs)", b_id)[..],
+      Pronoun1ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        &format!("Subject pronouns of the person in blank #{} (he, she, they)", b_id)[..]
+      },
+      Pronoun2ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        &format!("Object pronouns of the person in blank #{} (him, her, them)", b_id)[..]
+      },
+      Pronoun3ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        &format!("Possessive detemriner pronouns of the person in blank #{} (his, her, their)", b_id)[..]
+      },
+      Pronoun4ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        &format!("Possessive pronouns of the person in blank #{} (his, hers, theirs)", b_id)[..]
+      },
       Pronoun1ForUser => "Subject pronoun of the current user",
       Pronoun2ForUser => "Object pronoun of the current user",
       Pronoun3ForUser => "Possessive determiner of the current user",

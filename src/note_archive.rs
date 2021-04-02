@@ -2694,7 +2694,7 @@ impl NoteArchive {
         },
         _ => match input.parse() {
           Ok(num) => {
-            match !self.get_current_collaterals().iter().find(|co| co.id == num) {
+            match self.get_current_collaterals().iter().find(|co| co.id == num) {
               Some(collat) => {
                 break Some(collat);
               },
@@ -5001,7 +5001,7 @@ impl NoteArchive {
           println!("          // self.choose_edit_note();");
         }
         "NEW" | "new" | "New" | "n" | "N" => {
-          let n_id = self.create_note_get_id();
+          let n_id = self.create_note_get_id(None);
         }
         _ => println!("Invalid command."),
       }
@@ -5979,10 +5979,10 @@ impl NoteArchive {
     self.notes.iter().filter(|n| self.current_note_day().foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id )).collect()
   }
   fn get_note_day_by_note_id(&self, id: u32) -> Option<&NoteDay> {
-    self.note_days.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == id) )
+    self.note_days.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &id) )
   }
   fn get_note_template_by_note_id(&self, id: u32) -> Option<&NoteTemplate> {
-    self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == id) )
+    self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &id) )
   }
   fn display_note_sentences(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -6101,7 +6101,8 @@ impl NoteArchive {
           break;
         }
         "EDIT" | "edit" | "Edit" | "E" | "e" => {
-          self.choose_edit_note();
+          // self.choose_edit_note();
+          println!("self.choose_edit_note();");
         }
         _ => println!("Invalid command."),
       }
@@ -6119,22 +6120,22 @@ impl NoteArchive {
     };
     let fill_ins = match &blank_type[..] {
       "internal document" => {
-        InternalDocumentFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+        InternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) )
       },
       "external document" => {
-        ExternalDocumentFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+        ExternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) )
       },
       "internal meeting" => {
-        InternalDocumentFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+        InternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) )
       },
       "external meeting" => {
-        ExternalMeetingFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+        ExternalMeetingFillIn::iterator_of_blanks().map(|b| format!("{}", b) )
       },
       "action" => {
-        ActionFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+        ActionFillIn::iterator_of_blanks().map(|b| format!("{}", b) )
       },
       "phrase" => {
-        PhraseFillIn::iterator_of_blanks().filter(|b| format!("{}", b) )
+        PhraseFillIn::iterator_of_blanks().map(|b| format!("{}", b) )
       },
       _ => panic!("Incompatible blank fill in string passed to fn 'display_blank_fill_in'")
     };
@@ -6235,7 +6236,7 @@ impl NoteArchive {
             }
           }
         },
-        _ => panic!("Incompatible fill in type passed to fn 'choose_phrase_fll_in'"),
+        _ => panic!("Incompatible fill in type passed to fn 'choose_phrase_flll_in'"),
       };
       return Some(selected_content)
     }
@@ -6397,7 +6398,7 @@ impl NoteArchive {
           Referral => ICCNote(CareCoordination),
           CustomStructure => {
             loop {
-              match self.choose_note_category {
+              match self.choose_note_category() {
                 Some(ncat) => break ncat,
                 None => {
                   let decision = loop {
@@ -6729,46 +6730,46 @@ impl NoteArchive {
               } else {
                 blank_string = collats[0].full_name_and_title();
               }
-              id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
+              id_vec = collats.iter().map(|co| co.id ).collect();
             },
             InternalDocument => {
-              blank_string = match Self::choose_blank_fill_in(Boxx::new(InternalDocumentFillIn::iterator_of_blanks())) {
-                Some(s) => s.display_fill_in(),
+              blank_string = match Self::choose_blank_fill_in(String::from("internal document")) {
+                Some(s) => s,
                 None => continue,
               };
               id_vec = vec![];
             },
             ExternalDocument => {
-              blank_string = match Self::choose_blank_fill_in(Box::new(ExternalDocumentFillIn::iterator_of_blanks())) {
-                Some(s) => s.display_fill_in(),
+              blank_string = match Self::choose_blank_fill_in(String::from("external document")) {
+                Some(s) => s,
                 None => continue,
               };
               id_vec = vec![];
             },
             InternalMeeting => {
-              blank_string = match Self::choose_blank_fill_in(Box::new(InternalMeetingFillIn::iterator_of_blanks())) {
-                Some(s) => s.display_fill_in(),
+              blank_string = match Self::choose_blank_fill_in(String::from("internal meeting")) {
+                Some(s) => s,
                 None => continue,
               };
               id_vec = vec![];
             },
             ExternalMeeting => {
-              blank_string = match Self::choose_blank_fill_in(Box::new(ExternalMeetingFillIn::iterator_of_blanks())) {
-                Some(s) => s.display_fill_in(),
+              blank_string = match Self::choose_blank_fill_in(String::from("external meeting")) {
+                Some(s) => s,
                 None => continue,
               };
               id_vec = vec![];
             },
             Action => {
-              blank_string = match Self::choose_blank_fill_in(Box::new(ActionFillIn::iterator_of_blanks())) {
-                Some(s) => s.display_fill_in(),
+              blank_string = match Self::choose_blank_fill_in(String::from("action")) {
+                Some(s) => s,
                 None => continue,
               };
               id_vec = vec![];
             },
             Phrase => {
-              blank_string = match Self::choose_blank_fill_in(Box::new(PhraseFillIn::iterator_of_blanks())) {
-                Some(s) => s.display_fill_in(),
+              blank_string = match Self::choose_blank_fill_in(String::from("phrase")) {
+                Some(s) => s,
                 None => continue,
               };
               id_vec = vec![];
@@ -7074,12 +7075,12 @@ impl NoteArchive {
         let number_of_vecs = s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count() + 21 / n_chars;
         for vec_i in 1..number_of_vecs {
           let new_vec = s_vec.iter().map(|s|
-            let chars: Vec<Char> = s.chars()
+            s.chars()
               .enumerate()
               .filter(|i, _| i > vec_i - 1 * n_chars && i < vec_i * n_chars  )
               .map(|_, out| out )
-              .collect();
-            chars.join("")
+              .collect()
+              .join("")
           );
           new_vecs.push(new_vec);
         }
@@ -7152,45 +7153,54 @@ impl NoteArchive {
       let return_value = match &idx[..] {
         "cancel" | "c" => None,
         "rd" => {
-          match Self::choose_blank_fill_in(InternalDocumentFillIn::iterator_of_blanks()) {
+          match Self::choose_blank_fill_in(String::from("internal document")) {
             Some(s) => Some((InternalDocument, Box::new(s))),
             None => continue,
-          };
+          }
         },
         "ed" => {
-          match Self::choose_blank_fill_in(ExternalDocumentFillIn::iterator_of_blanks()) {
+          match Self::choose_blank_fill_in(String::from("external document")) {
             Some(s) => Some((ExternalDocument, Box::new(s))),
             None => continue,
-          };
+          }
         },
         "rm" => {
-          match Self::choose_blank_fill_in(InternalMeetingFillIn::iterator_of_blanks()) {
+          match Self::choose_blank_fill_in(String::from("internal meeting")) {
             Some(s) => Some((InternalMeeting, Box::new(s))),
             None => continue,
-          };
+          }
         },
         "em" => {
-          match Self::choose_blank_fill_in(ExternalMeetingFillIn::iterator_of_blanks()) {
+          match Self::choose_blank_fill_in(String::from("external meeting")) {
             Some(s) => Some((ExternalMeeting, Box::new(s))),
             None => continue,
-          };
+          }
         },
         "a" => {
-          match Self::choose_blank_fill_in(ActionFillIn::iterator_of_blanks()) {
+          match Self::choose_blank_fill_in(String::from("action")) {
             Some(s) => Some((Action, Box::new(s))),
             None => continue,
-          };
+          }
         },
         "p" => {
-          match Self::choose_blank_fill_in(PhraseFillIn::iterator_of_blanks()) {
+          match Self::choose_blank_fill_in(String::from("phrase")) {
             Some(s) => Some((Phrase, Box::new(s))),
             None => continue,
-          };
+          }
         },
         _ => {
-          let selected_blank_tup: Option<Box<dyn BlankIterator>> = loop {
-            let num_opt = idx.split(char::is_alphabetic()).collect::<Vec<String>>()[0].parse();
-            let num = match num_opt {
+          let selected_blank_tup: Option<(Blank, Box<dyn BlankIterator>)> = loop {
+            let nums: Vec<&str> = vec!["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+            let num_chars = idx.chars().count();
+            let (first_part, final_char) = if num_chars == 2 {
+              idx.split_at(1)
+            } else if num_chars == 3 {
+              idx.split_at(2)
+            } else {
+              idx.split_at(1)
+            };
+            let num_result = final_char.parse();
+            let num = match num_result {
               Ok(num) => num,
               Err(e) => {
                 println!("Invalid index.");
@@ -7198,54 +7208,37 @@ impl NoteArchive {
                 continue;
               }
             };
-            match idx.find("rd") {
-              Some(_) => match InternalDocumentFillIn::iterator_of_blanks().nth(num) {
+            match &first_part[..] {
+              "rd" => match InternalDocumentFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((InternalDocument, Box::new(b))),
                 None => break None,
               },
-              None => (),
-            }
-            match idx.find("ed") {
-              Some(_) => match ExternalDocumentFillIn::iterator_of_blanks().nth(num) {
+              "ed" => match ExternalDocumentFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((ExternalDocument, Box::new(b))),
                 None => break None,
               },
-              None => (),
-            }
-            match idx.find("rm") {
-              Some(_) => match InternalMeetingFillIn::iterator_of_blanks().nth(num) {
+              "rm" => match InternalMeetingFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((InternalMeeting, Box::new(b))),
                 None => break None,
               },
-              None => (),
-            }
-            match idx.find("em") {
-              Some(_) => match ExternalMeetingFillIn::iterator_of_blanks().nth(num) {
+              "em" => match ExternalMeetingFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((ExternalMeeting, Box::new(b))),
                 None => break None,
               },
-              None => (),
-            }
-            match idx.find("a") {
-              Some(_) => match ActionFillIn::iterator_of_blanks().nth(num) {
+              "a" => match ActionFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((Action, Box::new(b))),
                 None => break None,
               },
-              None => (),
-            }
-            match idx.find("p") {
-              Some(_) => match PhraseFillIn::iterator_of_blanks().nth(num) {
+              "p" => match PhraseFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((Phrase, Box::new(b))),
                 None => break None,
               },
-              None => {
+              _ => {
                 println!("Invalid ID. Please use the alphanumeric IDs provided to select a phrase to add to your note.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               }
             }
-          };
-
           match selected_blank_tup {
             Some(_) => selected_blank_tup,
             None => {
@@ -7256,7 +7249,7 @@ impl NoteArchive {
           }
         }
       };
-      return_value
+      break return_value
     }
   }
   fn create_note_manually_get_id(&mut self) -> Option<u32> {
@@ -7357,8 +7350,9 @@ impl NoteArchive {
     content: String,
   ) -> Result<Note, String> {
     let id: u32 = self.notes.len() as u32 + 1;
+    let user_id = self.current_user().id;
 
-    Ok(Note::new(id, category, structure, content))
+    Ok(Note::new(id, category, structure, content, user_id))
   }
   pub fn read_notes(filepath: &str) -> Result<Vec<Note>, Error> {
     let file = OpenOptions::new()
@@ -7391,7 +7385,7 @@ impl NoteArchive {
 
       let id: u32 = values[0].parse().unwrap();
 
-      let category_strings: Vec<String> = values[1].split(" - ").collect();
+      let category_strings: Vec<String> = values[1].split(" - ").map(|s| s.to_string()).collect();
       let (category_string, subcategory_string) = (category_strings[0], category_strings[1]);
       
       let category = match &category_string[..] {
@@ -7449,23 +7443,25 @@ impl NoteArchive {
 
       let content = values[3].clone();
 
-      let blanks_strings: Vec<String> = values[4].split('#').collect();
+      let blanks_strings: Vec<String> = values[4].split('#').map(|s| s.to_string() ).collect();
       let blanks: HashMap<u32, (Blank, String, Vec<u32>)> = HashMap::new();
 
         // pub blanks: HashMap<u32, (Blank, String, Vec<u32>)> 
 
       for b_string in blanks_strings {
-        let blank_values: Vec<String> = b_string.split('%').collect();
+        let blank_values: Vec<String> = b_string.split('%').map(|st| st.to_string() ).collect();
 
         let blank_position: u32 = blank_values[0].parse()?;
-        let blank = Blank::get_blank_from_str(blank_values[1]);
+        let blank = Blank::get_blank_from_str(&blank_values[1]);
         let blank_content = blank_values[2];
         let blank_foreign_keys: Vec<u32> = blank_values[3].split('-').map(|b_id| b_id.parse().unwrap() ).collect();
 
         blanks.insert(blank_position, (blank, blank_content, blank_foreign_keys));
       }
 
-      let n = Note::new(id, category, structure);
+      let note_user_id: u32 = values[5].parse().unwrap();
+
+      let n = Note::new(id, category, structure, content, note_user_id);
       n.blanks = blanks;
 
       notes.push(n);

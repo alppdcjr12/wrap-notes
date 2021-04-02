@@ -2,9 +2,6 @@ use std::fmt;
 
 pub trait BlankIterator {
   fn fill_in_category(&self) -> String;
-  fn display_fill_in(&self) -> String {
-    format!("{}", &self)
-  }
   fn alpha_index(&self) -> String;
 }
 
