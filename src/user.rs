@@ -26,7 +26,7 @@ pub enum EmployeeRole {
   ICC,
 }
 
-use crate::EmployeeRole::{FP, ICC};
+use crate::user::EmployeeRole::{FP, ICC};
 
 impl fmt::Display for EmployeeRole {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

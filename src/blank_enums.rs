@@ -31,6 +31,7 @@ use InternalDocumentFillIn::{
   StrengthsNeedsAndCulturalDiscovery,
   IndividualCarePlan,
   TransitionSummary,
+  OtherInternalDocument,
 };
 
 impl InternalDocumentFillIn {
@@ -46,6 +47,7 @@ impl InternalDocumentFillIn {
       StrengthsNeedsAndCulturalDiscovery,
       IndividualCarePlan,
       TransitionSummary,
+      OtherInternalDocument
     ].iter().copied())
   }
 }
@@ -72,6 +74,8 @@ impl fmt::Display for InternalDocumentFillIn {
       StrengthsNeedsAndCulturalDiscovery => "Strengths, Needs and Cultural Discovery",
       IndividualCarePlan => "Individual Care Plan",
       TransitionSummary => "transition summary",
+      // keep last for the sake of organization
+      OtherInternalDocument => "other internal document",
     };
     write!(f, "{}", display_string)
   }
@@ -80,12 +84,14 @@ impl fmt::Display for InternalDocumentFillIn {
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum ExternalDocumentFillIn {
   NeuropsychologicalAssessment,
+  SchoolAssessment,
   IndividualEducationPlan,
   OtherExternalDocument,
 }
 
 use ExternalDocumentFillIn::{
   NeuropsychologicalAssessment,
+  SchoolAssessment,
   IndividualEducationPlan,
   OtherExternalDocument,
 };
@@ -94,6 +100,7 @@ impl ExternalDocumentFillIn {
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ExternalDocumentFillIn>> {
     Box::new([
       NeuropsychologicalAssessment,
+      SchoolAssessment,
       IndividualEducationPlan,
       OtherExternalDocument
     ].iter().copied())
@@ -115,7 +122,8 @@ impl fmt::Display for ExternalDocumentFillIn {
       NeuropsychologicalAssessment => "neuropsychological assessment",
       SchoolAssessment => "school assessment",
       IndividualEducationPlan => "IEP",
-      OtherExternalDocument => "other exxternal document",
+      // keep last for organization
+      OtherExternalDocument => "other external document",
     };
     write!(f, "{}", display_string)
   }
@@ -186,6 +194,7 @@ impl fmt::Display for InternalMeetingFillIn {
       DebriefMeeting => "debrief",
       CheckInMeeting => "check in",
       TransitionMeeting => "transition meeting",
+      // keep last for organization
       OtherInternalMeeting => "other internal meeting",
     };
     write!(f, "{}", display_string)
@@ -237,6 +246,7 @@ impl fmt::Display for ExternalMeetingFillIn {
       SchoolAssessmentMeeting => "school assessment meeting",
       Consult => "consult",
       TreatmentTeamMeeting => "treatment team meeting",
+      // keep last for organization
       OtherExternalMeeting => "other external meeting",
     };
     write!(f, "{}", display_string)

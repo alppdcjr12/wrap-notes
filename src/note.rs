@@ -147,7 +147,7 @@ impl NoteTemplate {
               long_sent = String::from(&long_sent[141..]);
             },
             Some(idx) => {
-              length_adjusted_vec.push((i, String::from(&long_sent[..idx])));
+              length_adjusted_vec.push((i, String::from(&long_sent[..*idx])));
               long_sent = String::from(&long_sent[idx+1..]);
             }
           }
@@ -178,7 +178,7 @@ impl NoteTemplate {
   pub fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
     for b in Blank::iterator() {
-      content_slice = content_slice.replace(&format!("{}", b), b.display_to_user());
+      content_slice = content_slice.replace(&format!("{}", b), &b.display_to_user());
     }
     content_slice.clone()
   }
@@ -406,11 +406,11 @@ impl Note {
             },
             Some(idx) => {
               let isize_idx_option = isize::try_from(*idx);
-              let isize_idx = match isize_idx_option {
-                Ok(i) => i,
+              let usize_idx = match isize_idx_option {
+                Ok(i) => i as usize,
                 Err(_) => panic!("Failed to cast index of string from REGEX match to isize in fn 'get_content_vec_from_string'"),
               };
-              length_adjusted_vec.push((i, String::from_utf8(&long_sent.as_bytes()[0..isize_idx]).unwrap()));
+              length_adjusted_vec.push((i, String::from_utf8(long_sent.as_bytes()[0..usize_idx].to_vec()).unwrap()));
               long_sent = String::from(&long_sent[idx+1..]);
             }
           }
@@ -440,8 +440,8 @@ impl Note {
       static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
     
-    let i: u32 = 1;
-    let unfilled = 0;
+    let mut i: u32 = 1;
+    let mut unfilled = 0;
     loop {
       if self.blanks.keys().any(|ki| ki == &i ) {
         i += 1;
@@ -493,7 +493,7 @@ impl Note {
       static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
     let blank_content = self.content.clone();
-    let blanks: Vec<Blank> = vec![];
+    let mut blanks: Vec<Blank> = vec![];
     while RE_BLANK.is_match(&blank_content) {
       let m = RE_BLANK.find(&blank_content).unwrap();
       blanks.push(Blank::get_blank_from_str(&blank_content[m.start()..m.end()]));
@@ -507,7 +507,7 @@ impl Note {
     }
     let num_total_blanks = RE_BLANK.find_iter(&self.content).count();
     let ordered_blanks = self.get_blank_types();
-    let blanks: Vec<(u32, Blank)> = vec![];
+    let mut blanks: Vec<(u32, Blank)> = vec![];
     for i in 1..num_total_blanks {
       let i = i as u32;
       match self.blanks.get(&i) {
@@ -705,32 +705,44 @@ impl Blank {
       CustomBlank,
     ]
   }
-  pub fn abbreviate(&self) -> &str {
+  pub fn abbreviate(&self) -> String {
     match self {
-      CurrentClientName => "c",
-      Collaterals => "co",
-      AllCollaterals => "allco",
-      Pronoun1ForBlank(id) => &format!("pb1#{}#", id)[..],
-      Pronoun2ForBlank(id) => &format!("pb2#{}#", id)[..],
-      Pronoun3ForBlank(id) => &format!("pb3#{}#", id)[..],
-      Pronoun4ForBlank(id) => &format!("pb4#{}#", id)[..],
-      Pronoun1ForUser => "pu1",
-      Pronoun2ForUser => "pu2",
-      Pronoun3ForUser => "pu3",
-      Pronoun4ForUser => "pu4",
-      Pronoun1ForClient => "pc1",
-      Pronoun2ForClient => "pc2",
-      Pronoun3ForClient => "pc3",
-      Pronoun4ForClient => "pc4",
-      TodayDate => "td",
-      NoteDayDate => "ndd",
-      InternalDocument => "id",
-      ExternalDocument => "ed",
-      InternalMeeting => "im",
-      ExternalMeeting => "em",
-      Action => "a",
-      Phrase => "p",
-      CustomBlank => "cu",
+      CurrentClientName => String::from("c"),
+      Collaterals => String::from("co"),
+      AllCollaterals => String::from("allco"),
+      Pronoun1ForBlank(id_opt) => match id_opt {
+        Some(id) => format!("pb1@{}@", id),
+        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+      }
+      Pronoun2ForBlank(id_opt) => match id_opt {
+        Some(id) => format!("pb2@{}@", id),
+        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+      }
+      Pronoun3ForBlank(id_opt) => match id_opt {
+        Some(id) => format!("pb3@{}@", id),
+        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+      }
+      Pronoun4ForBlank(id_opt) => match id_opt {
+        Some(id) => format!("pb4@{}@", id),
+        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+      }
+      Pronoun1ForUser => String::from("pu1"),
+      Pronoun2ForUser => String::from("pu2"),
+      Pronoun3ForUser => String::from("pu3"),
+      Pronoun4ForUser => String::from("pu4"),
+      Pronoun1ForClient => String::from("pc1"),
+      Pronoun2ForClient => String::from("pc2"),
+      Pronoun3ForClient => String::from("pc3"),
+      Pronoun4ForClient => String::from("pc4"),
+      TodayDate => String::from("td"),
+      NoteDayDate => String::from("ndd"),
+      InternalDocument => String::from("id"),
+      ExternalDocument => String::from("ed"),
+      InternalMeeting => String::from("im"),
+      ExternalMeeting => String::from("em"),
+      Action => String::from("a"),
+      Phrase => String::from("p"),
+      CustomBlank => String::from("cu"),
     }
   }
   pub fn get_blank_from_str(s: &str) -> Blank {
@@ -755,59 +767,62 @@ impl Blank {
       "(---a---)" => Action,
       "(---p---)" => Phrase,
       "(---cu---)" => CustomBlank,
-      _ => {
-        let components = s.split("#").map(|st| st.to_string() ).collect::<Vec<String>>();
+      _ => { // only other options are pb@id@ which is a pronouns for blank, requires parsing 'id' to int
+        let components = s.split("@").map(|st| st.to_string() ).collect::<Vec<String>>();
 
-        let blank_id = components[1].parse().unwrap();
+        let blank_id: u32 = match components[1].parse() {
+          Ok(num) => num,
+          Err(e) => panic!("Attempted to read Blank type from str: {}, {}", components[1], e),
+        };
 
         match &format!("{}{}", components[0], components[2])[..] {
-          "(---pb1---)" => Pronoun1ForBlank(blank_id),
-          "(---pb2---)" => Pronoun2ForBlank(blank_id),
-          "(---pb3---)" => Pronoun3ForBlank(blank_id),
-          "(---pb4---)" => Pronoun4ForBlank(blank_id),
+          "(---pb1---)" => Pronoun1ForBlank(Some(blank_id)),
+          "(---pb2---)" => Pronoun2ForBlank(Some(blank_id)),
+          "(---pb3---)" => Pronoun3ForBlank(Some(blank_id)),
+          "(---pb4---)" => Pronoun4ForBlank(Some(blank_id)),
           _ => panic!("Failed to read Blank type from string."),
         }
       },
     }
   }
-  pub fn display_to_user(&self) -> &str {
+  pub fn display_to_user(&self) -> String {
     match self {
-      CurrentClientName => "Name of client",
-      Collaterals => "One or more collaterals",
-      AllCollaterals => "All collaterals for the current client",
+      CurrentClientName => String::from("Name of client"),
+      Collaterals => String::from("One or more collaterals"),
+      AllCollaterals => String::from("All collaterals for the current client"),
       Pronoun1ForBlank(b_id_option) => {
         let b_id = b_id_option.unwrap();
-        &format!("Subject pronouns of the person in blank #{} (he, she, they)", b_id)[..]
+        format!("Subject pronouns of the person in blank #{} (he, she, they)", b_id)
       },
       Pronoun2ForBlank(b_id_option) => {
         let b_id = b_id_option.unwrap();
-        &format!("Object pronouns of the person in blank #{} (him, her, them)", b_id)[..]
+        format!("Object pronouns of the person in blank #{} (him, her, them)", b_id)
       },
       Pronoun3ForBlank(b_id_option) => {
         let b_id = b_id_option.unwrap();
-        &format!("Possessive detemriner pronouns of the person in blank #{} (his, her, their)", b_id)[..]
+        format!("Possessive detemriner pronouns of the person in blank #{} (his, her, their)", b_id)
       },
       Pronoun4ForBlank(b_id_option) => {
         let b_id = b_id_option.unwrap();
-        &format!("Possessive pronouns of the person in blank #{} (his, hers, theirs)", b_id)[..]
+        format!("Possessive pronouns of the person in blank #{} (his, hers, theirs)", b_id)
       },
-      Pronoun1ForUser => "Subject pronoun of the current user",
-      Pronoun2ForUser => "Object pronoun of the current user",
-      Pronoun3ForUser => "Possessive determiner of the current user",
-      Pronoun4ForUser => "Possessive pronoun of the current user",
-      Pronoun1ForClient => "Subject pronoun of the current client",
-      Pronoun2ForClient => "Object pronoun of the current client",
-      Pronoun3ForClient => "Possessive determiner of the current client",
-      Pronoun4ForClient => "Possessive pronoun of the current client",
-      TodayDate => "Today's date",
-      NoteDayDate => "The date of the current note",
-      InternalDocument => "Internal document",
-      ExternalDocument => "External document",
-      InternalMeeting => "Wraparound meeting title",
-      ExternalMeeting => "External meeting title",
-      Action => "General action",
-      Phrase => "Other phrase",
-      CustomBlank => "Custom input",
+      Pronoun1ForUser => String::from("Subject pronoun of the current user"),
+      Pronoun2ForUser => String::from("Object pronoun of the current user"),
+      Pronoun3ForUser => String::from("Possessive determiner of the current user"),
+      Pronoun4ForUser => String::from("Possessive pronoun of the current user"),
+      Pronoun1ForClient => String::from("Subject pronoun of the current client"),
+      Pronoun2ForClient => String::from("Object pronoun of the current client"),
+      Pronoun3ForClient => String::from("Possessive determiner of the current client"),
+      Pronoun4ForClient => String::from("Possessive pronoun of the current client"),
+      TodayDate => String::from("Today's date"),
+      NoteDayDate => String::from("The date of the current note"),
+      InternalDocument => String::from("Internal document"),
+      ExternalDocument => String::from("External document"),
+      InternalMeeting => String::from("Wraparound meeting title"),
+      ExternalMeeting => String::from("External meeting title"),
+      Action => String::from("General action"),
+      Phrase => String::from("Other phrase"),
+      CustomBlank => String::from("Custom input"),
     }
   }
 }

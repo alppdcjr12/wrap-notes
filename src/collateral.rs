@@ -28,6 +28,8 @@ pub enum SupportType {
   Formal,
 }
 
+use crate::collateral::SupportType::{Natural, Formal};
+
 impl PartialEq for SupportType {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
@@ -37,8 +39,6 @@ impl PartialEq for SupportType {
     }
   }
 }
-
-use crate::SupportType::{Natural, Formal};
 
 impl Collateral {
   pub fn new(
