@@ -1,3 +1,12 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(unreachable_patterns)]
+#![allow(unused_variables)]
+#![allow(unused_comparisons)]
+#![allow(unused_attributes)]
+
+
 // use std::fs::File;
 // use std::io::prelude::*;
 pub mod note_archive;

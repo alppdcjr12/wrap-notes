@@ -1417,7 +1417,7 @@ impl NoteArchive {
     println!("| {} | {} | {}", "Enter ID to add client.", "NEW / N: create new", "QUIT / Q: quit menu");
   }
   fn display_client(&self) {
-      let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
+    let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
     let display_pronouns = match pronouns_option {
       Some(p) => p.short_string(),
       None => String::from("-----"),
@@ -3558,7 +3558,7 @@ impl NoteArchive {
                     }
                   }
                 },
-                Err(e) => {
+                Err(_) => {
                   println!("Failed to read line.");
                   thread::sleep(time::Duration::from_secs(1));
                   continue;
@@ -4939,11 +4939,33 @@ impl NoteArchive {
       }
     }
   }
+  fn display_note_day(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^163}", "-");
+
+    let notes = self.current_note_day_notes();
+
+    let nd = self.current_note_day();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    let heading = format!("Notes for {} for {}", c.full_name(), nd.fmt_date());
+    println!("{:-^163}", heading);
+    println!("{:-^6} | {:-^30} | {:-^30} | {:-^6} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    for n in notes {
+      let nt = self.get_note_template_by_note_id(n.id).unwrap();
+      let words: Vec<&str> = n.content.split(" ").collect();
+      let sample = if n.generate_display_content_string().len() > 88 {
+        n.generate_display_content_string()[..88].to_string()
+      } else {
+        n.generate_display_content_string()[..].to_string()
+      };
+      println!("{:-^6} | {:-^30} | {:-^30} | {:-^6} | {:-^79}", n.id, n.category, n.structure, words.len(), &sample[..]);
+    }
+    println!("{:-^163}", "-");
+  }
   fn choose_note_day(&mut self) {
     loop {
 
-      // self.display_note_day();
-      println!("      // self.display_note_day();");
+      self.display_note_day();
 
       println!("| {} | {} | {} | {}", "NEW / N add new note", "EDIT / E: edit note", "DELETE: delete note", "QUIT / Q: quit menu");
       let mut choice = String::new();
@@ -6210,13 +6232,13 @@ impl NoteArchive {
       return Some(selected_content)
     }
   }
-  fn display_ICC_note_categories() {
+  fn display_icc_note_categories() {
     println!("{:-^58}", "-");
     println!("{:-^58}", " ICC Note Categories ");
     println!("{:-^58}", "-");
-    println!("{:-^5} | {:-^50}", " ID ", " Note Category ");
+    println!("{: ^5} | {:-^50}", " ID ", " Note Category ");
     for (i, cat) in ICCNoteCategory::iterator().enumerate() {
-      println!("{:-^5} | {:-<50}", i, cat);
+      println!("{: ^5} | {:-<50}", i, cat);
     }
     println!("{:-^58}", "-");
     println!(
@@ -6225,7 +6247,7 @@ impl NoteArchive {
       "QUIT / Q: Quit menu",
     );
   }
-  fn display_FP_note_categories() {
+  fn display_fp_note_categories() {
     println!("{:-^58}", "-");
     println!("{:-^58}", " FP Note Categories ");
     println!("{:-^58}", "-");
@@ -6241,8 +6263,6 @@ impl NoteArchive {
     );
   }
   fn choose_note_category(&self) -> Option<NoteCategory> {
-    let icc_cat: Option<ICCNoteCategory>;
-    let fp_cat: Option<FPNoteCategory>;
     let current_role = match self.current_user().role {
       ICC => ICC,
       FP => FP,
@@ -6250,10 +6270,10 @@ impl NoteArchive {
     loop {
       match current_role {
         ICC => {
-          NoteArchive::display_ICC_note_categories();
+          NoteArchive::display_icc_note_categories();
         },
         FP => {
-          NoteArchive::display_FP_note_categories();
+          NoteArchive::display_fp_note_categories();
         },
       }
 
