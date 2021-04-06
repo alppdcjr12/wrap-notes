@@ -1,3 +1,11 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(unreachable_patterns)]
+#![allow(unused_variables)]
+#![allow(unused_comparisons)]
+#![allow(unused_attributes)]
+
 use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc, Weekday};
 use std::fmt;
 use std::fs;
@@ -6236,7 +6244,7 @@ impl NoteArchive {
     println!("{:-^58}", "-");
     println!("{:-^58}", " ICC Note Categories ");
     println!("{:-^58}", "-");
-    println!("{: ^5} | {:-^50}", " ID ", " Note Category ");
+    println!("{: ^5} | {:-^50}", " ID ", " Note category ");
     for (i, cat) in ICCNoteCategory::iterator().enumerate() {
       println!("{: ^5} | {:-<50}", i, cat);
     }
@@ -6251,7 +6259,7 @@ impl NoteArchive {
     println!("{:-^58}", "-");
     println!("{:-^58}", " FP Note Categories ");
     println!("{:-^58}", "-");
-    println!("{:-^5} | {:-^50}", " ID ", " Note Category ");
+    println!("{:-^5} | {:-^50}", " ID ", " Note category ");
     for (i, cat) in FPNoteCategory::iterator().enumerate() {
       println!("{:-^5} | {:-<50}", i, cat);
     }
@@ -6298,22 +6306,22 @@ impl NoteArchive {
           Ok(num) => {
             match current_role {
               ICC => {
-                let iccncat = ICCNoteCategory::iterator().nth(num-1);
+                let iccncat = ICCNoteCategory::iterator().nth(num);
                 match iccncat {
                   Some(icccat) => return Some(ICCNote(icccat)),
                   None => {
-                    println!("Index out of bounds for available Note Categories. Please identify a Note Category by valid ID.");
+                    println!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
                 }
               },
               FP => {
-                let fpncat = FPNoteCategory::iterator().nth(num-1);
+                let fpncat = FPNoteCategory::iterator().nth(num);
                 match fpncat {
                   Some(fpcat) => return Some(FPNote(fpcat)),
                   None => {
-                    println!("Index out of bounds for available Note Categories. Please identify a Note Category by valid ID.");
+                    println!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
@@ -7119,17 +7127,15 @@ impl NoteArchive {
 
     let mut row_vec: Vec<Vec<String>> = vec![];
 
-    let mut idx = 1;
+    let mut idx = 0;
     loop {
-      let mut internal_docs_string = String::new();
-
-      let this_id = internal_docs.nth(idx);
-      let this_ed = external_docs.nth(idx);
-      let this_im = internal_meetings.nth(idx);
-      let this_em = external_meetings.nth(idx);
-      let this_a = actions.nth(idx);
-      let this_p = phrases.nth(idx);
-
+      let this_id = internal_docs.nth(0);
+      let this_ed = external_docs.nth(0);
+      let this_im = internal_meetings.nth(0);
+      let this_em = external_meetings.nth(0);
+      let this_a = actions.nth(0);
+      let this_p = phrases.nth(0);
+      
       match (
         this_id,
         this_ed,
@@ -7142,6 +7148,7 @@ impl NoteArchive {
         _ => (),
       }
 
+      let mut internal_docs_string = String::new();
       match this_id {
         Some(val) => internal_docs_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
         None => (),
@@ -7179,36 +7186,38 @@ impl NoteArchive {
     let mut row_idx = 1;
     let n_chars = 20;
     for s_vec in row_vec {
-      if !s_vec.iter().any(|s| s.chars().count() > 24 ) {
+      if !s_vec.iter().any(|s| s.chars().count() > n_chars ) {
         rows.insert(row_idx, s_vec);
       } else {
         let mut new_vecs: Vec<Vec<String>> = vec![];
         // get the number of vectors needed by finding how many 20-char segments are in the longest string
-        let number_of_vecs = s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count() + 21 / n_chars;
+        let number_of_vecs = (s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count() + 21) / n_chars;
         for vec_i in 1..number_of_vecs {
           let new_vec: Vec<String> = s_vec.iter().map(|s|
             s.chars()
               .enumerate()
-              .filter(|(i, _)| i > &(vec_i - 1 * n_chars) && i < &(vec_i * n_chars)  )
+              .filter(|(i, _)| i > &((vec_i - 1) * n_chars) && i < &((vec_i - 1) * n_chars)  )
               .map(|(_, c)| c.to_string() )
               .collect::<Vec<String>>()
               .join("")
           ).collect();
           new_vecs.push(new_vec);
         }
+        println!("{:?}", new_vecs);
         for n_vec in new_vecs {
           rows.insert(row_idx, n_vec);
           row_idx += 1;
         }
+        println!("{:?}", &rows);
       }
     }
 
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    // print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^195}", "-");
     println!("{:-^195}", " All fill-ins for blanks ");
     println!("{:-^195}", "-");
     println!(
-      "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
+      "{:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25}",
       " Riverside documents ",
       " External documents ",
       " Riverside meetings ",
@@ -7217,35 +7226,35 @@ impl NoteArchive {
       " Other phrases ",
     );
 
-    // print value in each row
-    for row_i in 1..*rows.keys().max().unwrap() {
-      let i = row_i as u32;
-      let (s1, s2, s3, s4, s5, s6) = (
-        &rows[&i][0],
-        &rows[&i][1],
-        &rows[&i][2],
-        &rows[&i][3],
-        &rows[&i][4],
-        &rows[&i][5],
-      );
-      println!(
-        "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
-        s1,
-        s2,
-        s3,
-        s4,
-        s5,
-        s6,
-      );
-    }
+    // // print value in each row
+    // for row_i in 1..*rows.keys().max().unwrap() {
+    //   let i = row_i as u32;
+    //   let (s1, s2, s3, s4, s5, s6) = (
+    //     &rows[&i][0],
+    //     &rows[&i][1],
+    //     &rows[&i][2],
+    //     &rows[&i][3],
+    //     &rows[&i][4],
+    //     &rows[&i][5],
+    //   );
+    //   println!(
+    //     "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
+    //     s1,
+    //     s2,
+    //     s3,
+    //     s4,
+    //     s5,
+    //     s6,
+    //   );
+    // }
 
-    println!("{:-^195}", "-");
-    println!("Select menu item by ID (seen above in brackets).");
-    println!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
-    println!(
-      "| {}",
-      "CANCEL / C: Cancel",
-    );
+    // println!("{:-^195}", "-");
+    // println!("Select menu item by ID (seen above in brackets).");
+    // println!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
+    // println!(
+    //   "| {}",
+    //   "CANCEL / C: Cancel",
+    // );
   }
   fn get_blank_from_menu() -> Option<(Blank, String)> {
     loop {
