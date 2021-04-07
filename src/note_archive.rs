@@ -7334,18 +7334,23 @@ impl NoteArchive {
         },
         _ => {
           let selected_blank_tup: Option<(Blank, String)> = loop {
-            let first_num_pos = idx.chars().find_map(|c| c.to_string().parse().ok() ).clone();
-            // enumerate and get the index
-            let first_num_idx = idx.chars
+            let first_num_pos_opt = idx.chars().enumerate().find_map(|(i, c)| c.to_string().parse().ok() );
+            let first_alph_pos_opt = idx.chars().enumerate().find_map(|(i, c)| match c.to_string().parse().ok() {
+              Some(_) => None,
+              None => Some(0)
+            } );
 
-            let (first_part, final_char) = if num_chars == 2 {
-              idx.split_at(1)
-            } else if num_chars == 3 {
-              idx.split_at(1)
-            } else {
-              idx.split_at(1)
-            };
-            let num_result = final_char.parse();
+            // enumerate and get the index
+            let (first_part, last_part) = match first_num_pos_opt {
+              Some(num_pos) => idx.split_at(num_pos),
+              None => {
+                println!("Invalid index.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue 'main;
+              }
+            }
+
+            let num_result = last_part.parse();
             let num = match num_result {
               Ok(num) => num,
               Err(e) => {
