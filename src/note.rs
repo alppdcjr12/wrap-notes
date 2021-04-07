@@ -720,19 +720,19 @@ impl Blank {
       AllCollaterals => String::from("allco"),
       Pronoun1ForBlank(id_opt) => match id_opt {
         Some(id) => format!("pb1@{}@", id),
-        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+        None => String::from("pb1"),
       }
       Pronoun2ForBlank(id_opt) => match id_opt {
         Some(id) => format!("pb2@{}@", id),
-        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+        None => String::from("pb2"),
       }
       Pronoun3ForBlank(id_opt) => match id_opt {
         Some(id) => format!("pb3@{}@", id),
-        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+        None => String::from("pb3"),
       }
       Pronoun4ForBlank(id_opt) => match id_opt {
         Some(id) => format!("pb4@{}@", id),
-        None => panic!("Cannot display pronoun for a blank without specifying blank by blank ID.assert_eq!"),
+        None => String::from("pb4"),
       }
       Pronoun1ForUser => String::from("pu1"),
       Pronoun2ForUser => String::from("pu2"),

@@ -4871,6 +4871,8 @@ impl NoteArchive {
     match current {
       Some(nd) => {
         self.foreign_key.insert(String::from("current_note_day_id"), nd.id);
+        let c = self.get_client_by_note_day_id(nd.id).unwrap().clone();
+        self.foreign_key.insert(String::from("current_client_id"), c.id);
         Ok(())
       }
       None => Err(Error::new(
@@ -6064,6 +6066,24 @@ impl NoteArchive {
     println!("{}", n.generate_display_content_string());
     println!("{:-^163}", "-");
   }
+  fn display_new_note(&self, n: &Note) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^163}", "-");
+
+    let nd = self.current_note_day();
+    let c = self.current_client();
+    println!("{:-^163}", "-");
+    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
+    println!("{:-^163}", heading);
+    println!("{:-^50} | {:-^50}", " Author ", " Category ");
+    println!("{:-^50} | {:-^50}", self.current_user().name_and_title(), n.category);
+    println!("{:-^163}", "-");
+    println!("{:-^163}", "-");
+    println!("{:-^163}", " Content ");
+    println!("{:-^163}", "-");
+    println!("{}", n.generate_display_content_string());
+    println!("{:-^163}", "-");
+  }
   fn load_note(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
     match current {
@@ -7191,28 +7211,31 @@ impl NoteArchive {
       } else {
         let mut new_vecs: Vec<Vec<String>> = vec![];
         // get the number of vectors needed by finding how many 20-char segments are in the longest string
-        let number_of_vecs = (s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count() + 21) / n_chars;
-        for vec_i in 1..number_of_vecs {
+        let chars_in_line = s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count(); 
+        let number_of_vecs = chars_in_line / n_chars + if chars_in_line % n_chars != 0 { 1 } else { 0 };
+        for vec_i in 0..number_of_vecs {
+          let idx1 = vec_i * n_chars;
+          let idx2 = (vec_i * n_chars) + n_chars;
           let new_vec: Vec<String> = s_vec.iter().map(|s|
             s.chars()
               .enumerate()
-              .filter(|(i, _)| i > &((vec_i - 1) * n_chars) && i < &((vec_i - 1) * n_chars)  )
+              .filter(|(i, _)| i >= &idx1 && i < &idx2  )
               .map(|(_, c)| c.to_string() )
               .collect::<Vec<String>>()
               .join("")
           ).collect();
           new_vecs.push(new_vec);
         }
-        println!("{:?}", new_vecs);
+        // println!("{:?}", new_vecs);
         for n_vec in new_vecs {
           rows.insert(row_idx, n_vec);
           row_idx += 1;
         }
-        println!("{:?}", &rows);
       }
+      // println!("{:?}", &rows);
     }
 
-    // print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^195}", "-");
     println!("{:-^195}", " All fill-ins for blanks ");
     println!("{:-^195}", "-");
@@ -7225,39 +7248,39 @@ impl NoteArchive {
       " General actions ",
       " Other phrases ",
     );
+    
+    // print value in each row
+    for row_i in 1..*rows.keys().max().unwrap() {
+      let i = row_i as u32;
+      let (s1, s2, s3, s4, s5, s6) = (
+        &rows[&i][0],
+        &rows[&i][1],
+        &rows[&i][2],
+        &rows[&i][3],
+        &rows[&i][4],
+        &rows[&i][5],
+      );
+      println!(
+        "{:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25}",
+        s1,
+        s2,
+        s3,
+        s4,
+        s5,
+        s6,
+      );
+    }
 
-    // // print value in each row
-    // for row_i in 1..*rows.keys().max().unwrap() {
-    //   let i = row_i as u32;
-    //   let (s1, s2, s3, s4, s5, s6) = (
-    //     &rows[&i][0],
-    //     &rows[&i][1],
-    //     &rows[&i][2],
-    //     &rows[&i][3],
-    //     &rows[&i][4],
-    //     &rows[&i][5],
-    //   );
-    //   println!(
-    //     "{:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30} | {:-^30}",
-    //     s1,
-    //     s2,
-    //     s3,
-    //     s4,
-    //     s5,
-    //     s6,
-    //   );
-    // }
-
-    // println!("{:-^195}", "-");
-    // println!("Select menu item by ID (seen above in brackets).");
-    // println!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
-    // println!(
-    //   "| {}",
-    //   "CANCEL / C: Cancel",
-    // );
+    println!("{:-^195}", "-");
+    println!("Select menu item by ID (seen above in brackets).");
+    println!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
+    println!(
+      "| {}",
+      "CANCEL / C: Cancel",
+    );
   }
   fn get_blank_from_menu() -> Option<(Blank, String)> {
-    loop {
+    'main: loop {
       NoteArchive::display_blank_menus();
 
       let mut buffer = String::new();
@@ -7311,11 +7334,14 @@ impl NoteArchive {
         },
         _ => {
           let selected_blank_tup: Option<(Blank, String)> = loop {
-            let num_chars = idx.chars().count();
+            let first_num_pos = idx.chars().find_map(|c| c.to_string().parse().ok() ).clone();
+            // enumerate and get the index
+            let first_num_idx = idx.chars
+
             let (first_part, final_char) = if num_chars == 2 {
               idx.split_at(1)
             } else if num_chars == 3 {
-              idx.split_at(2)
+              idx.split_at(1)
             } else {
               idx.split_at(1)
             };
@@ -7325,7 +7351,7 @@ impl NoteArchive {
               Err(e) => {
                 println!("Invalid index.");
                 thread::sleep(time::Duration::from_secs(2));
-                continue;
+                continue 'main;
               }
             };
             match &first_part[..] {
@@ -7415,42 +7441,40 @@ impl NoteArchive {
     // add blanks
     let mut current_blank = 1;
     loop {
-      if n.content != String::new() {
-        self.display_note();
-        println!("Press ENTER to choose a phrase from the saved menus.");
-        println!("Enter text to add data directly to the note record.");
-        println!(
-          "| {} | {}",
-          "SAVE / S: Finish writing, save, and add to current record",
-          "CANCEL / C: Cancel and discard data"
-        );
-        let mut choice = String::new();
-        let choice_att = io::stdin().read_line(&mut choice);
-        match choice_att {
-          Ok(_) => {
-            match &choice.trim().to_ascii_lowercase()[..] {
-              "" => (),
-              "save" | "s" => {
-                let note_id = n.id;
-                self.notes.push(n);
-                return Some(note_id)
-              },
-              "cancel" | "c" => return None,
-              _ => {
-                if n.content.trim_end() != n.content {
-                  n.content.push_str(&choice.trim()[..]);
-                } else {
-                  n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
-                }
-                continue;
+      self.display_new_note(&n);
+      println!("Press ENTER to choose a phrase from the saved menus.");
+      println!("Enter text to add data directly to the note record.");
+      println!(
+        "| {} | {}",
+        "SAVE / S: Finish writing, save, and add to current record",
+        "CANCEL / C: Cancel and discard data"
+      );
+      let mut choice = String::new();
+      let choice_att = io::stdin().read_line(&mut choice);
+      match choice_att {
+        Ok(_) => {
+          match &choice.trim().to_ascii_lowercase()[..] {
+            "" => (),
+            "save" | "s" => {
+              let note_id = n.id;
+              self.notes.push(n);
+              return Some(note_id)
+            },
+            "cancel" | "c" => return None,
+            _ => {
+              if n.content.trim_end() != n.content {
+                n.content.push_str(&choice.trim()[..]);
+              } else {
+                n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
               }
+              continue;
             }
-          },
-          Err(e) => {
-            println!("Failed to read line: {}", e);
-            thread::sleep(time::Duration::from_secs(2));
-            continue;
           }
+        },
+        Err(e) => {
+          println!("Failed to read line: {}", e);
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
         }
       }
 
