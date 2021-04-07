@@ -6060,7 +6060,6 @@ impl NoteArchive {
     println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
     println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
     println!("{:-^163}", "-");
-    println!("{:-^163}", "-");
     println!("{:-^163}", " Content ");
     println!("{:-^163}", "-");
     println!("{}", n.generate_display_content_string());
@@ -6068,8 +6067,6 @@ impl NoteArchive {
   }
   fn display_new_note(&self, n: &Note) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
-
     let nd = self.current_note_day();
     let c = self.current_client();
     println!("{:-^163}", "-");
@@ -6077,7 +6074,6 @@ impl NoteArchive {
     println!("{:-^163}", heading);
     println!("{:-^50} | {:-^50}", " Author ", " Category ");
     println!("{:-^50} | {:-^50}", self.current_user().name_and_title(), n.category);
-    println!("{:-^163}", "-");
     println!("{:-^163}", "-");
     println!("{:-^163}", " Content ");
     println!("{:-^163}", "-");
@@ -7335,7 +7331,7 @@ impl NoteArchive {
         _ => {
           let selected_blank_tup: Option<(Blank, String)> = loop {
             let first_num_pos_opt = idx.chars().enumerate().find_map(|(i, c)| c.to_string().parse().ok() );
-            let first_alph_pos_opt = idx.chars().enumerate().find_map(|(i, c)| match c.to_string().parse().ok() {
+            let first_alph_pos_opt = idx.chars().enumerate().find_map(|(i, c)| match c.to_string().parse::<usize>().ok() {
               Some(_) => None,
               None => Some(0)
             } );
@@ -7348,7 +7344,7 @@ impl NoteArchive {
                 thread::sleep(time::Duration::from_secs(2));
                 continue 'main;
               }
-            }
+            };
 
             let num_result = last_part.parse();
             let num = match num_result {
@@ -7443,10 +7439,56 @@ impl NoteArchive {
       }
     };
     
+    // prepare current client collaterals to display for entering into Note
+    let collats = self.current_client_collaterals();
+    let mut collats_iter = collats.iter();
+    let mut col_rows: Vec<Vec<&Collateral>> = vec![];
+    'adding_rows: loop {
+      let mut new_vec: Vec<&Collateral> = vec![];
+      for _ in 1..=4 {
+        match collats_iter.next() {
+          Some(col) => new_vec.push(col),
+          None => {
+            col_rows.push(new_vec);
+            break 'adding_rows;
+          }
+        }
+      }
+
+      col_rows.push(new_vec.clone());
+    }
+
     // add blanks
     let mut current_blank = 1;
     loop {
       self.display_new_note(&n);
+      println!("{:-^163}", " Collaterals ");
+      for c_row in col_rows.clone() {
+        let val1: String = match c_row.get(0) {
+          Some(v) => format!("[{}] {}", v.id, v.full_name()),
+          None => String::new(),
+        };
+        let val2: String = match c_row.get(1) {
+          Some(v) => format!("[{}] {}", v.id, v.full_name()),
+          None => String::new(),
+        };
+        let val3: String = match c_row.get(2) {
+          Some(v) => format!("[{}] {}", v.id, v.full_name()),
+          None => String::new(),
+        };
+        let val4: String = match c_row.get(3) {
+          Some(v) => format!("[{}] {}", v.id, v.full_name()),
+          None => String::new(),
+        };
+        println!(
+          "{:-^38} | {:-^38} | {:-^38} | {:-^38}",
+          val1,
+          val2,
+          val3,
+          val4,
+        );
+
+      }
       println!("Press ENTER to choose a phrase from the saved menus.");
       println!("Enter text to add data directly to the note record.");
       println!(
@@ -7467,6 +7509,28 @@ impl NoteArchive {
             },
             "cancel" | "c" => return None,
             _ => {
+              match &choice.trim().parse::<u32>() {
+                Ok(num) => {
+                  if !self.current_user_collaterals().iter().any(|col| col.id == *num ) {
+                    ()
+                  } else {
+                    match self.get_collateral_by_id(*num) {
+                      Some(collat) => {
+                        if n.content.trim_end() != n.content {
+                          n.content.push_str(&collat.full_name_and_title());
+                        } else {
+                          n.content.push_str(&format!("{}{}", " ", &collat.full_name_and_title()[..]);
+                        }
+                        continue;
+                      },
+                      None => (),
+                    }
+                  }
+                },
+                Err(_) => {
+                  ()
+                }
+              }
               if n.content.trim_end() != n.content {
                 n.content.push_str(&choice.trim()[..]);
               } else {
