@@ -366,6 +366,7 @@ pub struct Note {
   pub content: String,
   pub blanks: HashMap<u32, (Blank, String, Vec<u32>)>, // blank type, display string, foreign keys - hashed by position of blank
   pub foreign_key: HashMap<String, u32>,
+  pub foreign_keys: HashMap<String, Vec<u32>>,
 }
 
 impl Note {
@@ -375,10 +376,14 @@ impl Note {
     structure: StructureType,
     content: String,
     user_id: u32,
+    collateral_ids: Vec<u32>
   ) -> Note {
     let blanks = HashMap::new();
     let foreign_key: HashMap<String, u32> = [
       (String::from("user_id"), user_id),
+    ].iter().cloned().collect();
+    let foreign_keys: HashMap<String, Vec<u32>> = [
+      (String::from("collateral_ids"), collateral_ids),
     ].iter().cloned().collect();
     Note {
       id,
@@ -387,6 +392,7 @@ impl Note {
       content,
       blanks,
       foreign_key,
+      foreign_keys,
     }
   }
   pub fn preview(&self) -> &str {
@@ -589,13 +595,19 @@ impl fmt::Display for Note {
     let blanks_str: String = formatted_blanks.join("#");
     write!(
       f,
-      "{} | {} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {} | {}\n",
       &self.id,
       &self.category,
       &self.structure,
       &self.content,
       blanks_str,
       &self.foreign_key["user_id"],
+      &self
+        .foreign_keys["collateral_ids"]
+        .iter()
+        .map(|i| i.to_string())
+        .collect::<Vec<String>>()
+        .join("#"),
     )
   }
 }

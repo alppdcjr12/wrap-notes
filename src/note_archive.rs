@@ -6502,7 +6502,8 @@ impl NoteArchive {
             collaterals[0].full_name_and_title()
           };
           let id_vec = client.foreign_keys[&String::from("collaterals")].to_owned();
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
+          n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
         },
         Pronoun1ForUser => {
           let u = self.current_user();
@@ -6637,7 +6638,26 @@ impl NoteArchive {
                 };
                 match &delete_choice_content[..] {
                   "yes" | "y" => {
+                    let current_blank = n.blanks.get(&i).unwrap();
                     n.blanks.remove(&i);
+                    match current_blank.0 {
+                      Collaterals | AllCollaterals => {
+                        let mut collat_ids_included_elsewhere: Vec<u32> = vec![];
+                        for (idx, blank_tup) in &n.blanks {
+                          for co_id in &blank_tup.2 {
+                            if !collat_ids_included_elsewhere.clone().iter().any(|id| id == co_id ) {
+                              collat_ids_included_elsewhere.push(*co_id)
+                            }
+                          }
+                        }
+                        for co_id in &current_blank.2 {
+                          if !collat_ids_included_elsewhere.iter().any(|id| id == co_id ) {
+                            n.foreign_keys["collateral_ids"].retain(|saved_co_id| saved_co_id != co_id  );
+                          }
+                        }
+                      },
+                      _ => (),
+                    }
                     break;
                   },
                   "no" | "n" => {
@@ -6795,6 +6815,7 @@ impl NoteArchive {
               };
               let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
               n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.foreign_keys.insert(String::from("collateral_ids"), id_vec.clone());
             },
             InternalDocument => {
               let blank_string = match Self::choose_blank_fill_in(InternalDocument) {
@@ -7490,11 +7511,17 @@ impl NoteArchive {
 
       }
       println!("Press ENTER to choose a phrase from the saved menus.");
-      println!("Enter text to add data directly to the note record.");
+      println!("You may also enter text directly or choose from the following shortcuts.");
       println!(
         "| {} | {}",
-        "SAVE / S: Finish writing, save, and add to current record",
-        "CANCEL / C: Cancel and discard data"
+        "YOUTH / Y: Youth's full name",
+        "ALL / A: All collaterals",
+      );
+      println!(
+        "| {} | {} | {}",
+        "BACK / B: Delete last 5 characters",
+        "SAVE / S: Finish writing and save to current record",
+        "CANCEL / C: Cancel and discard"
       );
       let mut choice = String::new();
       let choice_att = io::stdin().read_line(&mut choice);
@@ -7502,12 +7529,62 @@ impl NoteArchive {
         Ok(_) => {
           match &choice.trim().to_ascii_lowercase()[..] {
             "" => (),
-            "save" | "s" => {
+            "youth" | "y" | "YOUTH" | "Youth" | "Y" => {
+              let current_client_string = &self.current_client().full_name_with_label();
+              if n.content.trim_end() != n.content {
+                n.content.push_str(&current_client_string[..]);
+              } else {
+                n.content.push_str(&format!("{}{}", " ", &current_client_string[..])[..]);
+              }
+              continue;
+            },
+            "all" | "a" | "ALL" | "All" | "A" => {
+              let current_collaterals = self.current_client_collaterals();
+              let num_collats = current_collaterals.len();
+              let all_collaterals_string = if num_collats == 0 {
+                println!("No collaterals are saved for the current client.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              } else if num_collats == 1 {
+                current_collaterals[0].full_name_and_title()
+              } else if num_collats > 1 {
+                let part1 = current_collaterals[..num_collats-2].to_owned().iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", ");
+                let part2 = current_collaterals[num_collats-1].full_name_and_title();
+                format!("{} and {}", part1, part1)
+              } else {
+                // else condition is impossible because vec must have positive length
+                String::from("")
+              };
+              if n.content.trim_end() != n.content {
+                n.content.push_str(&all_collaterals_string[..]);
+              } else {
+                n.content.push_str(&format!("{}{}", " ", &all_collaterals_string[..])[..]);
+              }
+              continue;
+            },
+            "back" | "b" | "BACK" | "Back" | "B" => {
+              if n.content.chars().count() > 5 {
+                let end_index: usize = n.content.chars().count() - 5;
+                n.content = String::from(&n.content[..end_index]);
+
+                for co_id in n.foreign_keys["collateral_ids"].clone() {
+                  if n.content.contains(&self.get_collateral_by_id(co_id).unwrap().full_name()) {
+                    n.foreign_keys["collateral_ids"].retain(|saved_co_id| saved_co_id != &co_id );
+                  }
+                }
+
+              } else {
+                n.content = String::new();
+              }
+              continue;
+            },
+            "save" | "s" | "SAVE" | "Save" | "S" => {
               let note_id = n.id;
               self.notes.push(n);
+
               return Some(note_id)
             },
-            "cancel" | "c" => return None,
+            "cancel" | "c" | "CANCEL" | "Cancel" | "C" => return None,
             _ => {
               match &choice.trim().parse::<u32>() {
                 Ok(num) => {
@@ -7516,10 +7593,11 @@ impl NoteArchive {
                   } else {
                     match self.get_collateral_by_id(*num) {
                       Some(collat) => {
+                        let collateral_display_string = collat.full_name_and_title();
                         if n.content.trim_end() != n.content {
-                          n.content.push_str(&collat.full_name_and_title());
+                          n.content.push_str(&collateral_display_string[..]);
                         } else {
-                          n.content.push_str(&format!("{}{}", " ", &collat.full_name_and_title()[..]);
+                          n.content.push_str(&format!("{}{}", " ", &collateral_display_string[..])[..]);
                         }
                         continue;
                       },
@@ -7603,8 +7681,9 @@ impl NoteArchive {
   ) -> Result<Note, String> {
     let id: u32 = self.notes.len() as u32 + 1;
     let user_id = self.current_user().id;
+    let collateral_ids: Vec<u32> = vec![];
 
-    Ok(Note::new(id, category, structure, content, user_id))
+    Ok(Note::new(id, category, structure, content, user_id, collateral_ids))
   }
   pub fn read_notes(filepath: &str) -> Result<Vec<Note>, Error> {
     let file = OpenOptions::new()
@@ -7713,7 +7792,15 @@ impl NoteArchive {
 
       let note_user_id: u32 = values[5].parse().unwrap();
 
-      let mut n = Note::new(id, category, structure, content, note_user_id);
+      let collateral_ids: Vec<u32> = match &values[6][..] {
+        "" => vec![],
+        _ => values[6]
+          .split("#")
+          .map(|val| val.parse().unwrap())
+          .collect(),
+      };
+
+      let mut n = Note::new(id, category, structure, content, note_user_id, collateral_ids);
       n.blanks = blanks;
 
       notes.push(n);
@@ -7733,9 +7820,12 @@ impl NoteArchive {
   }
   fn save_note(&mut self, note: Note) {
 
-    let pos = self.note_templates.binary_search_by(|n| n.id.cmp(&note.id) ).unwrap_or_else(|e| e);
+    let pos = self.notes.binary_search_by(|n| n.id.cmp(&note.id) ).unwrap_or_else(|e| e);
 
+    self.current_note_day().foreign_keys["note_ids"].push(note.id);
+    
     self.notes.insert(pos, note);
+
     self.write_notes().unwrap();
   }
   fn current_user_notes(&self) -> Vec<&Note> {

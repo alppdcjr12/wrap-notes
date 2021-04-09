@@ -75,7 +75,7 @@ impl fmt::Display for NoteDay {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
       f,
-      "{} | {}-{}-{} | {} | {} | {} | {}\n",
+      "{} | {}-{}-{} | {} | {} | {}\n",
       &self.id,
       &self.date.year(),
       &self.date.month(),
@@ -84,12 +84,6 @@ impl fmt::Display for NoteDay {
       &self.foreign_key["client_id"],
       &self
         .foreign_keys["note_ids"]
-        .iter()
-        .map(|i| i.to_string())
-        .collect::<Vec<String>>()
-        .join("#"),
-      &self
-        .foreign_keys["collateral_ids"]
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>()
