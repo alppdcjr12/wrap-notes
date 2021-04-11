@@ -23,7 +23,6 @@ impl NoteDay {
     date: NaiveDate,
     user_id: u32,
     client_id: u32,
-    collaterals: Vec<u32>,
     notes: Vec<u32>,
     ) -> NoteDay {
     let foreign_key: HashMap<String, u32> = [
@@ -31,7 +30,6 @@ impl NoteDay {
       (String::from("client_id"), client_id),
     ].iter().cloned().collect();
     let foreign_keys: HashMap<String, Vec<u32>> = [
-      (String::from("collateral_ids"), collaterals),
       (String::from("note_ids"), notes),
     ].iter().cloned().collect();
     NoteDay {

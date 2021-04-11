@@ -557,8 +557,9 @@ impl Note {
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
-    let mut current_i = 0;
+    let mut current_i: isize = -1;
     for (i, cont) in self.get_display_content_vec() {
+      let i = i as isize;
       let display_i = if i == current_i {
         String::from("   ")
       } else {

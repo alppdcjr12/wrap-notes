@@ -378,14 +378,12 @@ impl NoteArchive {
       1,
       1,
       vec![],
-      vec![],
     );
     let nd2 = NoteDay::new(
       2,
       Local::now().naive_local().date(),
       1,
       1,
-      vec![],
       vec![],
     );
     let note_days = vec![nd1, nd2];
@@ -4951,33 +4949,99 @@ impl NoteArchive {
   }
   fn display_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
-
+    println!("{:-^168}", "-");
+    
     let notes = self.current_note_day_notes();
-
+    
     let nd = self.current_note_day();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     let heading = format!("Notes for {} for {}", c.full_name(), nd.fmt_date());
-    println!("{:-^163}", heading);
-    println!("{:-^6} | {:-^30} | {:-^30} | {:-^6} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println!("{:-^168}", heading);
+    println!("{:-^168}", "-");
+    println!("{:-^6} | {:-^30} | {:-^30} | {:-^10} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println!("{:-^168}", "-");
     for n in notes {
-      let nt = self.get_note_template_by_note_id(n.id).unwrap();
-      let words: Vec<&str> = n.content.split(" ").collect();
-      let sample = if n.generate_display_content_string().len() > 88 {
-        n.generate_display_content_string()[..88].to_string()
-      } else {
-        n.generate_display_content_string()[..].to_string()
+      let nt_opt = self.get_note_template_by_note_id(n.id);
+      let nt_display = match nt_opt {
+        Some(nt) => format!("{}", nt),
+        None => String::from("n/a"),
       };
-      println!("{:-^6} | {:-^30} | {:-^30} | {:-^6} | {:-^79}", n.id, n.category, n.structure, words.len(), &sample[..]);
+
+      let words: Vec<&str> = n.content.split(" ").collect();
+      let sample = if n.generate_display_content_string().len() > 75 {
+        format!("{}{}", String::from(&n.generate_display_content_string()[..75]), String::from("..."))
+      } else {
+        n.generate_display_content_string()
+      };
+
+      let cat = match n.category {
+        ICCNote(c) => c.to_string(),
+        FPNote(c) => c.to_string(),
+      };
+      let n_structure = n.structure.to_string();
+      
+      println!("{:-^6} | {:-^30} | {:-^30} | {:-^10} | {:-^79}", n.id, cat, n_structure, words.len(), sample);
     }
-    println!("{:-^163}", "-");
+    println!("{:-^168}", "-");
+  }
+  fn choose_delete_notes(&mut self) {
+    loop {
+
+      self.display_note_day();
+      println!("Select note ID to delete.");
+      println!("CANCEL / C: Cancel");
+
+      let mut choice = String::new();
+      let read_attempt = io::stdin().read_line(&mut choice);
+      let input = match read_attempt {
+        Ok(_) => choice,
+        Err(e) => {
+          println!("Could not read input; try again ({}).", e);
+          continue;
+        }
+      };
+      let input = input.trim();
+      match input {
+
+        "CANCEL" | "cancel" | "Cancel" | "C" | "c" => {
+          break;
+        }
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.current_user_notes()
+              .iter()
+              .any(|&nd| nd.id == num) {
+                println!("Please choose from among the listed note IDs.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+            }
+            match self.load_note(num) {
+              Ok(_) => {
+                self.choose_delete_note();
+                break;
+              }
+              Err(e) => {
+                println!("Unable to load records with ID {}: {}", num, e);
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
   }
   fn choose_note_day(&mut self) {
     loop {
 
       self.display_note_day();
 
-      println!("| {} | {} | {} | {}", "NEW / N add new note", "EDIT / E: edit note", "DELETE: delete note", "QUIT / Q: quit menu");
+      println!("| {} | {} | {} | {}", "NEW / N: new note", "EDIT / E: edit note", "DELETE: delete note", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -4993,9 +5057,7 @@ impl NoteArchive {
           break;
         }
         "DELETE" | "delete" | "Delete" | "d" | "D" => {
-          // self.choose_delete_note();
-          println!("          // self.choose_delete_note();");
-          break;
+          self.choose_delete_notes();
         }
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
           // self.choose_edit_note();
@@ -5004,7 +5066,40 @@ impl NoteArchive {
         "NEW" | "new" | "New" | "n" | "N" => {
           let n_id = self.create_note_get_id(None);
         }
-        _ => println!("Invalid command."),
+        _ => {
+          match input.to_string().parse() {
+            Ok(num) => {
+              if !self.current_user_notes().iter().any(|n| n.id == num ) {
+                println!("Please choose from among the listed note IDs.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              } else {
+                match self.get_note_option_by_id(num) {
+                  None => {
+                    println!("Invalid note ID.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  },
+                  Some(n) => {
+                    match self.load_note(num) {
+                      Ok(_) => self.choose_note(),
+                      Err(e) => {
+                        println!("Unable to load template with ID {}: {}", num, e);
+                        thread::sleep(time::Duration::from_secs(1));
+                        continue;
+                      }
+                    }                    
+                  }
+                }
+              }
+            },
+            Err(e) => {
+              println!("Invalid command.");
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            },
+          }
+        }
       }
     }
   }
@@ -5218,7 +5313,7 @@ impl NoteArchive {
 
     match self.note_day_dup_id_option(&date, user_id, client_id) {
       Some(dup_id) => Err(String::from("A note record already exists for that client on the given date.")),
-      None => Ok(NoteDay::new(id, date, user_id, client_id, vec![], vec![]))
+      None => Ok(NoteDay::new(id, date, user_id, client_id, vec![]))
     }
   }
   pub fn read_note_days(filepath: &str) -> Result<Vec<NoteDay>, Error> {
@@ -5274,15 +5369,7 @@ impl NoteArchive {
           .collect(),
       };
 
-      let collaterals: Vec<u32> = match &values[5][..] {
-        "" => vec![],
-        _ => values[5]
-          .split("#")
-          .map(|val| val.parse().unwrap())
-          .collect(),
-      };
-
-      let nd = NoteDay::new(id, date, user_id, client_id, notes, collaterals);
+      let nd = NoteDay::new(id, date, user_id, client_id, notes);
       note_days.push(nd);
     }
     note_days.sort_by(|a, b| a.foreign_key["client_id"].cmp(&b.foreign_key["client_id"]));
@@ -5399,7 +5486,14 @@ impl NoteArchive {
     }
   }
   fn current_user_note_templates(&self) -> Vec<&NoteTemplate> {
-    self.note_templates.iter().filter(|nt| nt.foreign_key["user_id"] == self.current_user().id ).collect()
+    self.note_templates.iter().filter(|nt|
+      match nt.foreign_key.get("user_id") {
+        Some(u_id) => {
+          nt.foreign_key["user_id"] == self.current_user().id
+        },
+        None => false,
+      }
+    ).collect()
   }
   fn display_user_templates(&self) {
     let mut heading = String::from(" All templates for ");
@@ -5700,6 +5794,7 @@ impl NoteArchive {
                 Ok(_) => {
                   content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
                   display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                  continue;
                 },
                 Err(e) => {
                   println!("Invalid repsonse: {}", e);
@@ -5712,6 +5807,7 @@ impl NoteArchive {
             let blank_idx = choose_blanks();
             content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
             display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+            continue;
           },
           "SAVE" | "save" | "Save" | "S" | "s" => {
             if display_content.len() == 0 {
@@ -6054,11 +6150,16 @@ impl NoteArchive {
     let n = self.current_note();
     let nd = self.get_note_day_by_note_id(n.id).unwrap();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
-    let nt = self.get_note_template_by_note_id(n.id).unwrap();
+
+    let nt_string = match self.get_note_template_by_note_id(n.id) {
+      Some(nt) => nt.display_short(),
+      None => String::from("n/a"),
+    };
+
     let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
     println!("{:-^163}", heading);
     println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
+    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt_string, n.category);
     println!("{:-^163}", "-");
     println!("{:-^163}", " Content ");
     println!("{:-^163}", "-");
@@ -6070,10 +6171,8 @@ impl NoteArchive {
     let nd = self.current_note_day();
     let c = self.current_client();
     println!("{:-^163}", "-");
-    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
+    let heading = format!("{} - {} - {} {} note for {}", self.current_user().full_name(), n.category, nd.fmt_date(), n.structure, c.full_name());
     println!("{:-^163}", heading);
-    println!("{:-^50} | {:-^50}", " Author ", " Category ");
-    println!("{:-^50} | {:-^50}", self.current_user().name_and_title(), n.category);
     println!("{:-^163}", "-");
     println!("{:-^163}", " Content ");
     println!("{:-^163}", "-");
@@ -6639,8 +6738,10 @@ impl NoteArchive {
                 match &delete_choice_content[..] {
                   "yes" | "y" => {
                     let current_blank = n.blanks.get(&i).unwrap();
+                    let current_blank_type = current_blank.0.clone();
+                    let current_blank_ids = current_blank.2.clone();
                     n.blanks.remove(&i);
-                    match current_blank.0 {
+                    match current_blank_type {
                       Collaterals | AllCollaterals => {
                         let mut collat_ids_included_elsewhere: Vec<u32> = vec![];
                         for (idx, blank_tup) in &n.blanks {
@@ -6650,10 +6751,12 @@ impl NoteArchive {
                             }
                           }
                         }
-                        for co_id in &current_blank.2 {
-                          if !collat_ids_included_elsewhere.iter().any(|id| id == co_id ) {
-                            n.foreign_keys["collateral_ids"].retain(|saved_co_id| saved_co_id != co_id  );
+                        for co_id in current_blank_ids {
+                          let mut new_collat_ids: Vec<u32> = vec![];
+                          if collat_ids_included_elsewhere.iter().any(|id| id == &co_id ) {
+                            new_collat_ids.push(co_id);
                           }
+                          n.foreign_keys.insert(String::from("collateral_ids"), new_collat_ids);
                         }
                       },
                       _ => (),
@@ -6814,8 +6917,8 @@ impl NoteArchive {
                 collats[0].full_name_and_title()
               };
               let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-              n.foreign_keys.insert(String::from("collateral_ids"), id_vec.clone());
+              n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
+              n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
             },
             InternalDocument => {
               let blank_string = match Self::choose_blank_fill_in(InternalDocument) {
@@ -7351,21 +7454,25 @@ impl NoteArchive {
         },
         _ => {
           let selected_blank_tup: Option<(Blank, String)> = loop {
-            let first_num_pos_opt = idx.chars().enumerate().find_map(|(i, c)| c.to_string().parse().ok() );
-            let first_alph_pos_opt = idx.chars().enumerate().find_map(|(i, c)| match c.to_string().parse::<usize>().ok() {
-              Some(_) => None,
-              None => Some(0)
-            } );
+            let chars1 = idx.chars();
+            let chars2 = idx.chars();
+            let mut chars3 = idx.chars();
 
-            // enumerate and get the index
-            let (first_part, last_part) = match first_num_pos_opt {
-              Some(num_pos) => idx.split_at(num_pos),
-              None => {
-                println!("Invalid index.");
-                thread::sleep(time::Duration::from_secs(2));
-                continue 'main;
-              }
-            };
+            let alpha_chars = chars1.take_while(|c| c.is_alphabetic() );
+            let num_alpha = chars2.take_while(|c| c.is_alphabetic() ).count();
+            for _ in 0..num_alpha {
+              chars3.next();
+            }
+            let num_chars = chars3.take_while(|c| c.is_numeric() );
+
+            let first_part = alpha_chars.map(|c| c.to_string() ).collect::<Vec<String>>().join("");
+            let last_part = num_chars.map(|c| c.to_string() ).collect::<Vec<String>>().join("");
+
+            if format!("{}", idx) != format!("{}{}", &first_part, &last_part) {
+              println!("Invalid index syntax. If using an alphanumeric index, enter alphabetic portion followed by numeric portion.");
+              thread::sleep(time::Duration::from_secs(2));
+              continue 'main;
+            }
 
             let num_result = last_part.parse();
             let num = match num_result {
@@ -7508,6 +7615,7 @@ impl NoteArchive {
           val3,
           val4,
         );
+      println!("{:-^163}", "-");
 
       }
       println!("Press ENTER to choose a phrase from the saved menus.");
@@ -7519,9 +7627,9 @@ impl NoteArchive {
       );
       println!(
         "| {} | {} | {}",
-        "BACK / B: Delete last 5 characters",
+        "BACK / B: Delete last word or 5 characters",
         "SAVE / S: Finish writing and save to current record",
-        "CANCEL / C: Cancel and discard"
+        "CANCEL / C: Cancel and discard",
       );
       let mut choice = String::new();
       let choice_att = io::stdin().read_line(&mut choice);
@@ -7563,25 +7671,38 @@ impl NoteArchive {
               continue;
             },
             "back" | "b" | "BACK" | "Back" | "B" => {
-              if n.content.chars().count() > 5 {
-                let end_index: usize = n.content.chars().count() - 5;
-                n.content = String::from(&n.content[..end_index]);
 
-                for co_id in n.foreign_keys["collateral_ids"].clone() {
-                  if n.content.contains(&self.get_collateral_by_id(co_id).unwrap().full_name()) {
-                    n.foreign_keys["collateral_ids"].retain(|saved_co_id| saved_co_id != &co_id );
+              n.content = n.content.trim().to_string();
+
+              let last_space = n.content.rfind(' ');
+
+              match last_space {
+                None => {
+                  if n.content.chars().count() > 5 {
+                    let end_index: usize = n.content.chars().count() - 5;
+                    n.content = String::from(&n.content[..end_index]);
+                  } else {
+                    n.content = String::new();
                   }
-                }
+                },
+                Some(idx) => n.content = n.content[..idx].to_string(),
+              }
+              for co_id in n.foreign_keys["collateral_ids"].clone() {
+                if !n.content.contains(&self.get_collateral_by_id(co_id).unwrap().full_name()) {
+                  let new_ids: Vec<u32> = n.foreign_keys["collateral_ids"].clone().iter()
+                    .map(|num| *num )
+                    .filter(|saved_co_id|
+                      saved_co_id != &co_id
+                    ).collect();
 
-              } else {
-                n.content = String::new();
+                  n.foreign_keys.insert(String::from("collateral_ids"), new_ids);
+                }
               }
               continue;
             },
             "save" | "s" | "SAVE" | "Save" | "S" => {
               let note_id = n.id;
-              self.notes.push(n);
-
+              self.save_note(n);
               return Some(note_id)
             },
             "cancel" | "c" | "CANCEL" | "Cancel" | "C" => return None,
@@ -7609,7 +7730,7 @@ impl NoteArchive {
                   ()
                 }
               }
-              if n.content.trim_end() != n.content {
+              if n.content.trim_end() != n.content || String::from(";:,.'\"!@#$%^*)`]}-_+=>?/").contains(&choice.trim()[..]) || String::new() == n.content {
                 n.content.push_str(&choice.trim()[..]);
               } else {
                 n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
@@ -7780,14 +7901,16 @@ impl NoteArchive {
         // pub blanks: HashMap<u32, (Blank, String, Vec<u32>)> 
 
       for b_string in blanks_strings {
-        let blank_values: Vec<String> = b_string.split('%').map(|st| st.to_string() ).collect();
-
-        let blank_position: u32 = blank_values[0].parse().unwrap();
-        let blank = Blank::get_blank_from_str(&blank_values[1]);
-        let blank_content = blank_values[2].clone();
-        let blank_foreign_keys: Vec<u32> = blank_values[3].split('-').map(|b_id| b_id.parse().unwrap() ).collect();
-
-        blanks.insert(blank_position, (blank, blank_content, blank_foreign_keys));
+        if b_string != String::from("") {
+          let blank_values: Vec<String> = b_string.split('%').map(|st| st.to_string() ).collect();
+  
+          let blank_position: u32 = blank_values[0].parse().unwrap();
+          let blank = Blank::get_blank_from_str(&blank_values[1]);
+          let blank_content = blank_values[2].clone();
+          let blank_foreign_keys: Vec<u32> = blank_values[3].split('-').map(|b_id| b_id.parse().unwrap() ).collect();
+  
+          blanks.insert(blank_position, (blank, blank_content, blank_foreign_keys));
+        }
       }
 
       let note_user_id: u32 = values[5].parse().unwrap();
@@ -7822,11 +7945,15 @@ impl NoteArchive {
 
     let pos = self.notes.binary_search_by(|n| n.id.cmp(&note.id) ).unwrap_or_else(|e| e);
 
-    self.current_note_day().foreign_keys["note_ids"].push(note.id);
+    let mut saved_ids: Vec<u32> = self.current_note_day().foreign_keys["note_ids"].clone();
+    saved_ids.push(note.id);
+
+    self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), saved_ids);
     
     self.notes.insert(pos, note);
 
     self.write_notes().unwrap();
+    self.write_note_days().unwrap();
   }
   fn current_user_notes(&self) -> Vec<&Note> {
     self.notes.iter().filter(|n| n.foreign_key["user_id"] == self.current_user().id).collect()
@@ -7864,13 +7991,14 @@ impl NoteArchive {
   fn display_delete_note(&self) {
     let heading = String::from(" DELETE NOTE ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^146}", "-");
-    println!("{:-^146}", heading);
-    println!("{:-^146}", "-");
+    println!("{:-^163}", "-");
+    println!("{:-^163}", heading);
+    println!("{:-^163}", "-");
 
+    // the length of each line is 163
     self.current_note().display_content();
 
-    println!("{:-^146}", "-");
+    println!("{:-^163}", "-");
   }
   fn delete_current_note(&mut self) {
     let id = self.foreign_key.get("current_note_id").unwrap();
