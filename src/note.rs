@@ -615,6 +615,7 @@ impl fmt::Display for Note {
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Blank {
+  CurrentUser,
   CurrentClientName,
   Collaterals,
   AllCollaterals,
@@ -643,6 +644,7 @@ pub enum Blank {
 
 
 use Blank::{
+  CurrentUser,
   CurrentClientName,
   Collaterals,
   AllCollaterals,
@@ -672,6 +674,7 @@ use Blank::{
 impl Blank {
   pub fn iterator() -> impl Iterator<Item = Blank> {
     [
+      CurrentUser,
       CurrentClientName,
       Collaterals,
       AllCollaterals,
@@ -700,6 +703,7 @@ impl Blank {
   }
   pub fn vector_of_variants() -> Vec<Blank> {
     vec![
+      CurrentUser,
       CurrentClientName,
       Collaterals,
       AllCollaterals,
@@ -728,6 +732,7 @@ impl Blank {
   }
   pub fn abbreviate(&self) -> String {
     match self {
+      CurrentUser => String::from("u"),
       CurrentClientName => String::from("c"),
       Collaterals => String::from("co"),
       AllCollaterals => String::from("allco"),
@@ -768,6 +773,7 @@ impl Blank {
   }
   pub fn get_blank_from_str(s: &str) -> Blank {
     match &s[..] {
+      "(---u---)" => CurrentUser,
       "(---c---)" => CurrentClientName,
       "(---co---)" => Collaterals,
       "(---allco---)" => AllCollaterals,
@@ -808,6 +814,7 @@ impl Blank {
   }
   pub fn display_to_user(&self) -> String {
     match self {
+      CurrentUser => String::from("Current user"),
       CurrentClientName => String::from("Name of client"),
       Collaterals => String::from("One or more collaterals"),
       AllCollaterals => String::from("All collaterals for the current client"),

@@ -1,4 +1,3 @@
 ##### notes #####
-1 | ICC Note - Member outreach/no-show | Custom | This is a note!!!! So listen up. Sauron Darklordson (Dark Lord for youth at Mordor) |  | 1 | 
-2 | ICC Note - Care planning team | Custom |  (---id---) (---im---) (---em---) | 1%(---id---)%Individual Care Plan%#2%(---im---)%intake%#3%(---em---)%IEP meeting% | 1 | 
+1 | ICC Note - Face to face contact with client | Custom | This was a note. John Smith (youth) is a youth. Sauron Darklordson (Dark Lord for youth at Mordor) is a collateral for him. (---id---) is another phrase. So is (---im---). | 1%(---id---)%Individual Care Plan%#2%(---im---)%transition meeting% | 1 | 
 ##### notes #####

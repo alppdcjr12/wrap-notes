@@ -35,7 +35,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 1] = [
   (
     "Care Plan Meeting",
     "\
-      This is a template for (---u1---) for the client (---c1---). \
+      This is a template for (---u---) for the client (---c---). \
     ",
   ),
 ];

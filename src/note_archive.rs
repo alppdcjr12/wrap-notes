@@ -31,7 +31,7 @@ use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, SNCD, HomeVis
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 use FPNoteCategory::{Tbd};
-use Blank::{  CurrentClientName, Collaterals, AllCollaterals, Pronoun1ForBlank, Pronoun2ForBlank, Pronoun3ForBlank, Pronoun4ForBlank, Pronoun1ForUser, Pronoun2ForUser, Pronoun3ForUser, Pronoun4ForUser, Pronoun1ForClient, Pronoun2ForClient, Pronoun3ForClient, Pronoun4ForClient, TodayDate, NoteDayDate, InternalDocument, ExternalDocument, InternalMeeting, ExternalMeeting, Action, Phrase, CustomBlank};
+use Blank::{CurrentUser, CurrentClientName, Collaterals, AllCollaterals, Pronoun1ForBlank, Pronoun2ForBlank, Pronoun3ForBlank, Pronoun4ForBlank, Pronoun1ForUser, Pronoun2ForUser, Pronoun3ForUser, Pronoun4ForUser, Pronoun1ForClient, Pronoun2ForClient, Pronoun3ForClient, Pronoun4ForClient, TodayDate, NoteDayDate, InternalDocument, ExternalDocument, InternalMeeting, ExternalMeeting, Action, Phrase, CustomBlank};
 
 // blank fill-ins (likely to be updated later on)
 use InternalDocumentFillIn::{
@@ -4949,17 +4949,17 @@ impl NoteArchive {
   }
   fn display_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^168}", "-");
+    println!("{:-^174}", "-");
     
     let notes = self.current_note_day_notes();
     
     let nd = self.current_note_day();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
-    let heading = format!("Notes for {} for {}", c.full_name(), nd.fmt_date());
-    println!("{:-^168}", heading);
-    println!("{:-^168}", "-");
-    println!("{:-^6} | {:-^30} | {:-^30} | {:-^10} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
-    println!("{:-^168}", "-");
+    let heading = format!(" Notes for {} for {} ", c.full_name(), nd.fmt_date());
+    println!("{:-^174}", heading);
+    println!("{:-^174}", "-");
+    println!("{:-^6} | {:-^35} | {:-^30} | {:-^10} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println!("{:-^174}", "-");
     for n in notes {
       let nt_opt = self.get_note_template_by_note_id(n.id);
       let nt_display = match nt_opt {
@@ -4980,9 +4980,9 @@ impl NoteArchive {
       };
       let n_structure = n.structure.to_string();
       
-      println!("{:-^6} | {:-^30} | {:-^30} | {:-^10} | {:-^79}", n.id, cat, n_structure, words.len(), sample);
+      println!("{:-^6} | {:-^35} | {:-^30} | {:-^10} | {:-^79}", n.id, cat, n_structure, words.len(), sample);
     }
-    println!("{:-^168}", "-");
+    println!("{:-^174}", "-");
   }
   fn choose_delete_notes(&mut self) {
     loop {
@@ -5041,7 +5041,7 @@ impl NoteArchive {
 
       self.display_note_day();
 
-      println!("| {} | {} | {} | {}", "NEW / N: new note", "EDIT / E: edit note", "DELETE: delete note", "QUIT / Q: quit menu");
+      println!("| {} | {} | {}", "NEW / N: new note", "DELETE: delete note", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -5060,8 +5060,9 @@ impl NoteArchive {
           self.choose_delete_notes();
         }
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
-          // self.choose_edit_note();
-          println!("          // self.choose_edit_note();");
+          println!("Choose note by ID to edit its content.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
         }
         "NEW" | "new" | "New" | "n" | "N" => {
           let n_id = self.create_note_get_id(None);
@@ -5491,14 +5492,36 @@ impl NoteArchive {
         Some(u_id) => {
           nt.foreign_key["user_id"] == self.current_user().id
         },
-        None => false,
+        None => true, // because current_user_note_templates returns all for the current user
+                      // current_user_personal_note_templates returns the ones they should be able to edit
       }
     ).collect()
   }
-  fn display_user_templates(&self) {
-    let mut heading = String::from(" All templates for ");
-    heading.push_str(&self.current_user().full_name()[..]);
-    heading.push_str(" ");
+  fn current_user_personal_note_templates(&self) -> Vec<&NoteTemplate> {
+    self.note_templates.iter().filter(|nt|
+      match nt.foreign_key.get("user_id") {
+        Some(u_id) => {
+          nt.foreign_key["user_id"] == self.current_user().id
+        },
+        None => false, // because current_user_note_templates returns all for the current user
+                      // current_user_personal_note_templates returns the ones they should be able to edit
+      }
+    ).collect()
+  }
+  fn current_user_personal_note_templates_mut(&mut self) -> Vec<&mut NoteTemplate> {
+    let current_user_id = self.current_user().id;
+    self.note_templates.iter_mut().filter(|nt|
+      match nt.foreign_key.get("user_id") {
+        Some(u_id) => {
+          nt.foreign_key["user_id"] == current_user_id
+        },
+        None => false, // because current_user_note_templates returns all for the current user
+                      // current_user_personal_note_templates_mut returns the ones they should be able to edit
+      }
+    ).collect()
+  }
+  fn display_user_note_templates(&self) {
+    let heading = format!(" All note templates for {} ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^136}", "-");
     println!("{:-^136}", heading);
@@ -5519,16 +5542,14 @@ impl NoteArchive {
     println!("{:-^136}", "-");
     println!("| {} | {}", "Choose template by ID.", "NEW / N: New template");
   }
-  fn display_select_user_template(&self) {
-    let mut heading = String::from(" All templates for ");
-    heading.push_str(&self.current_user().full_name()[..]);
-    heading.push_str(" ");
+  fn display_edit_note_templates(&self) {
+    let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^136}", "-");
     println!("{:-^136}", heading);
     println!("{:-^136}", "-");
     println!("{:-^10} | {:-^40} | {:-^80}", " ID ", " Type ", " Preview ");
-    for nt in self.current_user_note_templates() {
+    for nt in self.current_user_personal_note_templates() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
@@ -5541,25 +5562,47 @@ impl NoteArchive {
       );
     }
     println!("{:-^136}", "-");
-    println!("| {} | {}", "Choose template by ID.", "NEW / N: New template");
+    println!("Choose template to edit by ID.");
   }
-  fn load_note_template(&mut self, id: u32) -> std::io::Result<()> {
-    let current: Option<&NoteTemplate> = self.note_templates.iter().find(|nt| nt.id == id);
-    match current {
-      Some(nt) => {
-        self.foreign_key.insert(String::from("current_note_template_id"), nt.id);
-        Ok(())
+
+  fn choose_edit_note_templates(&mut self) {
+    loop {
+      self.display_edit_note_templates();
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
       }
-      None => Err(Error::new(
-        ErrorKind::Other,
-        "Failed to read selected template from filepath.",
-      )),
+      field_to_edit = field_to_edit.trim().to_string();
+      match &field_to_edit[..] {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          break ();
+        }
+        _ => (),
+      }
+      match &field_to_edit[..] {
+        "" => {
+
+        },
+        _ => println!("Invalid entry."),
+      }
     }
   }
+
+  // also need choose_edit_note_template() which is really more like the match statements in above function
+  // templates just lets you pick which one, really
+  // fields to allow for edit are just structure and content
+  // and those won't affect any ideas
+
+
   fn choose_note_templates(&mut self) {
     loop {
       let input = loop {
-        self.display_user_templates();
+        self.display_user_note_templates();
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -5581,8 +5624,7 @@ impl NoteArchive {
           continue;
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
-          // self.choose_edit_note_templates();
-          println!("          // self.choose_edit_note_templates();");
+          self.choose_edit_note_templates();
           continue;
         },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
@@ -5618,7 +5660,7 @@ impl NoteArchive {
   fn select_note_template(&mut self) -> Option<u32> {
     loop {
       let input = loop {
-        self.display_select_user_template();
+        self.display_user_note_templates();
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -5640,8 +5682,7 @@ impl NoteArchive {
           continue;
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
-          // self.choose_edit_note_templates();
-          println!("          // self.choose_edit_note_templates();");
+          self.choose_edit_note_templates();
           continue;
         },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
@@ -5728,6 +5769,19 @@ impl NoteArchive {
     }
     println!("{:-^96}", "-");
     println!("| {}", "Choose template type by name, ID, or abbreviation.");
+  }
+  fn load_note_template(&mut self, id: u32) -> std::io::Result<()> {
+    let current: Option<&NoteTemplate> = self.note_templates.iter().find(|nt| nt.id == id);
+    match current {
+      Some(nt) => {
+        self.foreign_key.insert(String::from("current_note_template_id"), nt.id);
+        Ok(())
+      }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to read selected template from filepath.",
+      )),
+    }
   }
   fn create_note_template_get_id(&mut self) -> Option<u32> {
     let note_template = loop {
@@ -6580,6 +6634,9 @@ impl NoteArchive {
     for (i, b) in empty_blanks {
       let i = i as u32;
       match b {
+        CurrentUser => {
+          n.blanks.insert(i, (b.clone(), format!("{}", self.current_user().role), vec![self.current_user().id]));
+        }
         CurrentClientName => {
           let client = self.current_client();
           let blank_string = client.full_name_with_label();
@@ -6995,6 +7052,10 @@ impl NoteArchive {
                   match n.blanks.get(&b_id) {
                     Some(b_tup) => {
                       match b_tup.0 {
+                        CurrentUser => {
+                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                          n.blanks.insert(i, (b.clone(), p.subject.clone(), id_vec));
+                        },
                         CurrentClientName => {
                           let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
                             Some(p) => p.subject.clone(),
@@ -7042,6 +7103,10 @@ impl NoteArchive {
                   match n.blanks.get(&b_id) {
                     Some(b_tup) => {
                       match b_tup.0 {
+                        CurrentUser => {
+                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                          n.blanks.insert(i, (b.clone(), p.object.clone(), id_vec));
+                        },
                         CurrentClientName => {
                           let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
                             Some(p) => p.object.clone(),
@@ -7089,6 +7154,10 @@ impl NoteArchive {
                   match n.blanks.get(&b_id) {
                     Some(b_tup) => {
                       match b_tup.0 {
+                        CurrentUser => {
+                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                          n.blanks.insert(i, (b.clone(), p.possessive_determiner.clone(), id_vec));
+                        },
                         CurrentClientName => {
                           let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
                             Some(p) => p.possessive_determiner.clone(),
@@ -7136,6 +7205,10 @@ impl NoteArchive {
                   match n.blanks.get(&b_id) {
                     Some(b_tup) => {
                       match b_tup.0 {
+                        CurrentUser => {
+                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                          n.blanks.insert(i, (b.clone(), p.possessive.clone(), id_vec));
+                        },
                         CurrentClientName => {
                           let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
                             Some(p) => p.possessive.clone(),
@@ -7907,7 +7980,12 @@ impl NoteArchive {
           let blank_position: u32 = blank_values[0].parse().unwrap();
           let blank = Blank::get_blank_from_str(&blank_values[1]);
           let blank_content = blank_values[2].clone();
-          let blank_foreign_keys: Vec<u32> = blank_values[3].split('-').map(|b_id| b_id.parse().unwrap() ).collect();
+          let blank_foreign_keys: Vec<u32> = blank_values[3]
+            .split('-')
+            .map(|b_id_string| b_id_string.parse() )
+            .filter(|b_id_res| b_id_res.is_ok() )
+            .map(|b_id_res| b_id_res.unwrap() )
+            .collect();
   
           blanks.insert(blank_position, (blank, blank_content, blank_foreign_keys));
         }
@@ -7958,9 +8036,9 @@ impl NoteArchive {
   fn current_user_notes(&self) -> Vec<&Note> {
     self.notes.iter().filter(|n| n.foreign_key["user_id"] == self.current_user().id).collect()
   }
-  fn current_user_custom_notes_mut(&mut self) -> Vec<&mut NoteTemplate> {
+  fn current_user_notes_mut(&mut self) -> Vec<&mut Note> {
     let current_id = self.current_user().id;
-    self.note_templates.iter_mut().filter(|n| n.foreign_key["user_id"] == current_id).collect()
+    self.notes.iter_mut().filter(|n| n.foreign_key["user_id"] == current_id).collect()
   }
   fn choose_delete_note(&mut self) {
     loop {
