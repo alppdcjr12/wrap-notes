@@ -151,6 +151,42 @@ fn choose_blanks() -> usize {
     }
   }
 }
+fn choose_blanks_option() -> Option<usize> {
+  loop {
+    display_blanks();
+    println!("Enter 'QUIT / Q' at any time to cancel.");
+    let mut input = String::new();
+    let input_attempt = io::stdin().read_line(&mut input);
+    match input_attempt {
+      Ok(_) => (),
+      Err(e) => {
+        println!("Failed to read input. Try again.");
+        thread::sleep(time::Duration::from_secs(2));
+        continue;
+      }
+    }
+    match &input.trim()[..] {
+      "QUIT" | "quit" | "Quit" | "q" | "Q" => return None,
+      _ => (),
+    }
+    match input.trim().parse::<usize>() {
+      Ok(num) => {
+        if num > 0 && num <= Blank::vector_of_variants().len() {
+          break Some(num-1);
+        } else {
+          println!("Invalid ID.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      },
+      Err(e) => {
+        println!("Failed to read input as a number. Try again.");
+        thread::sleep(time::Duration::from_secs(2));
+        continue;
+      }
+    }
+  }
+}
 
 impl NoteArchive {
   pub fn run(&mut self) {
@@ -5605,17 +5641,21 @@ impl NoteArchive {
               println!("Unable to parse {} to int: {}", field_to_edit, e);
               thread::sleep(time::Duration::from_secs(2));
               continue;
-            }
+            },
           }
         },
-        _ => println!("Invalid entry."),
       }
     }
   }
   fn display_edit_note_template() {
     let current_nt = self.current_note_template();
-    nt.display_content();
-    println!("{} | {}", "STRUCTURE / S: Edit structure type", "CONTENT / C: Edit content");
+    current_nt.display_content();
+    println!(
+      "{} | {} | {}",
+      "STRUCTURE / S: Edit structure type",
+      "BLANKS / B: Edit blanks",
+      "CONTENT / C: Edit default content",
+    );
     println!("Choose blank by ID to delete or change it to a different type of blank.");
   }
   fn choose_edit_note_template(&mut self) {
@@ -5675,17 +5715,69 @@ impl NoteArchive {
             None => continue,
           }
         },
-        "content" | "c" | "CONTENT" | "C" | "Content" => {
+        "blanks" | "b" | "BLANKS" | "B" | "Blank" => {
+          let mut blank_focus_id: Option<u32> = Some(1);
+          let content_focus_id: Option<u32> = None;
+          loop {
+            self.current_note_template().display_edit_content(blank_focus_id);
+            println!(
+              "{} | {}",
+              "EDIT / E: Edit selected blank type",
+              "DELETE / D: Delete blank",
+            );
+            println!("Choose blank by blank ID.");
+            println!("Enter 'QUIT / Q' at any time to return to the editing menu.");
+            let mut blank_choice = String::new();
+            let blank_attempt = io::stdin().read_line(&mut blank_choice);
+            match blank_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let blank = blank_choice.trim();
+            match &blank[..] {
+              "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+                break;
+              },
+              "EDIT" | "edit" | "Edit" | "E" | "e" => {
+                display_blanks();
+                let b_idx_opt = choose_blanks_option();
+                let b = match b_idx_opt {
+                  None => break,
+                  Some(b_idx) => {
+                    Blank::vector_of_variants()[b_idx]
+                  }
+                };
+                
+                // use RE in lazystatic to find all matches, then return the nth one where n is the index of the current blank
+                // (focus id - 1)
 
+                // then replace the content with content around the match and blank in the middle.
+
+              },
+              "DELETE" | "delete" | "Delete" | "D" | "d" => {
+                // delete blank, find all matches and remove the current one
+              },
+              _ => {
+                // parse to int and find that blank
+              }
+            }
+          }
           // we want to edit by blank like one would for a note, but also by the actual content.
           // So iterate through the text portions and the spaces between them.
           // Then break text portions up into sentences and let them choose from those.
 
 
+          
           let blank_idx = choose_blanks();
           content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
           display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
 
+
+        },
+        "content" | "c" | "CONTENT" | "C" | "Content" => {
 
         },
         _ => {

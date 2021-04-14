@@ -138,6 +138,90 @@ impl NoteTemplate {
     let display_c = if self.custom { "custom" } else { "default" };
     format!("{} ({})", self.structure, display_c)
   }
+  pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> String {
+    let mut content_string = self.content.clone();
+
+    match (blank_focus_id, content_focus_id) {
+      (Some(_), Some(_)) => panic!("Focus IDs for both content and blank passed to generate_display_content_string_with_blanks on NoteTemplate."),
+      _ => (),
+    }
+
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+    }
+    
+    let mut typed_content: Vec<(usize, usize)> = vec![];
+    let mut prev_end_idx: usize;
+
+    let mut i: u32 = 1;
+    loop {
+      let m = RE_BLANK.find(&content_string);
+      let m = match m {
+        None => break,
+        Some(m) => m,
+      };
+
+      let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
+
+      let display_blank = match blank_focus_id {
+        None => {
+          format!("------ [{}]: {} ---", i, b.display_to_user())
+        },
+        Some(f_id) => {
+          if i == f_id {
+            format!("((>>>>>>>>>>---   [{}]: {}   ---<<<<<<<<<<))", i, b.display_to_user())
+          } else {
+            format!("------ [{}]: {} ---", i, b.display_to_user())
+          }
+        }
+      };
+
+      content_string = format!(
+        "{}{}{}",
+        &content_string[..m.start()],
+        display_blank,
+        &content_string[m.end()..]
+      );
+
+      if i == 1 {
+        typed_content.push((0, m.start()));
+      } else {
+        typed_content.push((prev_end_idx, m.start()));
+      }
+
+      prev_end_idx = m.end();
+
+      i += 1;
+    }
+
+    let c_i: u32 = 1;
+    for (idx1, idx2) in typed_content {
+      match content_focus_id {
+        None => (),
+        Some(f_id) => {
+          if f_id == c_i {
+            content_string = format!(
+              "{} ((>>>>>>>>>>---   [{}]: {}   ---<<<<<<<<<<)) {}",
+              &content_string[..idx1],
+              c_i,
+              &content_string[idx1..idx2],
+              &content_string[idx2..],
+            );
+          } else {
+            content_string = format!(
+              "{} ((> [{}]: {} <)) {}",
+              &content_string[..idx1],
+              c_i,
+              &content_string[idx1..idx2],
+              &content_string[idx2..],
+            );
+          }
+        },
+      }
+    }
+
+    content_string
+  }
   pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
@@ -204,6 +288,26 @@ impl NoteTemplate {
     println!("{:-^163}", "-");
     let mut current_i = 0;
     for (i, cont) in self.get_display_content_vec() {
+      let display_i = if i == current_i {
+        String::from("   ")
+      } else {
+        format!(" {} ", i)
+      };
+      println!("{:-^20} | {:-^140}", display_i, cont);
+      current_i = i;
+    }
+  }
+  pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^163}", "-");
+    let heading = format!(" Edit {} template ", self.structure);
+    println!("{:-^163}", heading);
+    println!("{:-^163}", "-");
+    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println!("{:-^163}", "-");
+    let mut current_i = 0;
+    let display_content_string = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
+    for (i, cont) in self.get_display_content_vec(display_content_string) {
       let display_i = if i == current_i {
         String::from("   ")
       } else {
@@ -402,6 +506,8 @@ impl Note {
       &self.content[..]
     }
   }
+
+
   pub fn get_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
