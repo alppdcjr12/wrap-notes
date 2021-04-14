@@ -13,7 +13,7 @@ pub use crate::StructureType::{
   CarePlanVerbose,
   Intake,
   Assessment,
-  SNCD,
+  Sncd,
   HomeVisit,
   AgendaPrep,
   Debrief,

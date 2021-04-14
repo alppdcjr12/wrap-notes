@@ -27,7 +27,7 @@ use crate::note::*;
 use crate::blank_enums::*;
 use EmployeeRole::{FP, ICC};
 use SupportType::{Natural, Formal};
-use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral, CustomStructure};
+use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, Sncd, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral, CustomStructure};
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 use FPNoteCategory::{Tbd};
@@ -56,7 +56,7 @@ use ExternalDocumentFillIn::{
 use InternalMeetingFillIn::{
   IntakeMeeting,
   AssessmentMeeting,
-  SNCDMeeting,
+  SncdMeeting,
   HomeVisitMeeting,
   AgendaPrepMeeting,
   CarePlanMeeting,
@@ -5564,7 +5564,6 @@ impl NoteArchive {
     println!("{:-^136}", "-");
     println!("Choose template to edit by ID.");
   }
-
   fn choose_edit_note_templates(&mut self) {
     loop {
       self.display_edit_note_templates();
@@ -5582,14 +5581,158 @@ impl NoteArchive {
         "quit" | "q" | "QUIT" | "Q" | "Quit" => {
           break ();
         }
-        _ => (),
-      }
-      match &field_to_edit[..] {
-        "" => {
-
+        _ => match field_to_edit.parse() {
+            Ok(num) => match self.get_note_template_option_by_id(num) {
+              Some(nt) => {
+                if self.current_user_personal_note_templates().iter().any(|no_t| no_t.id == num ) {
+                  match self.load_note_template(num) {
+                    Ok(_) => self.choose_edit_note_template(),
+                    Err(e) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
+                  }
+                } else {
+                  println!("Please choose from among the listed note templates.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              },
+              None => {
+                println!("No note template for id '{}'", field_to_edit);
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              }
+            },
+            Err(e) => {
+              println!("Unable to parse {} to int: {}", field_to_edit, e);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
         },
         _ => println!("Invalid entry."),
       }
+    }
+  }
+  fn display_edit_note_template() {
+    let current_nt = self.current_note_template();
+    nt.display_content();
+    println!("{} | {}", "STRUCTURE / S: Edit structure type", "CONTENT / C: Edit content");
+    println!("Choose blank by ID to delete or change it to a different type of blank.");
+  }
+  fn choose_edit_note_template(&mut self) {
+    loop {
+      self.display_edit_note_template();
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      field_to_edit = field_to_edit.trim().to_string();
+      match &field_to_edit[..] {
+        "quit" | "q" | "QUIT" | "Q" | "Quit" => break,
+        "structure" | "s" | "STRUCTURE" | "S" | "Structure" => {
+          let structure = loop {
+            self.display_structure_types();
+            println!("Choose a new structure for the selected note template from the menu.");
+            println!("Enter 'CANCEL' at any time to cancel.");
+            let mut structure_choice = String::new();
+            let structure_attempt = io::stdin().read_line(&mut structure_choice);
+            match structure_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let structure = structure_choice.trim();
+            break match &structure[..] {
+              "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => Some(CarePlan),
+              "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => Some(CarePlanVerbose),
+              "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Some(Intake),
+              "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Some(Assessment),
+              "5" | "Sncd" | "sncd" | "SNCD" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => Some(Sncd),
+              "6" | "Home Visit" | "home visit" | "Home visit" | "HV" | "hv" | "Hv" => Some(HomeVisit),
+              "7" | "Agenda Prep" | "Agenda prep" | "agenda prep" | "AGENDA PREP" | "AP" | "ap" | "Ap" => Some(AgendaPrep),
+              "8" | "Debrief" | "debrief" | "DEBRIEF" | "D" | "d" => Some(Debrief),
+              "9" | "Phone call" | "Phone Call" | "PHONE CALL" | "phone call" | "PC" | "pc" => Some(PhoneCall),
+              "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Some(Scheduling),
+              "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => Some(SentEmail),
+              "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Some(Referral),
+              "13" | "Custom" | "CUSTOM" | "custom" | "C" | "c" => Some(CustomStructure),
+              "cancel" | "CANCEL" | "Cancel" => None,
+              _ => {
+                println!("Invalid choice.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              },
+            }
+          };
+          match structure {
+            Some(s) => self.current_note_template_mut().structure = s,
+            None => continue,
+          }
+        },
+        "content" | "c" | "CONTENT" | "C" | "Content" => {
+
+          // we want to edit by blank like one would for a note, but also by the actual content.
+          // So iterate through the text portions and the spaces between them.
+          // Then break text portions up into sentences and let them choose from those.
+
+
+          let blank_idx = choose_blanks();
+          content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
+          display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+
+
+        },
+        _ => {
+          
+        },
+      }
+
+
+
+      let mut content = String::new();
+      let mut display_content = String::new();
+      loop {
+        let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
+        NoteTemplate::display_content_from_vec(display_content_vec);
+        println!("Add text or blank?");
+        println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
+        let mut custom_choice = String::new();
+        let custom_attempt = io::stdin().read_line(&mut custom_choice);
+        match custom_attempt {
+          Ok(_) => (),
+          Err(e) => {
+            println!("Invalid repsonse: {}", e);
+            continue;
+          }
+        }
+        let custom = custom_choice.trim();
+        match &custom[..] {
+          "TEXT" | "text" | "Text" | "T" | "t" => {
+            loop {
+              println!("Enter custom text as you would like it to appear.");
+              let mut text_choice = String::new();
+              let text_attempt = io::stdin().read_line(&mut text_choice);
+              match text_attempt {
+                Ok(_) => {
+                  content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                  display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                  continue;
+                },
+                Err(e) => {
+                  println!("Invalid repsonse: {}", e);
+                  continue;
+                }
+              }
+            }
+          },
+        }
+
     }
   }
 
@@ -5804,7 +5947,7 @@ impl NoteArchive {
           "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => CarePlanVerbose,
           "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Intake,
           "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Assessment,
-          "5" | "SNCD" | "sncd" | "Sncd" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => SNCD,
+          "5" | "Sncd" | "sncd" | "SNCD" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => Sncd,
           "6" | "Home Visit" | "home visit" | "Home visit" | "HV" | "hv" | "Hv" => HomeVisit,
           "7" | "Agenda Prep" | "Agenda prep" | "agenda prep" | "AGENDA PREP" | "AP" | "ap" | "Ap" => AgendaPrep,
           "8" | "Debrief" | "debrief" | "DEBRIEF" | "D" | "d" => Debrief,
@@ -5949,7 +6092,7 @@ impl NoteArchive {
         "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
-        "SNCD" => SNCD,
+        "SNCD" => Sncd,
         "Home Visit" => HomeVisit,
         "Agenda Prep" => AgendaPrep,
         "Debrief" => Debrief,
@@ -5982,7 +6125,7 @@ impl NoteArchive {
         "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
-        "SNCD" => SNCD,
+        "SNCD" => Sncd,
         "Home Visit" => HomeVisit,
         "Agenda Prep" => AgendaPrep,
         "Debrief" => Debrief,
@@ -6557,7 +6700,7 @@ impl NoteArchive {
           CarePlanVerbose => ICCNote(FaceToFaceContactWithClient),
           Intake => ICCNote(FaceToFaceContactWithClient),
           Assessment => ICCNote(FaceToFaceContactWithClient),
-          SNCD => ICCNote(FaceToFaceContactWithClient),
+          Sncd => ICCNote(FaceToFaceContactWithClient),
           HomeVisit => ICCNote(FaceToFaceContactWithClient),
           AgendaPrep => ICCNote(FaceToFaceContactWithClient),
           Debrief => ICCNote(FaceToFaceContactWithClient),
@@ -6610,7 +6753,7 @@ impl NoteArchive {
           CarePlanVerbose => FPNote(Tbd),
           Intake => FPNote(Tbd),
           Assessment => FPNote(Tbd),
-          SNCD => FPNote(Tbd),
+          Sncd => FPNote(Tbd),
           HomeVisit => FPNote(Tbd),
           AgendaPrep => FPNote(Tbd),
           Debrief => FPNote(Tbd),
@@ -7951,7 +8094,7 @@ impl NoteArchive {
         "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
         "Assessment" => Assessment,
-        "SNCD" => SNCD,
+        "SNCD" => Sncd,
         "Home Visit" => HomeVisit,
         "Agenda Prep" => AgendaPrep,
         "Debrief" => Debrief,

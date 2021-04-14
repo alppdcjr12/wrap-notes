@@ -133,7 +133,7 @@ impl fmt::Display for ExternalDocumentFillIn {
 pub enum InternalMeetingFillIn {
   IntakeMeeting,
   AssessmentMeeting,
-  SNCDMeeting,
+  SncdMeeting,
   HomeVisitMeeting,
   AgendaPrepMeeting,
   CarePlanMeeting,
@@ -146,7 +146,7 @@ pub enum InternalMeetingFillIn {
 use InternalMeetingFillIn::{
   IntakeMeeting,
   AssessmentMeeting,
-  SNCDMeeting,
+  SncdMeeting,
   HomeVisitMeeting,
   AgendaPrepMeeting,
   CarePlanMeeting,
@@ -161,7 +161,7 @@ impl InternalMeetingFillIn {
     Box::new([
       IntakeMeeting,
       AssessmentMeeting,
-      SNCDMeeting,
+      SncdMeeting,
       HomeVisitMeeting,
       AgendaPrepMeeting,
       CarePlanMeeting,
@@ -187,7 +187,7 @@ impl fmt::Display for InternalMeetingFillIn {
     let display_string = match self {
       IntakeMeeting => "intake",
       AssessmentMeeting => "assessment",
-      SNCDMeeting => "SNCD",
+      SncdMeeting => "SNCD",
       HomeVisitMeeting => "home visit",
       AgendaPrepMeeting => "agenda prep",
       CarePlanMeeting => "Care Plan Meeting",

@@ -22,7 +22,7 @@ pub enum StructureType {
   CarePlanVerbose,
   Intake,
   Assessment,
-  SNCD,
+  Sncd,
   HomeVisit,
   AgendaPrep,
   Debrief,
@@ -35,7 +35,7 @@ pub enum StructureType {
 
 
 use StructureType::{CarePlan, CarePlanVerbose, Intake,
-Assessment, SNCD, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling,
+Assessment, Sncd, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling,
 SentEmail, Referral, CustomStructure};
 
 impl StructureType {
@@ -45,7 +45,7 @@ impl StructureType {
       CarePlanVerbose,
       Intake,
       Assessment,
-      SNCD,
+      Sncd,
       HomeVisit,
       AgendaPrep,
       Debrief,
@@ -62,7 +62,7 @@ impl StructureType {
       CarePlanVerbose => "CPM-V",
       Intake => "I",
       Assessment => "A",
-      SNCD => "S",
+      Sncd => "S",
       HomeVisit => "HV",
       AgendaPrep => "AP",
       Debrief => "D",
@@ -82,7 +82,7 @@ impl fmt::Display for StructureType {
       CarePlanVerbose => "Care Plan Meeting Verbose",
       Intake => "Intake",
       Assessment => "Assessment",
-      SNCD => "SNCD",
+      Sncd => "SNCD",
       HomeVisit => "Home Visit",
       AgendaPrep => "Agenda Prep",
       Debrief => "Debrief",
@@ -196,8 +196,8 @@ impl NoteTemplate {
   pub fn display_content(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
-    let display_custom = if self.custom { "custom" } else { "default" };
-    let heading = format!("Default content of {} {} template", display_custom, self.structure);
+    let display_custom = if self.custom { "Custom" } else { "Default" };
+    let heading = format!("{} {} template", display_custom, self.structure);
     println!("{:-^163}", heading);
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
