@@ -138,6 +138,47 @@ impl NoteTemplate {
     let display_c = if self.custom { "custom" } else { "default" };
     format!("{} ({})", self.structure, display_c)
   }
+  pub fn get_typed_content_indices(&self) -> Vec<(usize, usize)> {
+    let mut content_string = self.content.clone();
+
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+    }
+    
+    let mut typed_content_indices: Vec<(usize, usize)> = vec![];
+    let mut prev_end_idx: usize;
+    
+    let mut i = 1;
+    loop {
+      let m = RE_BLANK.find(&content_string);
+      let m = match m {
+        None => break,
+        Some(m) => m,
+      };
+
+      let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
+
+      let display_blank = String::from("X");
+
+      content_string = format!(
+        "{}{}{}",
+        &content_string[..m.start()],
+        display_blank,
+        &content_string[m.end()..]
+      );
+
+      if i == 1 {
+        typed_content_indices.push((0, m.start()));
+      } else {
+        typed_content_indices.push((prev_end_idx, m.start()));
+      }
+
+      prev_end_idx = m.end();
+
+      i += 1;
+    }
+    typed_content_indices
+  }
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> String {
     let mut content_string = self.content.clone();
 

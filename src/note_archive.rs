@@ -6,6 +6,10 @@
 #![allow(unused_comparisons)]
 #![allow(unused_attributes)]
 
+#[macro_use] use lazy_static::lazy_static;
+use regex::Regex;
+use regex::Match;
+
 use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc, Weekday};
 use std::fmt;
 use std::fs;
@@ -5750,18 +5754,213 @@ impl NoteArchive {
                     Blank::vector_of_variants()[b_idx]
                   }
                 };
-                
-                // use RE in lazystatic to find all matches, then return the nth one where n is the index of the current blank
-                // (focus id - 1)
 
-                // then replace the content with content around the match and blank in the middle.
+                let mut nt_content = self.current_note_template().content.clone();
 
+                lazy_static! {
+                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                }
+
+                let mut new_content = String::new();
+                for (i, m) in RE_BLANK.find_iter(nt_content).enumerate() {
+                  if i == blank_focus_id.unwrap() as usize {
+                    new_content = format!("{}{}{}", &nt_content[..m.start()], &b.to_string()[..], &nt_content[m.end()..]);
+                  }
+                }
+
+                self.current_note_template_mut().content = new_content;
+                self.write_note_templates().unwrap()
               },
               "DELETE" | "delete" | "Delete" | "D" | "d" => {
-                // delete blank, find all matches and remove the current one
+                loop {
+                  println!("Are you sure you want to delete the currently selected blank? (Y/N)");
+                  let mut delete_choice = String::new();
+                  let delete_attempt = io::stdin().read_line(&mut delete_choice);
+                  match delete_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Invalid repsonse: {}", e);
+                      continue;
+                    }
+                  }
+                  let delete = delete_choice.trim();
+                  match &delete[..] {
+                    "YES" | "yes" | "Yes" | "Y" | "y" => {
+                      let mut nt_content = self.current_note_template().content.clone();
+
+                      lazy_static! {
+                        static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                      }
+
+                      let mut new_content = String::new();
+                      for (i, m) in RE_BLANK.find_iter(nt_content).enumerate() {
+                        if i == blank_focus_id.unwrap() as usize {
+                          new_content = format!("{}{}", &nt_content[..m.start()], &nt_content[m.end()..]);
+                        }
+                      }
+                      self.current_note_template_mut().content = new_content;
+                      self.write_note_templates.unwrap();
+                      break;
+                    },
+                    "NO" | "no" | "No" | "N" | "n" => {
+                      break;
+                    },
+                    _ => {
+                      println!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              },
+              "INSERT" | "insert" | "Insert" | "I" | "i" => {
+                let mut blank_focus_id: Option<u32> = None;
+                let content_focus_id: Option<u32> = Some(1);
+                let new_blank = match choose_blanks_option() {
+                  Some(nb) => nb,
+                  None => continue;
+                };
+                loop {
+                  let typed_content_indices = self.current_note_template().get_typed_content_indices();
+                  self.display_edit_note_template();
+                  println!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
+                  println!("Enter CANCEL at any time to cancel.");
+                  let mut insert_choice = String::new();
+                  let insert_attempt = io::stdin().read_line(&mut insert_choice);
+                  match insert_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Invalid input: {}", e);
+                      continue;
+                    }
+                  }
+                  let insert = insert_choice.trim();
+                  match &insert[..] {
+                    "CANCEL" | "cancel" | "C" | "c" => {
+                      break;
+                    },
+                    "" => {
+                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                      let current_location = 1;
+                      loop {
+                        let indices = typed_content_indices[content_focus_id.unwrap() as usize];
+                        let idx1 = indices.0 as usize;
+                        let idx2 = indices.1 as usize;
+                        let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
+                        let num_chars = display_string.chars().count();
+                        if num_chars <= 163 {
+                          println!("{}", &display_string);
+                          let mut pointer_string = String::new();
+                          for _ in 0..current_location {
+                            pointer_string.push_str("-");
+                          }
+                          pointer_string.push_str("^");
+                          println!("{}", &pointer_string);
+                        } else {
+                          let outer_vec: Vec<(String, String)> = vec![];
+                          let num_vecs = if num_chars % 163 == 0 {
+                            num_chars / 163
+                          } else {
+                            (num_chars / 163) + 1
+                          };
+
+                          let mut num_chars_remaining = num_chars;
+                          let mut display_content = self.current_note_template().generate_display_content_string().clone();
+                          while display_content.chars().count() > 163 {
+                            let (p1, p2) = display_content.split_at(163);
+                            let mut pointer_string = String::new();
+                            for _ in 0..163 {
+                              pointer_string.push_str(" ");
+                            }
+                            outer_vec.push((format!("{}", p1), pointer_string));
+                            display_content = format!("{}", p2);
+                          }
+                          if display_content == String::new() {
+                            ()
+                          } else {
+                            let mut pointer_string = String::new();
+                            for _ in 1..pointer_string.chars().count() {
+                              pointer_string.push_str("-");
+                            }
+                            pointer_string.push_str("^");
+                            outer_vec.push((format!("{}", display_content), pointer_string));
+                          }
+                          for row_and_pointer in outer_vec {
+                            println!("{}", row_and_pointer.0);
+                            println!("{}", row_and_pointer.1);
+                          }
+                        }
+                        println!("Enter an integer to navigate to a point at which to insert the new blank.");
+                        println!("Press ENTER to insert the selected blank type in the current location.");
+                        println!("CANCEL / C: Cancel inserting blank", )
+
+                        let mut insert_string = String::new();
+                        let insert_attempt = io::stdin().read_line(&mut insert_string);
+                        match insert_attempt {
+                          Ok(_) => (),
+                          Err(e) => {
+                            println!("Invalid input: {}", e);
+                            thread::sleep(time::Duration::from_secs(2));
+                            continue;
+                          },
+                        }
+                        match &insert_string[..] {
+                          // integer to change current location
+                          // ENTER to insert it there, then show what it will look like and confirm
+                          // 
+                          ""
+                        }
+                      }
+
+
+                    },
+                    _ => {
+                      match insert.parse::<u32>() {
+                        Err(_) => {
+                          println!("Invalid command.");
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        },
+                        Ok(num) => {
+                          content_focus_id = Some(num);
+                        },
+                      }
+                    }
+                  }
+                }
+                let mut blank_focus_id: Option<u32> = Some(1);
+                let content_focus_id: Option<u32> = None;
+                self.write_note_templates();
+
+
+                // insert a new blank in the text areas
+                // iterate over the non-blank areas and then have them choose a character number
+                // have them do this by a position of a caret ^
+                // underneath the character they are editing
               },
               _ => {
-                // parse to int and find that blank
+                let mut nt_content = self.current_note_template().content.clone();
+                lazy_static! {
+                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                }
+
+                let num_matches = RE_BLANK.find_iter(nt_content).count();
+
+                match blank.parse() {
+                  Ok(num) => if num < num_matches {
+                    blank_focus_id = Some(num as u32);
+                    continue;
+                  } else {
+                    println!("Please choose a blank by ID among those displayed in the note template's content.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  },
+                  Err(_) => {
+                    println!("Invalid command.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                }                  
               }
             }
           }
