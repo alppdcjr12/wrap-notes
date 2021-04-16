@@ -5563,45 +5563,45 @@ impl NoteArchive {
   fn display_user_note_templates(&self) {
     let heading = format!(" All note templates for {} ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^136}", "-");
-    println!("{:-^136}", heading);
-    println!("{:-^136}", "-");
-    println!("{:-^10} | {:-^40} | {:-^80}", " ID ", " Type ", " Preview ");
+    println!("{:-^156}", "-");
+    println!("{:-^156}", heading);
+    println!("{:-^156}", "-");
+    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
     for nt in self.current_user_note_templates() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
       }
       println!(
-        "{: ^10} | {: ^40} | {: ^80}",
+        "{: ^10} | {: ^40} | {: ^100}",
         nt.id,
         type_string,
-        nt.preview(),
+        &nt.preview(),
       );
     }
-    println!("{:-^136}", "-");
-    println!("| {} | {}", "Choose template by ID.", "NEW / N: New template");
+    println!("{:-^156}", "-");
+    println!("| {} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit existing note template");
   }
   fn display_edit_note_templates(&self) {
     let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^136}", "-");
-    println!("{:-^136}", heading);
-    println!("{:-^136}", "-");
-    println!("{:-^10} | {:-^40} | {:-^80}", " ID ", " Type ", " Preview ");
+    println!("{:-^156}", "-");
+    println!("{:-^156}", heading);
+    println!("{:-^156}", "-");
+    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
     for nt in self.current_user_personal_note_templates() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
       }
       println!(
-        "{: ^10} | {: ^40} | {: ^80}",
+        "{: ^10} | {: ^40} | {: ^100}",
         nt.id,
         type_string,
-        nt.preview(),
+        &nt.preview(),
       );
     }
-    println!("{:-^136}", "-");
+    println!("{:-^156}", "-");
     println!("Choose template to edit by ID.");
   }
   fn choose_edit_note_templates(&mut self) {
@@ -5622,36 +5622,35 @@ impl NoteArchive {
           break ();
         }
         _ => match field_to_edit.parse() {
-            Ok(num) => match self.get_note_template_option_by_id(num) {
-              Some(nt) => {
-                if self.current_user_personal_note_templates().iter().any(|no_t| no_t.id == num ) {
-                  match self.load_note_template(num) {
-                    Ok(_) => self.choose_edit_note_template(),
-                    Err(e) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
-                  }
-                } else {
-                  println!("Please choose from among the listed note templates.");
-                  thread::sleep(time::Duration::from_secs(2));
-                  continue;
+          Ok(num) => match self.get_note_template_option_by_id(num) {
+            Some(nt) => {
+              if self.current_user_personal_note_templates().iter().any(|no_t| no_t.id == num ) {
+                match self.load_note_template(num) {
+                  Ok(_) => self.choose_edit_note_template(),
+                  Err(e) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
                 }
-              },
-              None => {
-                println!("No note template for id '{}'", field_to_edit);
+              } else {
+                println!("Please choose from among the listed note templates.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               }
             },
-            Err(e) => {
-              println!("Unable to parse {} to int: {}", field_to_edit, e);
+            None => {
+              println!("No note template for id '{}'", field_to_edit);
               thread::sleep(time::Duration::from_secs(2));
               continue;
-            },
-          }
+            }
+          },
+          Err(e) => {
+            println!("Unable to parse {} to int: {}", field_to_edit, e);
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          },
         },
       }
     }
   }
-  fn display_edit_note_template() {
+  fn display_edit_note_template(&self) {
     let current_nt = self.current_note_template();
     current_nt.display_content();
     println!(
@@ -5723,7 +5722,7 @@ impl NoteArchive {
           let mut blank_focus_id: Option<u32> = Some(1);
           let content_focus_id: Option<u32> = None;
           loop {
-            self.current_note_template().display_edit_content(blank_focus_id);
+            self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
             println!(
               "{} | {}",
               "EDIT / E: Edit selected blank type",
@@ -5755,14 +5754,14 @@ impl NoteArchive {
                   }
                 };
 
-                let mut nt_content = self.current_note_template().content.clone();
+                let nt_content = self.current_note_template().content.clone();
 
                 lazy_static! {
                   static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
                 }
 
                 let mut new_content = String::new();
-                for (i, m) in RE_BLANK.find_iter(nt_content).enumerate() {
+                for (i, m) in RE_BLANK.find_iter(&nt_content).enumerate() {
                   if i == blank_focus_id.unwrap() as usize {
                     new_content = format!("{}{}{}", &nt_content[..m.start()], &b.to_string()[..], &nt_content[m.end()..]);
                   }
@@ -5786,20 +5785,20 @@ impl NoteArchive {
                   let delete = delete_choice.trim();
                   match &delete[..] {
                     "YES" | "yes" | "Yes" | "Y" | "y" => {
-                      let mut nt_content = self.current_note_template().content.clone();
+                      let nt_content = self.current_note_template().content.clone();
 
                       lazy_static! {
                         static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
                       }
 
                       let mut new_content = String::new();
-                      for (i, m) in RE_BLANK.find_iter(nt_content).enumerate() {
+                      for (i, m) in RE_BLANK.find_iter(&nt_content).enumerate() {
                         if i == blank_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &nt_content[..m.start()], &nt_content[m.end()..]);
                         }
                       }
                       self.current_note_template_mut().content = new_content;
-                      self.write_note_templates.unwrap();
+                      self.write_note_templates().unwrap();
                       break;
                     },
                     "NO" | "no" | "No" | "N" | "n" => {
@@ -5814,11 +5813,11 @@ impl NoteArchive {
                 }
               },
               "INSERT" | "insert" | "Insert" | "I" | "i" => {
-                let mut blank_focus_id: Option<u32> = None;
-                let content_focus_id: Option<u32> = Some(1);
+                let blank_focus_id: Option<u32> = None;
+                let mut content_focus_id: Option<u32> = Some(1);
                 let new_blank = match choose_blanks_option() {
-                  Some(nb) => nb,
-                  None => continue;
+                  Some(nb) => Blank::vector_of_variants()[nb],
+                  None => continue,
                 };
                 loop {
                   let typed_content_indices = self.current_note_template().get_typed_content_indices();
@@ -5841,9 +5840,9 @@ impl NoteArchive {
                     },
                     "" => {
                       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                      let current_location = 1;
-                      loop {
-                        let indices = typed_content_indices[content_focus_id.unwrap() as usize];
+                      let mut current_location = 1;
+                      'insert_location: loop {
+                        let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
                         let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
@@ -5857,14 +5856,13 @@ impl NoteArchive {
                           pointer_string.push_str("^");
                           println!("{}", &pointer_string);
                         } else {
-                          let outer_vec: Vec<(String, String)> = vec![];
+                          let mut outer_vec: Vec<(String, String)> = vec![];
                           let num_vecs = if num_chars % 163 == 0 {
                             num_chars / 163
                           } else {
                             (num_chars / 163) + 1
                           };
 
-                          let mut num_chars_remaining = num_chars;
                           let mut display_content = self.current_note_template().generate_display_content_string().clone();
                           while display_content.chars().count() > 163 {
                             let (p1, p2) = display_content.split_at(163);
@@ -5892,7 +5890,7 @@ impl NoteArchive {
                         }
                         println!("Enter an integer to navigate to a point at which to insert the new blank.");
                         println!("Press ENTER to insert the selected blank type in the current location.");
-                        println!("CANCEL / C: Cancel inserting blank", )
+                        println!("CANCEL / C: Cancel inserting blank");
 
                         let mut insert_string = String::new();
                         let insert_attempt = io::stdin().read_line(&mut insert_string);
@@ -5908,7 +5906,60 @@ impl NoteArchive {
                           // integer to change current location
                           // ENTER to insert it there, then show what it will look like and confirm
                           // 
-                          ""
+                          "" => {
+                            loop {
+
+                              let new_content = format!("{}{}{}", &display_string[..current_location], &new_blank.display_to_user_empty(), &display_string[current_location..]);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = format!(
+                                    "{}{}{}",
+                                    &current_content[..idx1],
+                                    &new_content,
+                                    &current_content[idx2..],
+                                  );
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          _ => {
+                            match insert_string.parse() {
+                              Ok(num) => {
+                                current_location = num;
+                                continue;
+                              },
+                              Err(e) => {
+                                println!("Invalid command.");
+                                thread::sleep(time::Duration::from_secs(2));
+                                continue;
+                              }
+                            }
+                          }
                         }
                       }
 
@@ -5928,9 +5979,9 @@ impl NoteArchive {
                     }
                   }
                 }
-                let mut blank_focus_id: Option<u32> = Some(1);
+                let blank_focus_id: Option<u32> = Some(1);
                 let content_focus_id: Option<u32> = None;
-                self.write_note_templates();
+                self.write_note_templates().unwrap();
 
 
                 // insert a new blank in the text areas
@@ -5939,16 +5990,18 @@ impl NoteArchive {
                 // underneath the character they are editing
               },
               _ => {
-                let mut nt_content = self.current_note_template().content.clone();
+                let nt_content = self.current_note_template().content.clone();
                 lazy_static! {
                   static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
                 }
 
-                let num_matches = RE_BLANK.find_iter(nt_content).count();
+                let num_matches = RE_BLANK.find_iter(&nt_content).count();
 
-                match blank.parse() {
+                let u32_num = blank.parse::<u32>();
+
+                match blank.parse::<usize>() {
                   Ok(num) => if num < num_matches {
-                    blank_focus_id = Some(num as u32);
+                    blank_focus_id = Some(u32_num.unwrap());
                     continue;
                   } else {
                     println!("Please choose a blank by ID among those displayed in the note template's content.");
@@ -5964,65 +6017,53 @@ impl NoteArchive {
               }
             }
           }
-          // we want to edit by blank like one would for a note, but also by the actual content.
-          // So iterate through the text portions and the spaces between them.
-          // Then break text portions up into sentences and let them choose from those.
-
-
-          
-          let blank_idx = choose_blanks();
-          content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
-          display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
-
-
         },
         "content" | "c" | "CONTENT" | "C" | "Content" => {
-
+          println!("Content");
         },
         _ => {
-          
+          println!("Other");
         },
       }
 
-
-
-      let mut content = String::new();
-      let mut display_content = String::new();
-      loop {
-        let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
-        NoteTemplate::display_content_from_vec(display_content_vec);
-        println!("Add text or blank?");
-        println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
-        let mut custom_choice = String::new();
-        let custom_attempt = io::stdin().read_line(&mut custom_choice);
-        match custom_attempt {
-          Ok(_) => (),
-          Err(e) => {
-            println!("Invalid repsonse: {}", e);
-            continue;
-          }
-        }
-        let custom = custom_choice.trim();
-        match &custom[..] {
-          "TEXT" | "text" | "Text" | "T" | "t" => {
-            loop {
-              println!("Enter custom text as you would like it to appear.");
-              let mut text_choice = String::new();
-              let text_attempt = io::stdin().read_line(&mut text_choice);
-              match text_attempt {
-                Ok(_) => {
-                  content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                  display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                  continue;
-                },
-                Err(e) => {
-                  println!("Invalid repsonse: {}", e);
-                  continue;
-                }
-              }
-            }
-          },
-        }
+      // let mut content = String::new();
+      // let mut display_content = String::new();
+      // loop {
+      //   let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
+      //   NoteTemplate::display_content_from_vec(display_content_vec);
+      //   println!("Add text or blank?");
+      //   println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
+      //   let mut custom_choice = String::new();
+      //   let custom_attempt = io::stdin().read_line(&mut custom_choice);
+      //   match custom_attempt {
+      //     Ok(_) => (),
+      //     Err(e) => {
+      //       println!("Invalid repsonse: {}", e);
+      //       continue;
+      //     }
+      //   }
+      //   let custom = custom_choice.trim();
+      //   match &custom[..] {
+      //     "TEXT" | "text" | "Text" | "T" | "t" => {
+      //       loop {
+      //         println!("Enter custom text as you would like it to appear.");
+      //         let mut text_choice = String::new();
+      //         let text_attempt = io::stdin().read_line(&mut text_choice);
+      //         match text_attempt {
+      //           Ok(_) => {
+      //             content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+      //             display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+      //             continue;
+      //           },
+      //           Err(e) => {
+      //             println!("Invalid repsonse: {}", e);
+      //             continue;
+      //           }
+      //         }
+      //       }
+      //     },
+      //   }
+      // }
 
     }
   }
@@ -6939,46 +6980,49 @@ impl NoteArchive {
   fn create_note_from_template_get_id(&mut self, nt_id: Option<u32>) -> Option<u32> {
     let nt_id = match nt_id {
       Some(id) => id,
-      None => loop {
-        let nt_id_opt = self.select_note_template();
-        match nt_id_opt {
-          Some(id) => break id,
-          None => {
-            let decision = loop {
-              let mut cancel_choice = String::new();
-              println!("You must select a note template to build a note from a template.");
-              println!("Cancel writing note? ( Y / N )");
-              let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
-              break match cancel_choice_attempt {
-                Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
-                Err(e) => {
-                  println!("Failed to read line: {}", e);
-                  thread::sleep(time::Duration::from_secs(2));
-                  continue;
-                }
+      None => {
+        let id = loop {
+          let nt_id_opt = self.select_note_template();
+          break match nt_id_opt {
+            Some(id) => id,
+            None => {
+              let decision = loop {
+                let mut cancel_choice = String::new();
+                println!("You must select a note template to build a note from a template.");
+                println!("Cancel writing note? ( Y / N )");
+                let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+                break match cancel_choice_attempt {
+                  Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+                  Err(e) => {
+                    println!("Failed to read line: {}", e);
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                };
               };
-            };
-            match &decision[..] {
-              "yes" | "y" => {
-                return None;
-              },
-              "no" | "n" => {
-                continue;
-              },
-              _ => {
-                println!("Invalid command.");
-                continue;
-              },
+              match &decision[..] {
+                "yes" | "y" => {
+                  return None;
+                },
+                "no" | "n" => {
+                  continue;
+                },
+                _ => {
+                  println!("Invalid command.");
+                  continue;
+                },
+              }
             }
           }
-        }
+        };
+        id
       }
     };
     
     let nt = match self.get_note_template_option_by_id(nt_id) {
       Some(nt) => nt,
       None => {
-        panic!("Failed to load a note template with the ID passed from the function that creates new Note Templates.");
+        panic!("Failed to load a note template with the ID passed from the function that creates new note templates.");
       }
     };
     let nst = nt.structure;
@@ -7179,6 +7223,13 @@ impl NoteArchive {
           let f_id_b = empty_blanks.iter().find(|b_tup| b_tup.0 == f_id ).unwrap().1;
           (f_id, f_id_b)
         },
+
+
+        // need to account for possibility that ALL the blanks are filled, and there are just empty ones below.
+        // Therefore, add if condition for if length > 0.
+        // Also, no need to iterate over it all, can just return the note.
+
+
         None => (empty_blanks[0].0, empty_blanks[0].1)
       };
       let i = i as u32;

@@ -127,11 +127,12 @@ impl NoteTemplate {
       foreign_keys,
     }
   }
-  pub fn preview(&self) -> &str {
-    if self.content.len() > 70 {
-      &self.content[0..70]
+  pub fn preview(&self) -> String {
+    let this_content = self.generate_display_content_string();
+    if this_content.len() > 95 {
+      format!("{}{}", &this_content[0..95], "...")
     } else {
-      &self.content[..]
+      format!("{}{}", &this_content[..], "...")
     }
   }
   pub fn display_short(&self) -> String {
@@ -146,11 +147,12 @@ impl NoteTemplate {
     }
     
     let mut typed_content_indices: Vec<(usize, usize)> = vec![];
-    let mut prev_end_idx: usize;
+    let mut prev_end_idx: usize = 0;
     
     let mut i = 1;
     loop {
-      let m = RE_BLANK.find(&content_string);
+      let find_match_string = content_string.clone();
+      let m = RE_BLANK.find(&find_match_string);
       let m = match m {
         None => break,
         Some(m) => m,
@@ -192,11 +194,12 @@ impl NoteTemplate {
     }
     
     let mut typed_content: Vec<(usize, usize)> = vec![];
-    let mut prev_end_idx: usize;
+    let mut prev_end_idx: usize = 0;
 
     let mut i: u32 = 1;
     loop {
-      let m = RE_BLANK.find(&content_string);
+      let find_match_string = content_string.clone();
+      let m = RE_BLANK.find(&find_match_string);
       let m = match m {
         None => break,
         Some(m) => m,
@@ -311,7 +314,7 @@ impl NoteTemplate {
   pub fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
     for b in Blank::iterator() {
-      content_slice = content_slice.replace(&format!("{}", b), &b.display_to_user());
+      content_slice = content_slice.replace(&format!("{}", b), &b.display_to_user_empty());
     }
     content_slice.clone()
   }
@@ -348,7 +351,7 @@ impl NoteTemplate {
     println!("{:-^163}", "-");
     let mut current_i = 0;
     let display_content_string = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
-    for (i, cont) in self.get_display_content_vec(display_content_string) {
+    for (i, cont) in NoteTemplate::get_display_content_vec_from_string(display_content_string) {
       let display_i = if i == current_i {
         String::from("   ")
       } else {
@@ -541,8 +544,8 @@ impl Note {
     }
   }
   pub fn preview(&self) -> &str {
-    if self.content.len() > 70 {
-      &self.content[0..70]
+    if self.content.len() > 95 {
+      &self.content[0..95]
     } else {
       &self.content[..]
     }
@@ -653,12 +656,12 @@ impl Note {
     lazy_static! {
       static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
-    let blank_content = self.content.clone();
+    let mut blank_content = self.content.clone();
     let mut blanks: Vec<Blank> = vec![];
     while RE_BLANK.is_match(&blank_content) {
       let m = RE_BLANK.find(&blank_content).unwrap();
       blanks.push(Blank::get_blank_from_str(&blank_content[m.start()..m.end()]));
-      RE_BLANK.replace(&blank_content, "X");
+      blank_content = RE_BLANK.replace(&blank_content, "X").to_string();
     }
     blanks
   }
@@ -998,6 +1001,43 @@ impl Blank {
       Action => String::from("General action"),
       Phrase => String::from("Other phrase"),
       CustomBlank => String::from("Custom input"),
+    }
+  }
+  pub fn display_to_user_empty(&self) -> String {
+    match self {
+      CurrentUser => String::from("[ Current user ]"),
+      CurrentClientName => String::from("[ Name of client ]"),
+      Collaterals => String::from("[ One or more collaterals ]"),
+      AllCollaterals => String::from("[ All collaterals for the current client ]"),
+      Pronoun1ForBlank(_) => {
+        format!("[ Subject pronoun of the person in another blank (he, she, they) ]")
+      },
+      Pronoun2ForBlank(_) => {
+        format!("[ Object pronoun of the person in another blank (him, her, them) ]")
+      },
+      Pronoun3ForBlank(_) => {
+        format!("[ Possessive determiner of the person in another blank (his, her, their) ]")
+      },
+      Pronoun4ForBlank(_) => {
+        format!("[ Possessive pronoun of the person in another blank (his, hers, theirs) ]")
+      },
+      Pronoun1ForUser => String::from("[ Subject pronoun of the current user ]"),
+      Pronoun2ForUser => String::from("[ Object pronoun of the current user ]"),
+      Pronoun3ForUser => String::from("[ Possessive determiner of the current user ]"),
+      Pronoun4ForUser => String::from("[ Possessive pronoun of the current user ]"),
+      Pronoun1ForClient => String::from("[ Subject pronoun of the current client ]"),
+      Pronoun2ForClient => String::from("[ Object pronoun of the current client ]"),
+      Pronoun3ForClient => String::from("[ Possessive determiner of the current client ]"),
+      Pronoun4ForClient => String::from("[ Possessive pronoun of the current client ]"),
+      TodayDate => String::from("[ Today's date ]"),
+      NoteDayDate => String::from("[ The date of the current note ]"),
+      InternalDocument => String::from("[ Internal document ]"),
+      ExternalDocument => String::from("[ External document ]"),
+      InternalMeeting => String::from("[ Wraparound meeting title ]"),
+      ExternalMeeting => String::from("[ External meeting title ]"),
+      Action => String::from("[ General action ]"),
+      Phrase => String::from("[ Other phrase ]"),
+      CustomBlank => String::from("[ Custom input ]"),
     }
   }
 }
