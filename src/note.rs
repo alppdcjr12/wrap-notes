@@ -319,7 +319,7 @@ impl NoteTemplate {
     content_slice.clone()
   }
   pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
-    Self::get_display_content_vec_from_string(self.generate_display_content_string())
+    Self::get_display_content_vec_from_string(self.generate_display_content_string_with_blanks(None, None))
   }
   pub fn display_content(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -672,12 +672,12 @@ impl Note {
     let num_total_blanks = RE_BLANK.find_iter(&self.content).count();
     let ordered_blanks = self.get_blank_types();
     let mut blanks: Vec<(u32, Blank)> = vec![];
-    for i in 1..num_total_blanks {
-      let i = i as u32;
-      match self.blanks.get(&i) {
+    for i in 0..num_total_blanks {
+      let idx = i as u32 + 1;
+      match self.blanks.get(&idx) {
         Some(b_tup) => (),
         None => {
-          blanks.push((i, ordered_blanks[i as usize]));
+          blanks.push((idx, ordered_blanks[i as usize]));
         }
       }
     }

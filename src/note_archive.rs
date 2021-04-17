@@ -563,7 +563,6 @@ impl NoteArchive {
     
     // once for each command
     
-    println!("{:-^58}", "-");
     println!(
       "{: >15} | {: <40}",
       " NOTE / N ", " Write, view, and edit note records "
@@ -4989,17 +4988,17 @@ impl NoteArchive {
   }
   fn display_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^174}", "-");
+    println!("{:-^178}", "-");
     
     let notes = self.current_note_day_notes();
     
     let nd = self.current_note_day();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     let heading = format!(" Notes for {} for {} ", c.full_name(), nd.fmt_date());
-    println!("{:-^174}", heading);
-    println!("{:-^174}", "-");
-    println!("{:-^6} | {:-^35} | {:-^30} | {:-^10} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
-    println!("{:-^174}", "-");
+    println!("{:-^178}", heading);
+    println!("{:-^178}", "-");
+    println!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println!("{:-^178}", "-");
     for n in notes {
       let nt_opt = self.get_note_template_by_note_id(n.id);
       let nt_display = match nt_opt {
@@ -5020,9 +5019,9 @@ impl NoteArchive {
       };
       let n_structure = n.structure.to_string();
       
-      println!("{:-^6} | {:-^35} | {:-^30} | {:-^10} | {:-^79}", n.id, cat, n_structure, words.len(), sample);
+      println!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
     }
-    println!("{:-^174}", "-");
+    println!("{:-^178}", "-");
   }
   fn choose_delete_notes(&mut self) {
     loop {
@@ -7102,7 +7101,7 @@ impl NoteArchive {
     };
 
     let mut n = self.generate_note(ncat, nst, ncnt).unwrap();
-    let nd = self.get_note_day_by_note_id(n.id).unwrap();
+    let nd = self.current_note_day();
     let nd_date = nd.date;
     let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
 
@@ -7218,18 +7217,15 @@ impl NoteArchive {
 
       empty_blanks = n.get_empty_blanks_and_indexes();
 
+      if empty_blanks.len() == 0 {
+        break;
+      }
+
       let (i, b) = match focus_id_option {
         Some(f_id) => {
           let f_id_b = empty_blanks.iter().find(|b_tup| b_tup.0 == f_id ).unwrap().1;
           (f_id, f_id_b)
         },
-
-
-        // need to account for possibility that ALL the blanks are filled, and there are just empty ones below.
-        // Therefore, add if condition for if length > 0.
-        // Also, no need to iterate over it all, can just return the note.
-
-
         None => (empty_blanks[0].0, empty_blanks[0].1)
       };
       let i = i as u32;
@@ -7810,7 +7806,9 @@ impl NoteArchive {
     }
 
     let note_id = n.id;
-    self.notes.push(n);
+    self.save_note(n);
+
+    self.write_notes().unwrap();
     Some(note_id)
     
   }

@@ -1,3 +1,15 @@
 ##### notes #####
-1 | ICC Note - Face to face contact with client | Custom | This was a note. John Smith (youth) is a youth. Sauron Darklordson (Dark Lord for youth at Mordor) is a collateral for him. (---id---) is another phrase. So is (---im---). | 1%(---id---)%Individual Care Plan%#2%(---im---)%transition meeting% | 1 | 
+1 | ICC Note - Face to face contact with client | Custom | This was a note. John Smith (youth) is a youth. Sauron Darklordson (Dark Lord for youth at Mordor) is a collateral for him. (---id---) is another phrase. So is (---im---). | 2%(---im---)%transition meeting%#1%(---id---)%Individual Care Plan% | 1 | 
+2 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+4 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+5 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+6 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+7 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+8 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+8 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+9 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+10 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+11 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+12 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---c---)%John Smith (youth)%1 | 1 | 
+13 | ICC Note - Face to face contact with client | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1%(---u---)%ICC%1#2%(---c---)%John Smith (youth)%1 | 1 | 
 ##### notes #####
