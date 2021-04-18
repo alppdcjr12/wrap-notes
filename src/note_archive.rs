@@ -4982,7 +4982,7 @@ impl NoteArchive {
       if today != current_nd.date {
         'today: loop {
 
-          println!("Note for today? (Y/N)");
+          println!("Change date to today? (Y/N)");
           let today_attempt = io::stdin().read_line(&mut today_choice);
           match today_attempt {
             Ok(_) => (),
@@ -5160,7 +5160,7 @@ impl NoteArchive {
         
     };
     self.current_note_day_mut().date = new_date;
-    self.write_note_days();
+    self.write_note_days().unwrap();
   }
   fn choose_note_days(&mut self) {
     let mut display_all = false;
@@ -5832,7 +5832,12 @@ impl NoteArchive {
       );
     }
     println!("{:-^156}", "-");
-    println!("| {} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit existing note template");
+    if self.current_user_personal_note_templates().len() > 0 {
+      println!("{:?}", self.current_user_personal_note_templates());
+      println!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
+    } else {
+      println!("{} | {}", "Choose template by ID.", "NEW / N: New template");
+    }
   }
   fn display_edit_note_templates(&self) {
     let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
@@ -5906,10 +5911,11 @@ impl NoteArchive {
     let current_nt = self.current_note_template();
     current_nt.display_content();
     println!(
-      "{} | {} | {}",
+      "{} | {} | {} | {}",
       "STRUCTURE / S: Edit structure type",
       "BLANKS / B: Edit blanks",
       "CONTENT / C: Edit default content",
+      "QUIT / Q: Quit menu",
     );
     println!("Choose blank by ID to delete or change it to a different type of blank.");
   }
@@ -6348,11 +6354,9 @@ impl NoteArchive {
             Some(_) => (),
             None => (),
           }
-          continue;
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
           self.choose_edit_note_templates();
-          continue;
         },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
           break;
@@ -6364,21 +6368,18 @@ impl NoteArchive {
               .any(|&nt| nt.id == num) {
                 println!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
                 thread::sleep(time::Duration::from_secs(2));
-                continue;
             }
             match self.load_note_template(num) {
               Ok(_) => self.choose_note_template(),
               Err(e) => {
                 println!("Unable to load template with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
-                continue;
               }
             }
           },
           Err(e) => {
             println!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
-            continue;
           }
         },
       }
@@ -8838,7 +8839,7 @@ impl NoteArchive {
     let id = self.foreign_key.get("current_note_id").unwrap();
     self.notes.retain(|n| n.id != *id);
     self.foreign_key.remove("current_note_id");
-    self.write_notes();
+    self.write_notes().unwrap();
   }
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
     self.notes.iter().find(|n| n.id == id)

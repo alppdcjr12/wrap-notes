@@ -209,7 +209,7 @@ impl NoteTemplate {
 
       let display_blank = match blank_focus_id {
         None => {
-          format!("------ [{}]: {} ---", i, b.display_to_user())
+          format!("[===| [{}]: {} |===]", i, b.display_to_user())
         },
         Some(f_id) => {
           if i == f_id {
