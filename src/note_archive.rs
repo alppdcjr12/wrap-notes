@@ -4955,7 +4955,7 @@ impl NoteArchive {
                 continue;
             }
             match self.load_note_day(num) {
-              Ok(_) => self.choose_edit_note_day(),
+              Ok(_) => self.edit_note_day(),
               Err(e) => {
                 println!("Unable to load records with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
@@ -4972,8 +4972,195 @@ impl NoteArchive {
       }
     }
   }
-  fn choose_edit_note_day(&mut self) {
-    // write function
+  fn edit_note_day(&mut self) {
+    let today = Local::now().naive_local().date();
+    let new_date = 'main: loop {
+      let current_nd = self.current_note_day();
+      self.display_note_day();
+      println!("Enter 'CANCEL' at any time to cancel.");
+      let mut today_choice = String::new();
+      if today != current_nd.date {
+        'today: loop {
+
+          println!("Note for today? (Y/N)");
+          let today_attempt = io::stdin().read_line(&mut today_choice);
+          match today_attempt {
+            Ok(_) => (),
+            Err(e) => {
+              println!("Invalid repsonse: {}", e);
+              continue;
+            }
+          }
+          let date = match &today_choice.trim()[..] {
+            "Y" | "y" | "Yes" | "YES" | "yes" => {
+              break 'main today;
+            },
+            "NO" | "no" | "No" | "N" | "n" => {
+              break 'today;
+            },
+            "Cancel" | "CANCEL" | "cancel" => return (),
+            _ => {
+              println!("Please choose 'yes', 'no', or 'cancel'.");
+              continue;
+            }
+          };
+        }
+      } else {
+        let mut same_year = false;
+        let year = loop {
+          let mut this_year_choice = String::new();
+          println!("This year ({})? (Y/N)", today.year());
+          let this_year_attempt = io::stdin().read_line(&mut this_year_choice);
+          match this_year_attempt {
+            Ok(_) => match &this_year_choice.trim()[..] {
+              "YES" | "yes" | "Yes" | "Y" | "y" => {
+                same_year = true;
+                break today.year();
+              }
+              "NO" | "no" | "No" | "N" | "n" => {
+                let mut year_choice = String::new();
+                println!("What year?");
+                let year_attempt = io::stdin().read_line(&mut year_choice);
+                match year_attempt {
+                  Ok(_) => {
+                    if year_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                      return ();
+                    }
+                    match year_choice.trim().parse() {
+                      Ok(val) => {
+                        if val > 9999 || val < 1000 {
+                          println!("Please enter a valid year.");
+                          continue;
+                        } else {
+                          break val;
+                        }
+                      }
+                      Err(e) => {
+                        println!("Invalid repsonse: {}", e);
+                        continue;
+                      }
+                    }
+                  }
+                  Err(e) => {
+                    println!("Invalid repsonse: {}", e);
+                    continue;
+                  }
+                }
+              },
+              "Cancel" | "CANCEL" | "cancel" => return (),
+              _ => {
+                println!("Please choose 'yes' or 'no.'");
+                continue;
+              }
+
+            },
+            Err(e) => {
+              println!("Invalid repsonse: {}", e);
+              continue;
+            }
+          }
+        };
+        let month = 'month: loop {
+          if same_year {
+            loop {
+              let mut this_month_choice = String::new();
+              println!("This month ({})? (Y/N)", today.month());
+              let this_month_attempt = io::stdin().read_line(&mut this_month_choice);
+              match this_month_attempt {
+                Ok(_) => match &this_month_choice.trim()[..] {
+                  "YES" | "yes" | "Yes" | "Y" | "y" => break 'month today.month(),
+                  "NO" | "no" | "No" | "N" | "n" => {
+                    same_year = false;
+                    break;
+                  },
+                  "CANCEL" | "cancel" | "Cancel" => return (),
+                  _ => {
+                    println!("Please choose 'yes' or 'no.'");
+                    continue;
+                  }
+                },
+                Err(e) => {
+                  println!("Invalid repsonse: {}", e);
+                  continue;
+                }
+              }
+            }
+          }
+          let mut month_choice = String::new();
+          println!("What month?");
+          let month_attempt = io::stdin().read_line(&mut month_choice);
+          match month_attempt {
+            Ok(_) => {
+              if month_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                return ();
+              }
+              match month_choice.trim().parse() {
+                Ok(val) => {
+                  if val > 12 || val < 1 {
+                    println!("Please enter a valid month.");
+                    continue;
+                  } else {
+                    break val;
+                  }
+                }
+                Err(e) => {
+                  println!("Invalid repsonse: {}", e);
+                  continue;
+                }
+              }
+            }
+            Err(e) => {
+              println!("Invalid repsonse: {}", e);
+              continue;
+            }
+          }
+        };
+        let day = loop {
+          let mut day_choice = String::new();
+          println!("What day?");
+          let day_attempt = io::stdin().read_line(&mut day_choice);
+          match day_attempt {
+            Ok(_) => {
+              if day_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                return ();
+              }
+              match day_choice.trim().parse() {
+                Ok(val) => {
+                  if val > 31 || val < 1 {
+                    println!("Please enter a valid day.");
+                    continue;
+                  } else {
+                    break val;
+                  }
+                }
+                Err(e) => {
+                  println!("Invalid repsonse: {}", e);
+                  continue;
+                }
+              }
+            }
+            Err(e) => {
+              println!("Invalid repsonse: {}", e);
+              continue;
+            }
+          }
+        };
+        match NaiveDate::from_ymd_opt(year, month, day) {
+          Some(date) => break date,
+          None => {
+            println!(
+              "{}-{}-{} does not appear to be a valid date. Please try again.",
+              year, month, day
+            );
+            continue;
+          }
+        }
+
+      }
+        
+    };
+    self.current_note_day_mut().date = new_date;
+    self.write_note_days();
   }
   fn choose_note_days(&mut self) {
     let mut display_all = false;
