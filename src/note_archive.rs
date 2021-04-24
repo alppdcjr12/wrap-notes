@@ -5833,11 +5833,58 @@ impl NoteArchive {
     }
     println!("{:-^156}", "-");
     if self.current_user_personal_note_templates().len() > 0 {
-      println!("{:?}", self.current_user_personal_note_templates());
       println!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
     } else {
       println!("{} | {}", "Choose template by ID.", "NEW / N: New template");
     }
+  }
+  fn display_all_note_templates(&self) {
+    let heading = format!(" All note templates for all users ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^156}", "-");
+    println!("{:-^156}", heading);
+    println!("{:-^156}", "-");
+    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
+    for nt in self.note_templates.clone() {
+      let mut type_string = format!("{}", nt.structure);
+      if nt.custom {
+        type_string.push_str(" (custom)");
+      }
+      println!(
+        "{: ^10} | {: ^40} | {: ^100}",
+        nt.id,
+        type_string,
+        &nt.preview(),
+      );
+    }
+    println!("{:-^156}", "-");
+    if self.current_user_personal_note_templates().len() > 0 {
+      println!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
+    } else {
+      println!("{} | {}", "Choose template by ID.", "NEW / N: New template");
+    }
+  }
+  fn display_copy_user_note_templates(&self) {
+    let heading = format!(" Copy note template to generate a new template ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println!("{:-^156}", "-");
+    println!("{:-^156}", heading);
+    println!("{:-^156}", "-");
+    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
+    for nt in self.current_user_note_templates() {
+      let mut type_string = format!("{}", nt.structure);
+      if nt.custom {
+        type_string.push_str(" (custom)");
+      }
+      println!(
+        "{: ^10} | {: ^40} | {: ^100}",
+        nt.id,
+        type_string,
+        &nt.preview(),
+      );
+    }
+    println!("{:-^156}", "-");
+    println!("{} | {}", "Choose template to copy by ID.", "CANCEL / C: Cancel copying a template");
   }
   fn display_edit_note_templates(&self) {
     let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
@@ -6641,6 +6688,72 @@ impl NoteArchive {
     let id = note_template.id;
     self.save_note_template(note_template);
     Some(id)
+  }
+  fn copy_note_template(&mut self, nt_id: u32) {
+    let new_nt = match self.get_note_template_option_by_id(nt_id) {
+      Some(nt) => {
+        let nt_structure = nt.structure.clone();
+        match self.generate_unique_new_note_template(nt_structure, nt.content.clone(), self.current_user().id) {
+          Ok(nt) => nt,
+          Err(e) => panic!("Failed to generate template: {}", e),
+        }
+      },
+      None => panic!("Invalid Note Template ID passed to copy_note_template."),
+    };
+    match self.load_note_template(new_nt.id) {
+      Ok(_) => (),
+      Err(e) => panic!("Failed to load Note Template immediately following generation in copy_note_template: {}.", e),
+    }
+    self.save_note_template(new_nt);
+    self.choose_edit_note_template();
+  }
+  fn choose_copy_note_template(&mut self) {
+    loop {
+      self.display_all_note_templates();
+      let mut input_string = String::new();
+      let input_result = io::stdin().read_line(&mut input_string);
+      let user_choice = match input_result {
+        Ok(_) => input_string.trim(),
+        Err(e) => {
+          println!("Failed to read input.");
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        },
+      };
+      match &user_choice[..] {
+        "cancel" | "CANCEL" | "Cancel" | "C" | "c" => {
+          break;
+        },
+        _ => {
+          match user_choice.parse() {
+            Ok(num) => {
+              match self.load_note_template(num) {
+                Ok(_) => {
+                  if !self.note_templates.iter().any(|nt| nt.id == num ) {
+                    println!("Please choose from among the listed templates.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  } else {
+                    self.copy_note_template(num);
+                  }
+                },
+                Err(e) => {
+                  println!("Please choose from among the listed templates.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              }
+            },
+            Err(e) => {
+              println!("Invalid command: '{}'", &user_choice);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        }
+      }
+
+    }
   }
   fn note_template_dup_id_option(&self, structure: &StructureType, content: String, user_id: u32) -> Option<u32> {
     let template_fields: Vec<(&StructureType, &str, u32, u32)> = self

@@ -96,7 +96,7 @@ impl fmt::Display for StructureType {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NoteTemplate {
   pub id: u32,
   pub structure: StructureType,
@@ -270,25 +270,27 @@ impl NoteTemplate {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
     for (i, sent) in display_content_vec.iter().enumerate() {
-      let mut sentence = sent.clone();
-      sentence.push_str(".");
-      if sentence.len() < 140 {
-        length_adjusted_vec.push((i, sentence))
-      } else {
-        let mut long_sent = sentence.clone();
-        while long_sent.len() > 140 {
-          match &long_sent[..140].rfind(' ') {
-            None => {
-              length_adjusted_vec.push((i, String::from(&long_sent[..140])));
-              long_sent = String::from(&long_sent[141..]);
-            },
-            Some(idx) => {
-              length_adjusted_vec.push((i, String::from(&long_sent[..*idx])));
-              long_sent = String::from(&long_sent[idx+1..]);
+      if sent.chars().count() > 0 {
+        let mut sentence = sent.clone();
+        sentence.push_str(".");
+        if sentence.len() < 140 {
+          length_adjusted_vec.push((i, sentence))
+        } else {
+          let mut long_sent = sentence.clone();
+          while long_sent.len() > 140 {
+            match &long_sent[..140].rfind(' ') {
+              None => {
+                length_adjusted_vec.push((i, String::from(&long_sent[..140])));
+                long_sent = String::from(&long_sent[141..]);
+              },
+              Some(idx) => {
+                length_adjusted_vec.push((i, String::from(&long_sent[..*idx])));
+                long_sent = String::from(&long_sent[idx+1..]);
+              }
             }
           }
+          length_adjusted_vec.push((i, long_sent));
         }
-        length_adjusted_vec.push((i, long_sent));
       }
     }
     length_adjusted_vec
@@ -305,11 +307,13 @@ impl NoteTemplate {
       let display_i = if i == current_i {
         String::from("   ")
       } else {
-        format!(" {} ", i)
+        let d_i = i + 1;
+        format!(" {} ", d_i)
       };
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
+    println!("{:-^163}", "-");
   }
   pub fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
@@ -325,7 +329,7 @@ impl NoteTemplate {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
     let display_custom = if self.custom { "Custom" } else { "Default" };
-    let heading = format!("{} {} template", display_custom, self.structure);
+    let heading = format!(" {} {} template ", display_custom, self.structure);
     println!("{:-^163}", heading);
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
@@ -333,13 +337,15 @@ impl NoteTemplate {
     let mut current_i = 0;
     for (i, cont) in self.get_display_content_vec() {
       let display_i = if i == current_i {
-        String::from("   ")
+        let d_i = i + 1;
+        format!(" {} ", d_i)
       } else {
-        format!(" {} ", i)
+        String::from("   ")
       };
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
+    println!("{:-^163}", "-");
   }
   pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -353,9 +359,10 @@ impl NoteTemplate {
     let display_content_string = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     for (i, cont) in NoteTemplate::get_display_content_vec_from_string(display_content_string) {
       let display_i = if i == current_i {
-        String::from("   ")
+        let display_i = i + 1;
+        format!(" {} ", display_i)
       } else {
-        format!(" {} ", i)
+        String::from("   ")
       };
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
@@ -556,30 +563,32 @@ impl Note {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
     for (i, sent) in display_content_vec.iter().enumerate() {
-      let mut sentence = sent.clone();
-      sentence.push_str(".");
-      if sentence.len() < 140 {
-        length_adjusted_vec.push((i, sentence))
-      } else {
-        let mut long_sent = sentence.clone();
-        while long_sent.len() > 140 {
-          match &long_sent[..140].rfind(' ') {
-            None => {
-              length_adjusted_vec.push((i, String::from(&long_sent[..140])));
-              long_sent = String::from(&long_sent[141..]);
-            },
-            Some(idx) => {
-              let isize_idx_option = isize::try_from(*idx);
-              let usize_idx = match isize_idx_option {
-                Ok(i) => i as usize,
-                Err(_) => panic!("Failed to cast index of string from REGEX match to isize in fn 'get_content_vec_from_string'"),
-              };
-              length_adjusted_vec.push((i, String::from_utf8(long_sent.as_bytes()[0..usize_idx].to_vec()).unwrap()));
-              long_sent = String::from(&long_sent[idx+1..]);
+      if sent.chars().count() > 0 {
+        let mut sentence = sent.clone();
+        sentence.push_str(".");
+        if sentence.len() < 140 {
+          length_adjusted_vec.push((i, sentence))
+        } else {
+          let mut long_sent = sentence.clone();
+          while long_sent.len() > 140 {
+            match &long_sent[..140].rfind(' ') {
+              None => {
+                length_adjusted_vec.push((i, String::from(&long_sent[..140])));
+                long_sent = String::from(&long_sent[141..]);
+              },
+              Some(idx) => {
+                let isize_idx_option = isize::try_from(*idx);
+                let usize_idx = match isize_idx_option {
+                  Ok(i) => i as usize,
+                  Err(_) => panic!("Failed to cast index of string from REGEX match to isize in fn 'get_content_vec_from_string'"),
+                };
+                length_adjusted_vec.push((i, String::from_utf8(long_sent.as_bytes()[0..usize_idx].to_vec()).unwrap()));
+                long_sent = String::from(&long_sent[idx+1..]);
+              }
             }
           }
+          length_adjusted_vec.push((i, long_sent));
         }
-        length_adjusted_vec.push((i, long_sent));
       }
     }
     length_adjusted_vec
@@ -696,7 +705,6 @@ impl Note {
     RE_BLANK.find_iter(&self.content[..]).count()
   }
   pub fn display_content(&self) {
-    // print!("{esc}[2J{esc}[1;1H", esc = 27 as char); // this should not be included - Note doesn't know current user or client. Need separate heading
     println!("{:-^163}", "-");
     let cat_string = match self.category {
       ICCNote(ncat) => format!("'{}' by ICC", ncat),
@@ -711,13 +719,15 @@ impl Note {
     for (i, cont) in self.get_display_content_vec() {
       let i = i as isize;
       let display_i = if i == current_i {
-        String::from("   ")
+        let d_i = i + 1;
+        format!(" {} ", d_i)
       } else {
-        format!(" {} ", i)
+        String::from("   ")
       };
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
+    println!("{:-^163}", "-");
   }
 }
 
