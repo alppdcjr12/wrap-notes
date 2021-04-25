@@ -5911,6 +5911,7 @@ impl NoteArchive {
   fn choose_edit_note_templates(&mut self) {
     loop {
       self.display_edit_note_templates();
+      println!("QUIT / Q: Cancel editing");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
@@ -5979,9 +5980,9 @@ impl NoteArchive {
         }
       }
       field_to_edit = field_to_edit.trim().to_string();
-      match &field_to_edit[..] {
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => break,
-        "structure" | "s" | "STRUCTURE" | "S" | "Structure" => {
+      match &field_to_edit.to_ascii_lowercase()[..] {
+        "quit" | "q" => break,
+        "structure" | "s" => {
           let structure = loop {
             self.display_structure_types();
             println!("Choose a new structure for the selected note template from the menu.");
@@ -6016,14 +6017,14 @@ impl NoteArchive {
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               },
-            }
+            };
           };
           match structure {
             Some(s) => self.current_note_template_mut().structure = s,
             None => continue,
           }
         },
-        "blanks" | "b" | "BLANKS" | "B" | "Blank" => {
+        "blanks" | "b" => {
           let mut blank_focus_id: Option<u32> = Some(1);
           let content_focus_id: Option<u32> = None;
           loop {
@@ -6045,11 +6046,11 @@ impl NoteArchive {
               }
             }
             let blank = blank_choice.trim();
-            match &blank[..] {
-              "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+            match &blank.to_ascii_lowercase()[..] {
+              "quit" | "q" => {
                 break;
               },
-              "EDIT" | "edit" | "Edit" | "E" | "e" => {
+              "edit" | "e" => {
                 display_blanks();
                 let b_idx_opt = choose_blanks_option();
                 let b = match b_idx_opt {
@@ -6075,7 +6076,7 @@ impl NoteArchive {
                 self.current_note_template_mut().content = new_content;
                 self.write_note_templates().unwrap()
               },
-              "DELETE" | "delete" | "Delete" | "D" | "d" => {
+              "delete" | "d" => {
                 loop {
                   println!("Are you sure you want to delete the currently selected blank? (Y/N)");
                   let mut delete_choice = String::new();
@@ -6117,7 +6118,7 @@ impl NoteArchive {
                   }
                 }
               },
-              "INSERT" | "insert" | "Insert" | "I" | "i" => {
+              "insert" | "i" => {
                 let blank_focus_id: Option<u32> = None;
                 let mut content_focus_id: Option<u32> = Some(1);
                 let new_blank = match choose_blanks_option() {
@@ -6146,7 +6147,7 @@ impl NoteArchive {
                     "" => {
                       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
-                      'insert_location: loop {
+                      'insert_location_blanks: loop {
                         let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
@@ -6242,7 +6243,85 @@ impl NoteArchive {
                                   self.write_note_templates().unwrap();
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
-                                  continue 'insert_location;
+                                  continue 'insert_location_blanks;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "before" | "b" => {
+                            loop {
+                              let new_content = format!("{}{}", &new_blank.display_to_user_empty(), &display_string[..]);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = format!(
+                                    "{}{}",
+                                    &new_blank,
+                                    &current_content[..],
+                                  );
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_blanks;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "after" | "a" => {
+                            loop {
+                              let new_content = format!("{}{}", &display_string[..], &new_blank.display_to_user_empty());
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = format!(
+                                    "{}{}",
+                                    &current_content[..],
+                                    &new_blank,
+                                  );
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_blanks;
                                 },
                                 _ => {
                                   println!("Invalid command.");
@@ -6323,62 +6402,385 @@ impl NoteArchive {
             }
           }
         },
-        "content" | "c" | "CONTENT" | "C" | "Content" => {
-          println!("Content");
+        "content" | "c" => {
+          let mut content_focus_id: Option<u32> = Some(1);
+          let blank_focus_id: Option<u32> = None;
+          loop {
+            self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+            println!(
+              "{} | {}",
+              "EDIT / E: Edit selected content",
+              "DELETE / D: Delete content",
+            );
+            println!("Choose content section by ID.");
+            println!("Enter 'QUIT / Q' at any time to return to the editing menu.");
+            let mut content_choice = String::new();
+            let content_attempt = io::stdin().read_line(&mut content_choice);
+            match content_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let content = content_choice.trim();
+            match &content.to_ascii_lowercase()[..] {
+              "quit" | "q" => {
+                break;
+              },
+              "edit" | "e" => {
+                let mut new_section = String::new();
+                let new_section_choice = loop {
+                  let section_result = io::stdin().read_line(&mut new_section);
+                  break match section_result {
+                    Ok(_) => new_section.trim(),
+                    Err(e) => {
+                      println!("Failed to read line: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+                };
+
+                let nt_content = self.current_note_template().content.clone();
+
+                let mut new_content = String::new();
+
+                for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
+                  if i == content_focus_id.unwrap() as usize {
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
+                  }
+                }
+
+                self.current_note_template_mut().content = new_content;
+                self.write_note_templates().unwrap()
+              },
+              "delete" | "d" => {
+                loop {
+                  println!("Are you sure you want to delete the currently selected section of content? (Y/N)");
+                  let mut delete_choice = String::new();
+                  let delete_attempt = io::stdin().read_line(&mut delete_choice);
+                  match delete_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Invalid repsonse: {}", e);
+                      continue;
+                    }
+                  }
+                  let delete = delete_choice.trim();
+                  match &delete[..] {
+                    "YES" | "yes" | "Yes" | "Y" | "y" => {
+                      let nt_content = self.current_note_template().content.clone();
+
+                      let mut new_content = String::new();
+                      for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
+                        if i == content_focus_id.unwrap() as usize {
+                          new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
+                        }
+                      }
+                      self.current_note_template_mut().content = new_content;
+                      self.write_note_templates().unwrap();
+                      break;
+                    },
+                    "NO" | "no" | "No" | "N" | "n" => {
+                      break;
+                    },
+                    _ => {
+                      println!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              },
+              "insert" | "i" => {
+                let mut content_focus_id: Option<u32> = Some(1);
+                let blank_focus_id: Option<u32> = None;
+                let new_blank = match choose_blanks_option() {
+                  Some(nb) => Blank::vector_of_variants()[nb],
+                  None => continue,
+                };
+                loop {
+
+                  let mut entered_content = String::new();
+                  let enter_result = io::stdin().read_line(&mut entered_content);
+                  let chosen_text = match enter_result {
+                    Ok(_) => entered_content,
+                    Err(e) => {
+                      println!("Failed to read string: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+
+                  let typed_content_indices = self.current_note_template().get_typed_content_indices();
+                  self.display_edit_note_template();
+                  println!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
+                  println!("Enter CANCEL at any time to cancel.");
+
+                  let mut insert_choice = String::new();
+                  let insert_attempt = io::stdin().read_line(&mut insert_choice);
+                  match insert_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Invalid input: {}", e);
+                      continue;
+                    }
+                  }
+                  let insert = insert_choice.trim();
+                  match &insert[..] {
+                    "CANCEL" | "cancel" | "C" | "c" => {
+                      break;
+                    },
+                    "" => {
+                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                      let mut current_location = 1;
+                      'insert_location_content: loop {
+                        let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
+                        let idx1 = indices.0 as usize;
+                        let idx2 = indices.1 as usize;
+                        let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
+                        let num_chars = display_string.chars().count();
+                        if num_chars <= 163 {
+                          println!("{}", &display_string);
+                          let mut pointer_string = String::new();
+                          for _ in 0..current_location {
+                            pointer_string.push_str("-");
+                          }
+                          pointer_string.push_str("^");
+                          println!("{}", &pointer_string);
+                        } else {
+                          let mut outer_vec: Vec<(String, String)> = vec![];
+                          let num_vecs = if num_chars % 163 == 0 {
+                            num_chars / 163
+                          } else {
+                            (num_chars / 163) + 1
+                          };
+
+                          let mut display_content = self.current_note_template().generate_display_content_string().clone();
+                          while display_content.chars().count() > 163 {
+                            let (p1, p2) = display_content.split_at(163);
+                            let mut pointer_string = String::new();
+                            for _ in 0..163 {
+                              pointer_string.push_str(" ");
+                            }
+                            outer_vec.push((format!("{}", p1), pointer_string));
+                            display_content = format!("{}", p2);
+                          }
+                          if display_content == String::new() {
+                            ()
+                          } else {
+                            let mut pointer_string = String::new();
+                            for _ in 1..pointer_string.chars().count() {
+                              pointer_string.push_str("-");
+                            }
+                            pointer_string.push_str("^");
+                            outer_vec.push((format!("{}", display_content), pointer_string));
+                          }
+                          for row_and_pointer in outer_vec {
+                            println!("{}", row_and_pointer.0);
+                            println!("{}", row_and_pointer.1);
+                          }
+                        }
+                        println!("New content: {}", &chosen_text);
+                        println!("Enter an integer to navigate to a point at which to insert the new content.");
+                        println!("Press ENTER to insert new_content in the current location.");
+                        println!(
+                          "{} | {} | {}",
+                          "BEFORE / B: Insert at start of section",
+                          "AFTER / A: Insert at end of section",
+                          "CANCEL / C: Cancel inserting new content",
+                        );
+
+                        let mut insert_string = String::new();
+                        let insert_attempt = io::stdin().read_line(&mut insert_string);
+                        match insert_attempt {
+                          Ok(_) => (),
+                          Err(e) => {
+                            println!("Invalid input: {}", e);
+                            thread::sleep(time::Duration::from_secs(2));
+                            continue;
+                          },
+                        }
+                        match &insert_string.to_ascii_lowercase()[..] {
+                          // integer to change current location
+                          // ENTER to insert it there, then show what it will look like and confirm
+                          
+                          "before" | "b" => {
+                            loop {
+                              let new_content = format!("{}{}", &chosen_text, &display_string[..]);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = new_content;
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "after" | "a" => {
+                            loop {
+                              let new_content = format!("{}{}", &display_string[..], &chosen_text);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = new_content;
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "" => {
+                            loop {
+
+                              let new_content = format!("{}{}{}", &display_string[..current_location], &chosen_text, &display_string[current_location..]);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = format!(
+                                    "{}{}{}",
+                                    &current_content[..idx1],
+                                    &new_content,
+                                    &current_content[idx2..],
+                                  );
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          _ => {
+                            match insert_string.parse() {
+                              Ok(num) => {
+                                current_location = num;
+                                continue;
+                              },
+                              Err(e) => {
+                                println!("Invalid command.");
+                                thread::sleep(time::Duration::from_secs(2));
+                                continue;
+                              }
+                            }
+                          }
+                        }
+                      }
+
+
+                    },
+                    _ => {
+                      match insert.parse::<u32>() {
+                        Err(_) => {
+                          println!("Invalid command.");
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        },
+                        Ok(num) => {
+                          content_focus_id = Some(num);
+                        },
+                      }
+                    }
+                  }
+                }
+                let blank_focus_id: Option<u32> = Some(1);
+                let content_focus_id: Option<u32> = None;
+                self.write_note_templates().unwrap();
+              },
+              _ => {
+                match content.parse::<u32>() {
+                  Err(_) => {
+                    println!("Invalid command.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  },
+                  Ok(num) => {
+                    let num_sections = self.current_note_template().get_typed_content_indices().len();
+                    if num as usize + 1 as usize > num_sections {
+                      println!("Entered ID out of range.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    } else {
+                      content_focus_id = Some(num);
+                    }
+                  },
+                }
+              },
+            }
+          }
         },
         _ => {
           println!("Other");
         },
       }
-
-      // let mut content = String::new();
-      // let mut display_content = String::new();
-      // loop {
-      //   let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
-      //   NoteTemplate::display_content_from_vec(display_content_vec);
-      //   println!("Add text or blank?");
-      //   println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
-      //   let mut custom_choice = String::new();
-      //   let custom_attempt = io::stdin().read_line(&mut custom_choice);
-      //   match custom_attempt {
-      //     Ok(_) => (),
-      //     Err(e) => {
-      //       println!("Invalid repsonse: {}", e);
-      //       continue;
-      //     }
-      //   }
-      //   let custom = custom_choice.trim();
-      //   match &custom[..] {
-      //     "TEXT" | "text" | "Text" | "T" | "t" => {
-      //       loop {
-      //         println!("Enter custom text as you would like it to appear.");
-      //         let mut text_choice = String::new();
-      //         let text_attempt = io::stdin().read_line(&mut text_choice);
-      //         match text_attempt {
-      //           Ok(_) => {
-      //             content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-      //             display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-      //             continue;
-      //           },
-      //           Err(e) => {
-      //             println!("Invalid repsonse: {}", e);
-      //             continue;
-      //           }
-      //         }
-      //       }
-      //     },
-      //   }
-      // }
-
     }
   }
-
-  // also need choose_edit_note_template() which is really more like the match statements in above function
-  // templates just lets you pick which one, really
-  // fields to allow for edit are just structure and content
-  // and those won't affect any ideas
-
-
   fn choose_note_templates(&mut self) {
     loop {
       let input = loop {
@@ -6403,7 +6805,13 @@ impl NoteArchive {
           }
         },
         "EDIT" | "edit" | "Edit" | "e" | "E" => {
-          self.choose_edit_note_templates();
+          if self.current_user_personal_note_templates().len() > 0 {
+            self.choose_edit_note_templates();
+          } else {
+            println!("There are no custom templates to edit.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
         },
         "QUIT" | "quit" | "Quit" | "q" | "Q" => {
           break;
@@ -6501,9 +6909,9 @@ impl NoteArchive {
       if self.current_note_template().custom {
         println!(
           "| {} | {} | {} | {} | {}",
-          "NOTE / N: Use template for a new note",
-          "COPY / C: use template to create a new custom template",
-          "EDIT / E: use template to create a new custom template",
+          "NOTE / N: use template for a new note",
+          "COPY / C: create new custom template from this template",
+          "EDIT / E: edit template",
           "DELETE: delete (custom template only)",
           "QUIT / Q: quit menu"
         );
@@ -6511,7 +6919,7 @@ impl NoteArchive {
         println!(
           "| {} | {} | {}",
           "NOTE / N: Use template for a new note",
-          "COPY / C: use template to create a new custom template",
+          "COPY / C: create new custom template from this template",
           "QUIT / Q: quit menu"
         );
       }
@@ -6540,15 +6948,19 @@ impl NoteArchive {
           }
         }
         "NOTE" | "note" | "Note" | "N" | "n" => {
-          // let n_id = self.create_note_from_template_get_id();
-          println!("          let n_id = self.create_note_from_template_get_id();");
+          let n_id = self.create_note_from_template_get_id(Some(self.current_note_template().id));
         }
         "COPY" | "copy" | "Copy" | "C" | "c" => {
-          // self.copy_note_template();
-          println!("          // self.copy_note_template();");
+          self.copy_note_template(self.current_note_template().id);
         }
         "EDIT" | "edit" | "Edit" | "E" | "e" => {
-          self.choose_edit_note_template();
+          if self.current_note_template().custom {
+            self.choose_edit_note_template();
+          } else {
+            println!("Cannot edit default note templates. To create a custom version, use the 'COPY' command and edit the copy.");
+            thread::sleep(time::Duration::from_secs(4));
+            continue;
+          }
         }
         _ => println!("Invalid command."),
       }
@@ -6690,21 +7102,22 @@ impl NoteArchive {
     Some(id)
   }
   fn copy_note_template(&mut self, nt_id: u32) {
-    let new_nt = match self.get_note_template_option_by_id(nt_id) {
-      Some(nt) => {
-        let nt_structure = nt.structure.clone();
-        match self.generate_unique_new_note_template(nt_structure, nt.content.clone(), self.current_user().id) {
-          Ok(nt) => nt,
-          Err(e) => panic!("Failed to generate template: {}", e),
-        }
-      },
-      None => panic!("Invalid Note Template ID passed to copy_note_template."),
+    let copied_nt = match self.get_note_template_option_by_id(nt_id) {
+      Some(nt) => nt,
+      None => panic!("Invalid note template ID passed to copy_note_template."),
     };
-    match self.load_note_template(new_nt.id) {
-      Ok(_) => (),
-      Err(e) => panic!("Failed to load Note Template immediately following generation in copy_note_template: {}.", e),
-    }
+    let nt_structure = copied_nt.structure.clone();
+    let nt_content = copied_nt.content.clone();
+    let new_nt = match self.generate_unique_new_note_template(nt_structure, nt_content, self.current_user().id) {
+      Ok(nt) => nt,
+      Err(e) => panic!("Failed to generate template: {}", e),
+    };
+    let new_id = new_nt.id;
     self.save_note_template(new_nt);
+    match self.load_note_template(new_id) {
+      Ok(_) => (),
+      Err(e) => panic!("Failed to load note template immediately following generation in copy_note_template: {}.", e),
+    }
     self.choose_edit_note_template();
   }
   fn choose_copy_note_template(&mut self) {
@@ -6756,15 +7169,20 @@ impl NoteArchive {
     }
   }
   fn note_template_dup_id_option(&self, structure: &StructureType, content: String, user_id: u32) -> Option<u32> {
-    let template_fields: Vec<(&StructureType, &str, u32, u32)> = self
+    let template_fields: Vec<(&StructureType, &str, Option<&u32>, u32)> = self
       .note_templates
       .iter()
-      .map(|nt| (&nt.structure, &nt.content[..], nt.foreign_key["user_id"], nt.id))
+      .map(|nt| (
+        &nt.structure,
+        &nt.content[..],
+        nt.foreign_key.get("user_id"),
+        nt.id)
+      )
       .collect();
 
     match template_fields
       .iter()
-      .find(|(s, c, u, _)| s == &structure && c == &&content[..] && u == &user_id) {
+      .find(|(s, c, u, _)| s == &structure && c == &&content[..] && u == &Some(&user_id)) {
         Some(field_tup) => Some(field_tup.3),
         None => None,
       }
@@ -7018,6 +7436,7 @@ impl NoteArchive {
       } else {
         format!(" {} ", i)
       };
+      let cont = format!(" {} ", cont);
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
@@ -7136,6 +7555,9 @@ impl NoteArchive {
         _ => println!("Invalid command."),
       }
     }
+  }
+  fn choose_edit_note(&mut self) {
+
   }
   fn display_blank_fill_in(blank_type: Blank) {
     let display_category = match blank_type {

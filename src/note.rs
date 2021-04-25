@@ -9,6 +9,9 @@
 use std::fmt;
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White};
+
+// bold, dimmed, italic, underline, blink, reverse, hidden, strikethrough, on
 
 use crate::constants::*;
 
@@ -209,7 +212,7 @@ impl NoteTemplate {
 
       let display_blank = match blank_focus_id {
         None => {
-          format!("[===| [{}]: {} |===]", i, b.display_to_user())
+          format!("[===| {} |===]", b.display_to_user())
         },
         Some(f_id) => {
           if i == f_id {
@@ -724,6 +727,7 @@ impl Note {
       } else {
         String::from("   ")
       };
+      let cont = format!(" {} ", cont);
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
