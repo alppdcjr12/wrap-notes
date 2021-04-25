@@ -124,6 +124,18 @@ fn display_blanks() {
   }
   println!("Choose blank type by ID.");
 }
+fn display_blanks_empty() {
+  print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+  println!("{:-^73}", "-");
+  println!("{:-^73}", " Blanks ");
+  println!("{:-^73}", "-");
+  println!("{:-^10} | {:-^60}", " ID ", " Type ");
+  println!("{:-^73}", "-");
+  for (i, b) in Blank::iterator().enumerate() {
+    println!("{:-^10} | {:-<60}", i, b.display_to_user_empty());
+  }
+  println!("Choose blank type by ID.");
+}
 fn choose_blanks() -> usize {
   loop {
     display_blanks();
@@ -5981,7 +5993,19 @@ impl NoteArchive {
       }
       field_to_edit = field_to_edit.trim().to_string();
       match &field_to_edit.to_ascii_lowercase()[..] {
-        "quit" | "q" => break,
+        "quit" | "q" => {
+          let current_nt = self.current_note_template();
+          match self.note_template_dup_id_option(&current_nt.structure, current_nt.content.clone(), self.current_user().id) {
+            Some(same_id) => {
+              self.delete_current_note_template();
+              self.write_note_templates().unwrap();
+              println!("Copy discarded.");
+              thread::sleep(time::Duration::from_secs(2));
+            },
+            None => (),
+          }
+          break;
+        },
         "structure" | "s" => {
           let structure = loop {
             self.display_structure_types();
@@ -6051,7 +6075,7 @@ impl NoteArchive {
                 break;
               },
               "edit" | "e" => {
-                display_blanks();
+                display_blanks_empty();
                 let b_idx_opt = choose_blanks_option();
                 let b = match b_idx_opt {
                   None => break,
@@ -7094,7 +7118,7 @@ impl NoteArchive {
 
       match self.generate_unique_new_note_template(structure, content, self.current_user().id) {
         Ok(nt) => break nt,
-        Err(e) => {
+        Err((_, e)) => {
           println!("Failed to generate template: {}", e);
           thread::sleep(time::Duration::from_secs(3));
           continue;
@@ -7115,7 +7139,13 @@ impl NoteArchive {
     let nt_content = copied_nt.content.clone();
     let new_nt = match self.generate_unique_new_note_template(nt_structure, nt_content, self.current_user().id) {
       Ok(nt) => nt,
-      Err(e) => panic!("Failed to generate template: {}", e),
+      Err((nt, es)) => {
+        if es == String::from("match") {
+          nt
+        } else {
+          panic!("Failed to generate new note template to create copy for reason other than 'match' with existing note template.");
+        }
+      }
     };
     let new_id = new_nt.id;
     self.save_note_template(new_nt);
@@ -7197,11 +7227,16 @@ impl NoteArchive {
     structure: StructureType,
     content: String,
     user_id: u32,
-  ) -> Result<NoteTemplate, String> {
-    let id: u32 = self.note_templates.len() as u32 + 1;
+  ) -> Result<NoteTemplate, (NoteTemplate, String)> {
+    let id: u32 = self.note_templates.len() as u32;
 
     match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
-      Some(dup_id) => Err(String::from("A template exists for the same user with matching type and content.")),
+      Some(dup_id) => Err(
+        (
+          NoteTemplate::new(id, structure, true, content, Some(user_id)),
+          String::from("match") // must remain "match" in order to be caught in error handling for when copying a note template intentionally
+        )
+      ),
       None => Ok(NoteTemplate::new(id, structure, true, content, Some(user_id)))
     }
   }
@@ -7295,15 +7330,27 @@ impl NoteArchive {
       let nt = NoteTemplate::new(id, structure, true, content, user_id);
       note_templates.push(nt);
     }
-    note_templates.sort_by(|a, b| a.id.cmp(&b.id));
-    note_templates.sort_by(|a, b|
+
+    let mut nonduplicates: Vec<NoteTemplate> = vec![];
+    for nt in note_templates {
+      if !nonduplicates.iter().any(|nondup|
+        nondup.structure == nt.structure
+        && nondup.content == nt.content
+        && nondup.foreign_key.get("user_id").as_deref() == nt.foreign_key.get("user_id").as_deref()
+      ) {
+        nonduplicates.push(nt.clone());
+      }
+    }
+
+    nonduplicates.sort_by(|a, b| a.id.cmp(&b.id));
+    nonduplicates.sort_by(|a, b|
       match (&a.foreign_key.get("user_id"), &b.foreign_key.get("user_id")) {
         (Some(anum), Some(bnum)) => anum.cmp(&bnum),
         _ => b.foreign_key.get("user_id").cmp(&a.foreign_key.get("user_id")),
       }
     );
-    note_templates.sort_by(|a, b| a.structure.cmp(&b.structure));
-    Ok(note_templates)
+    nonduplicates.sort_by(|a, b| a.structure.cmp(&b.structure));
+    Ok(nonduplicates)
   }
   pub fn write_note_templates(&self) -> std::io::Result<()> {
     let mut lines = String::from("##### note_templates #####\n");

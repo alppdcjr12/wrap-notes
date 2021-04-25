@@ -203,7 +203,6 @@ impl NoteTemplate {
 
     let mut fill_ins: Vec<String> = vec![];
     let mut content_indices: Vec<(usize, usize)> = vec![];
-    let mut content_elements: Vec<String> = vec![];
 
     let mut i: u32 = 1;
     loop {
@@ -351,7 +350,7 @@ impl NoteTemplate {
     println!("{:-^163}", "-");
     let display_custom = if self.custom { "Custom" } else { "Default" };
 
-    let heading = if self.structure == Custom {
+    let heading = if self.structure == CustomStructure {
       String::from(" Custom template ")
     } else {
       format!(" {} {} template ", display_custom, self.structure)
