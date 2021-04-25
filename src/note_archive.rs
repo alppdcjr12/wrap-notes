@@ -5997,21 +5997,21 @@ impl NoteArchive {
               }
             }
             let structure = structure_choice.trim();
-            break match &structure[..] {
-              "1" | "CPM" | "cpm" | "Cpm" | "Care Plan Meeting" | "Care plan meeting" | "CARE PLAN MEETING" | "care plan meeting" => Some(CarePlan),
-              "2" | "CPM-V" | "cpm-v" | "Cpm-v" | "Care Plan Meeting Verbose" | "Care plan meeting verbose" | "CARE PLAN MEETING VERBOSE" | "care plan meeting verbose" => Some(CarePlanVerbose),
-              "3" | "INTAKE" | "intake" | "Intake" | "I" | "i" => Some(Intake),
-              "4" | "ASSESSMENT" | "assessment" | "Assessment" | "A" | "a" => Some(Assessment),
-              "5" | "Sncd" | "sncd" | "SNCD" | "Strengths, Needs and Cultural Discovery" | "Strengths, needs and cultural discovery" | "S" | "s" => Some(Sncd),
-              "6" | "Home Visit" | "home visit" | "Home visit" | "HV" | "hv" | "Hv" => Some(HomeVisit),
-              "7" | "Agenda Prep" | "Agenda prep" | "agenda prep" | "AGENDA PREP" | "AP" | "ap" | "Ap" => Some(AgendaPrep),
-              "8" | "Debrief" | "debrief" | "DEBRIEF" | "D" | "d" => Some(Debrief),
-              "9" | "Phone call" | "Phone Call" | "PHONE CALL" | "phone call" | "PC" | "pc" => Some(PhoneCall),
-              "10" | "Scheduling" | "scheduling" | "SCHEDULING" | "sch" | "Sch" | "SCH" => Some(Scheduling),
-              "11" | "Sent email" | "Sent Email" | "SENT EMAIL" | "sent email" | "SE" | "se" | "Se" => Some(SentEmail),
-              "12" | "Referral" | "REFERRAL" | "referral" | "R" | "r" => Some(Referral),
-              "13" | "Custom" | "CUSTOM" | "custom" | "C" | "c" => Some(CustomStructure),
-              "cancel" | "CANCEL" | "Cancel" => None,
+            break match &structure.to_ascii_lowercase()[..] {
+              "1" | "cpm" | "care plan meeting" => Some(CarePlan),
+              "2" | "cpm-v" | "care plan meeting verbose" => Some(CarePlanVerbose),
+              "3" | "intake" | "i" => Some(Intake),
+              "4" | "assessment" | "a" => Some(Assessment),
+              "5" | "sncd" | "strengths, needs and cultural discovery" | "s" => Some(Sncd),
+              "6" | "home visit" | "hv" => Some(HomeVisit),
+              "7" | "agenda prep" | "ap" => Some(AgendaPrep),
+              "8" | "debrief" | "d" => Some(Debrief),
+              "9" | "phone call" | "pc" => Some(PhoneCall),
+              "10" | "scheduling" | "sch" => Some(Scheduling),
+              "11" | "sent email" | "se" => Some(SentEmail),
+              "12" | "referral" | "r" => Some(Referral),
+              "13" | "custom" | "c" => Some(CustomStructure),
+              "cancel" => None,
               _ => {
                 println!("Invalid choice.");
                 thread::sleep(time::Duration::from_secs(2));
@@ -6384,7 +6384,7 @@ impl NoteArchive {
                 let u32_num = blank.parse::<u32>();
 
                 match blank.parse::<usize>() {
-                  Ok(num) => if num < num_matches {
+                  Ok(num) => if num <= num_matches {
                     blank_focus_id = Some(u32_num.unwrap());
                     continue;
                   } else {
@@ -6972,7 +6972,12 @@ impl NoteArchive {
     println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Template type ", " Abbreviation ");
     println!("{:-^96}", "-");
     for (i, st) in StructureType::iterator().enumerate() {
-      println!("{:-^10} | {:-^40} | {:-^40}", i, st, st.abbreviate());
+      println!(
+        "{:-^10} | {:-^40} | {:-^40}",
+        i+1,
+        &format!(" {} ", st),
+        &format!(" {} ", st.abbreviate()),
+      );
     }
     println!("{:-^96}", "-");
     println!("| {}", "Choose template type by name, ID, or abbreviation.");
@@ -7317,6 +7322,8 @@ impl NoteArchive {
     let pos = self.note_templates.binary_search_by(|nt| nt.structure.cmp(&note_template.structure)
       .then_with(|| match (&nt.foreign_key.get("user_id"), &note_template.foreign_key.get("user_id")) {
         (Some(anum), Some(bnum)) => anum.cmp(&bnum),
+        (Some(_), None) => std::cmp::Ordering::Greater,
+        (None, Some(_)) => std::cmp::Ordering::Less,
         _ => note_template.foreign_key["user_id"].cmp(&nt.foreign_key["user_id"]),
       } )
       .then_with(|| nt.id.cmp(&note_template.id))

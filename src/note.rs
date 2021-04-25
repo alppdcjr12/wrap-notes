@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White};
 
+use std::{thread, time};
+
 // bold, dimmed, italic, underline, blink, reverse, hidden, strikethrough, on
 
 use crate::constants::*;
@@ -186,6 +188,7 @@ impl NoteTemplate {
   }
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> String {
     let mut content_string = self.content.clone();
+    let mut return_content_string = self.content.clone();
 
     match (blank_focus_id, content_focus_id) {
       (Some(_), Some(_)) => panic!("Focus IDs for both content and blank passed to generate_display_content_string_with_blanks on NoteTemplate."),
@@ -195,9 +198,12 @@ impl NoteTemplate {
     lazy_static! {
       static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
-    
-    let mut typed_content: Vec<(usize, usize)> = vec![];
+
     let mut prev_end_idx: usize = 0;
+
+    let mut fill_ins: Vec<String> = vec![];
+    let mut content_indices: Vec<(usize, usize)> = vec![];
+    let mut content_elements: Vec<String> = vec![];
 
     let mut i: u32 = 1;
     loop {
@@ -208,7 +214,14 @@ impl NoteTemplate {
         Some(m) => m,
       };
 
+      let num_chars = m.end() - m.start();
+      let mut replacement = String::new();
+      for _ in 0..num_chars {
+        replacement.push_str("X");
+      }
+      
       let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
+      content_string = format!("{}{}{}", &content_string[..m.start()], &replacement, &content_string[m.end()..]);
 
       let display_blank = match blank_focus_id {
         None => {
@@ -223,51 +236,56 @@ impl NoteTemplate {
         }
       };
 
-      content_string = format!(
-        "{}{}{}",
-        &content_string[..m.start()],
-        display_blank,
-        &content_string[m.end()..]
-      );
+      fill_ins.push(display_blank);
 
-      if i == 1 {
-        typed_content.push((0, m.start()));
-      } else {
-        typed_content.push((prev_end_idx, m.start()));
-      }
-
+      content_indices.push((prev_end_idx, m.start()));
       prev_end_idx = m.end();
 
       i += 1;
     }
+    
+    for fill_in in fill_ins {
+      let find_content_string = return_content_string.clone();
+      let m = RE_BLANK.find(&find_content_string);
+      let m = match m {
+        None => break,
+        Some(m) => m,
+      };
+      return_content_string = format!(
+        "{}{}{}",
+        &return_content_string[..m.start()],
+        fill_in,
+        &return_content_string[m.end()..]
+      );
+    }
 
     let c_i: u32 = 1;
-    for (idx1, idx2) in typed_content {
+    for (idx1, idx2) in content_indices {
       match content_focus_id {
         None => (),
         Some(f_id) => {
           if f_id == c_i {
-            content_string = format!(
+            return_content_string = format!(
               "{} ((>>>>>>>>>>---   [{}]: {}   ---<<<<<<<<<<)) {}",
-              &content_string[..idx1],
+              &return_content_string[..idx1],
               c_i,
-              &content_string[idx1..idx2],
-              &content_string[idx2..],
+              &return_content_string[idx1..idx2],
+              &return_content_string[idx2..],
             );
           } else {
-            content_string = format!(
+            return_content_string = format!(
               "{} ((> [{}]: {} <)) {}",
-              &content_string[..idx1],
+              &return_content_string[..idx1],
               c_i,
-              &content_string[idx1..idx2],
-              &content_string[idx2..],
+              &return_content_string[idx1..idx2],
+              &return_content_string[idx2..],
             );
           }
         },
       }
     }
 
-    content_string
+    return_content_string
   }
   pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
@@ -332,7 +350,12 @@ impl NoteTemplate {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
     let display_custom = if self.custom { "Custom" } else { "Default" };
-    let heading = format!(" {} {} template ", display_custom, self.structure);
+
+    let heading = if self.structure == Custom {
+      String::from(" Custom template ")
+    } else {
+      format!(" {} {} template ", display_custom, self.structure)
+    };
     println!("{:-^163}", heading);
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
@@ -345,7 +368,7 @@ impl NoteTemplate {
       } else {
         String::from("   ")
       };
-      println!("{:-^20} | {:-^140}", display_i, cont);
+      println!("{:-^20} | {:-^140}", display_i, &format!(" {} ", cont));
       current_i = i;
     }
     println!("{:-^163}", "-");
