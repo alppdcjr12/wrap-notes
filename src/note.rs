@@ -188,7 +188,6 @@ impl NoteTemplate {
   }
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> String {
     let mut content_string = self.content.clone();
-    let mut return_content_string = self.content.clone();
 
     match (blank_focus_id, content_focus_id) {
       (Some(_), Some(_)) => panic!("Focus IDs for both content and blank passed to generate_display_content_string_with_blanks on NoteTemplate."),
@@ -200,9 +199,7 @@ impl NoteTemplate {
     }
 
     let mut prev_end_idx: usize = 0;
-
-    let mut fill_ins: Vec<String> = vec![];
-    let mut content_indices: Vec<(usize, usize)> = vec![];
+    let mut content: Vec<String> = vec![];
 
     let mut i: u32 = 1;
     loop {
@@ -223,68 +220,35 @@ impl NoteTemplate {
       content_string = format!("{}{}{}", &content_string[..m.start()], &replacement, &content_string[m.end()..]);
 
       let display_blank = match blank_focus_id {
-        None => {
-          format!("[===| {} |===]", b.display_to_user())
-        },
+        None => format!("{}", b.display_to_user()),
         Some(f_id) => {
           if i == f_id {
-            format!("((>>>>>>>>>>---   [{}]: {}   ---<<<<<<<<<<))", i, b.display_to_user())
+            format!("(>- [{}]: {} -<)", i, b.display_to_user())
           } else {
-            format!("------ [{}]: {} ---", i, b.display_to_user())
+            format!("| [{}]: {} |", i, b.display_to_user())
           }
         }
       };
 
-      fill_ins.push(display_blank);
+      let display_content =  match content_focus_id {
+        None => String::from(&content_string[prev_end_idx..m.start()]),
+        Some(f_id) => {
+          if i == f_id {
+            format!("(>- [{}]: {} -<)", i, &String::from(&content_string[prev_end_idx..m.start()]))
+          } else {
+            format!("| [{}]: {} |", i, &String::from(&content_string[prev_end_idx..m.start()]))
+          }
+        }
+      };
 
-      content_indices.push((prev_end_idx, m.start()));
+      content.push(display_content);
+      content.push(display_blank);
       prev_end_idx = m.end();
 
       i += 1;
     }
-    
-    for fill_in in fill_ins {
-      let find_content_string = return_content_string.clone();
-      let m = RE_BLANK.find(&find_content_string);
-      let m = match m {
-        None => break,
-        Some(m) => m,
-      };
-      return_content_string = format!(
-        "{}{}{}",
-        &return_content_string[..m.start()],
-        fill_in,
-        &return_content_string[m.end()..]
-      );
-    }
 
-    let c_i: u32 = 1;
-    for (idx1, idx2) in content_indices {
-      match content_focus_id {
-        None => (),
-        Some(f_id) => {
-          if f_id == c_i {
-            return_content_string = format!(
-              "{} ((>>>>>>>>>>---   [{}]: {}   ---<<<<<<<<<<)) {}",
-              &return_content_string[..idx1],
-              c_i,
-              &return_content_string[idx1..idx2],
-              &return_content_string[idx2..],
-            );
-          } else {
-            return_content_string = format!(
-              "{} ((> [{}]: {} <)) {}",
-              &return_content_string[..idx1],
-              c_i,
-              &return_content_string[idx1..idx2],
-              &return_content_string[idx2..],
-            );
-          }
-        },
-      }
-    }
-
-    return_content_string
+    content.join("")
   }
   pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
@@ -392,6 +356,7 @@ impl NoteTemplate {
       println!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
+    println!("{:-^163}", "-");
   }
 }
 

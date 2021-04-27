@@ -120,7 +120,7 @@ fn display_blanks() {
   println!("{:-^10} | {:-^60}", " ID ", " Type ");
   println!("{:-^73}", "-");
   for (i, b) in Blank::iterator().enumerate() {
-    println!("{:-^10} | {:-<60}", i, b.display_to_user());
+    println!("{:-^10} | {:-<60}", i + 1, b.display_to_user());
   }
   println!("Choose blank type by ID.");
 }
@@ -132,7 +132,7 @@ fn display_blanks_empty() {
   println!("{:-^10} | {:-^60}", " ID ", " Type ");
   println!("{:-^73}", "-");
   for (i, b) in Blank::iterator().enumerate() {
-    println!("{:-^10} | {:-<60}", i, b.display_to_user_empty());
+    println!("{:-^10} | {:-<60}", i + 1, b.display_to_user_empty());
   }
   println!("Choose blank type by ID.");
 }
@@ -169,7 +169,7 @@ fn choose_blanks() -> usize {
 }
 fn choose_blanks_option() -> Option<usize> {
   loop {
-    display_blanks();
+    display_blanks_empty();
     println!("Enter 'QUIT / Q' at any time to cancel.");
     let mut input = String::new();
     let input_attempt = io::stdin().read_line(&mut input);
@@ -5995,12 +5995,19 @@ impl NoteArchive {
       match &field_to_edit.to_ascii_lowercase()[..] {
         "quit" | "q" => {
           let current_nt = self.current_note_template();
-          match self.note_template_dup_id_option(&current_nt.structure, current_nt.content.clone(), self.current_user().id) {
-            Some(same_id) => {
-              self.delete_current_note_template();
+          match self.note_template_dup_already_saved(current_nt.id) {
+            Some(nt_ids) => {
+              let num_dups = nt_ids.len();
+              for nt_id in nt_ids {
+                match self.load_note_template(nt_id) {
+                  Ok(_) => self.delete_current_note_template(),
+                  Err(e) => panic!("Detected duplicate note template with ID '{}' after copy, loaded successfully but failed to delete: {}", nt_id, e),
+                }
+              }
               self.write_note_templates().unwrap();
-              println!("Copy discarded.");
-              thread::sleep(time::Duration::from_secs(2));
+              print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+              println!("Copies discarded: {}", num_dups);
+              thread::sleep(time::Duration::from_secs(1));
             },
             None => (),
           }
@@ -6092,7 +6099,7 @@ impl NoteArchive {
 
                 let mut new_content = String::new();
                 for (i, m) in RE_BLANK.find_iter(&nt_content).enumerate() {
-                  if i == blank_focus_id.unwrap() as usize {
+                  if i + 1 == blank_focus_id.unwrap() as usize {
                     new_content = format!("{}{}{}", &nt_content[..m.start()], &b.to_string()[..], &nt_content[m.end()..]);
                   }
                 }
@@ -6381,7 +6388,13 @@ impl NoteArchive {
                           continue;
                         },
                         Ok(num) => {
-                          content_focus_id = Some(num);
+                          if num as usize >= typed_content_indices.len() - 1 {
+                            println!("Please choose a number from among the displayed content indices.");
+                            thread::sleep(time::Duration::from_secs(2));
+                            continue;
+                          } else {
+                            content_focus_id = Some(num + 1);
+                          }
                         },
                       }
                     }
@@ -6453,11 +6466,13 @@ impl NoteArchive {
                 break;
               },
               "edit" | "e" => {
+                self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+                println!("Enter new content to replace the selected text.");
                 let mut new_section = String::new();
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
                   break match section_result {
-                    Ok(_) => new_section.trim(),
+                    Ok(_) => new_section,
                     Err(e) => {
                       println!("Failed to read line: {}", e);
                       thread::sleep(time::Duration::from_secs(2));
@@ -6471,7 +6486,7 @@ impl NoteArchive {
                 let mut new_content = String::new();
 
                 for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
-                  if i == content_focus_id.unwrap() as usize {
+                  if i + 1 == content_focus_id.unwrap() as usize {
                     new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
                   }
                 }
@@ -6786,8 +6801,8 @@ impl NoteArchive {
                   },
                   Ok(num) => {
                     let num_sections = self.current_note_template().get_typed_content_indices().len();
-                    if num as usize + 1 as usize > num_sections {
-                      println!("Entered ID out of range.");
+                    if num as usize > num_sections || num == 0 {
+                      println!("Please choose from among the content IDs shown above.");
                       thread::sleep(time::Duration::from_secs(2));
                       continue;
                     } else {
@@ -6812,7 +6827,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -6821,14 +6836,14 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_note_template_get_id();
           match maybe_new_id {
             Some(_) => (),
             None => (),
           }
         },
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           if self.current_user_personal_note_templates().len() > 0 {
             self.choose_edit_note_templates();
           } else {
@@ -6837,7 +6852,7 @@ impl NoteArchive {
             continue;
           }
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -6976,6 +6991,7 @@ impl NoteArchive {
         }
         "COPY" | "copy" | "Copy" | "C" | "c" => {
           self.copy_note_template(self.current_note_template().id);
+          break;
         }
         "EDIT" | "edit" | "Edit" | "E" | "e" => {
           if self.current_note_template().custom {
@@ -7202,6 +7218,26 @@ impl NoteArchive {
       }
 
     }
+  }
+  fn note_template_dup_already_saved(&self, nt_id: u32) -> Option<Vec<u32>> {
+    let nt_match = match self.note_templates.iter().find(|nt| nt.id == nt_id ) {
+      Some(nt) => nt.clone(),
+      None => return None,
+    };
+    let matches: Vec<u32> = self.note_templates.iter().filter(|nt| nt.structure == nt_match.structure
+      && nt.content == nt_match.content
+      && nt.foreign_key.get("user_id").as_ref() == nt_match.foreign_key.get("user_id").as_ref()
+      && nt.id != nt_match.id
+    )
+    .map(|nt| nt.id )
+    .collect();
+
+    if matches.len() > 0 {
+      Some(matches)
+    } else {
+      None
+    }
+
   }
   fn note_template_dup_id_option(&self, structure: &StructureType, content: String, user_id: u32) -> Option<u32> {
     let template_fields: Vec<(&StructureType, &str, Option<&u32>, u32)> = self
