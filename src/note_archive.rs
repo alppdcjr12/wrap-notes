@@ -181,8 +181,8 @@ fn choose_blanks_option() -> Option<usize> {
         continue;
       }
     }
-    match &input.trim()[..] {
-      "QUIT" | "quit" | "Quit" | "q" | "Q" => return None,
+    match &input.to_ascii_lowercase().trim()[..] {
+      "quit" | "q" => return None,
       _ => (),
     }
     match input.trim().parse::<usize>() {
@@ -253,9 +253,9 @@ impl NoteArchive {
           println!("Failed to read input. Please try again.");
         }
       }
-      choice = choice.trim().to_string();
+      choice = choice.to_ascii_lowercase().trim().to_string();
       match &choice[..] {
-        "DECRYPT" | "decrypt" | "Decrypt" | "D" | "d" => {
+        "decrypt" | "d" => {
           println!("Enter password to attempt decryption.");
           let mut pw = String::new();
           let pw_attempt = io::stdin().read_line(&mut pw);
@@ -284,7 +284,7 @@ impl NoteArchive {
             }
           }
         },
-        "DELETE" | "delete" | "Delete" => {
+        "delete" => {
           fs::remove_file(user_filepath).unwrap();
           fs::remove_file(client_filepath).unwrap();
           fs::remove_file(collateral_filepath).unwrap();
@@ -294,7 +294,7 @@ impl NoteArchive {
           fs::remove_file(note_filepath).unwrap();
           break true;
         },
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break false;
         },
         _ => {
@@ -617,24 +617,24 @@ impl NoteArchive {
           println!("Failed to read input. Please try again.");
         }
       }
-      choice = choice.trim().to_string();
+      choice = choice.to_ascii_lowercase().trim().to_string();
       match &choice[..] {
-        "NOTE" | "note" | "Note" | "N" | "n" => {
+        "note" | "n" => {
           self.choose_note_days();
         }
-        "client" | "c" | "CLIENT" | "C" | "Client" => {
+        "client" | "c" => {
           self.choose_clients();
         },
-        "collateral" | "co" | "COLLATERAL" | "CO" | "Collateral" | "Co" | "collat" | "COLLAT" | "Collat" | "COL" | "col" | "Col" => {
+        "collateral" | "co" | "col" => {
           self.choose_collaterals();
         },
-        "edit" | "e" | "EDIT" | "E" | "Edit" => {
+        "edit" | "e" => {
           self.choose_edit_user();
         },
-        "user" | "u" | "USER" | "U" | "User" => {
+        "user" | "u" => {
           self.choose_user();
         },
-        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+        "p" | "prns" | "pronouns" => {
           let chosen_pronoun = self.choose_pronouns_option();
           match chosen_pronoun {
             Some(prn) => {
@@ -643,17 +643,17 @@ impl NoteArchive {
             None => (),
           }
         },
-        "delete" | "d" | "DELETE" | "D" | "Delete" => {
+        "delete" | "d" => {
           self.choose_delete_user();
           self.choose_user();
         },
-        "SECURITY" | "security" | "Security" | "S" | "s" => {
+        "security" | "s" => {
           self.choose_security_options();
           if self.encrypted {
             break;
           }
         },
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         },
         _ => {
@@ -676,13 +676,13 @@ impl NoteArchive {
           continue;
         }
       }
-      choice = choice.trim().to_string();
+      choice = choice.to_ascii_lowercase().trim().to_string();
       match &choice[..] {
-        "ENCRYPT" | "encrypt" | "Encrypt" => {
+        "encrypt" => {
           self.choose_encrypt_all_files();
           break;
         },
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         },
         _ => {
@@ -732,9 +732,9 @@ impl NoteArchive {
           continue;
         }
       }
-      choice = choice.trim().to_string();
+      choice = choice.to_ascii_lowercase().trim().to_string();
       match &choice[..] {
-        "YES" | "yes" | "Yes" | "Y" | "y" => {
+        "yes" | "y" => {
           let new_password = loop {
             println!("Enter new password for encryption (minimum 8 characters):");
             let mut choice = String::new();
@@ -784,7 +784,7 @@ impl NoteArchive {
           thread::sleep(time::Duration::from_secs(2));
           break;
         },
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         },
         _ => {
@@ -894,7 +894,7 @@ impl NoteArchive {
           println!("| {} | {}", "Enter ID to choose user.", "NEW / N: new user");
           let read_attempt = io::stdin().read_line(&mut choice);
           match read_attempt {
-            Ok(_) => break choice,
+            Ok(_) => break choice.to_ascii_lowercase(),
             Err(e) => {
               println!("Could not read input; try again ({}).", e);
               continue;
@@ -903,7 +903,7 @@ impl NoteArchive {
         };
         let input = input.trim();
         match input {
-          "NEW" | "new" | "New" | "N" | "n" => {
+          "new" | "n" => {
             let maybe_user_id = self.create_user_get_id();
             match maybe_user_id {
               Some(num) => break num,
@@ -1227,16 +1227,15 @@ impl NoteArchive {
           continue;
         }
       }
-      field_to_edit = field_to_edit.trim().to_string();
+      field_to_edit = field_to_edit.to_ascii_lowercase().trim().to_string();
       match &field_to_edit[..] {
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         }
         _ => (),
       }
       match &field_to_edit[..] {
-        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name"
-        | "FIRST NAME" | "First Name" => {
+        "first" | "fst" | "f" | "1st" | "first name" => {
           println!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
@@ -1253,8 +1252,7 @@ impl NoteArchive {
             }
           }
         }
-        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
-        | "Last Name" => {
+        "last" | "lst" | "l" | "last name" => {
           println!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
@@ -1271,7 +1269,7 @@ impl NoteArchive {
             }
           }
         }
-        "ROLE" | "Role" | "role" | "r" | "R" => match self.current_user().role {
+        "role" | "r" => match self.current_user().role {
           ICC => {
             self.change_role(&FP).unwrap();
           }
@@ -1279,7 +1277,7 @@ impl NoteArchive {
             self.change_role(&ICC).unwrap();
           }
         },
-        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+        "prns" | "p" | "pronouns" => {
           let pronouns_option = self.choose_pronouns_option();
           match pronouns_option {
             Some(p) => self.current_user_mut().pronouns = p,
@@ -1305,8 +1303,8 @@ impl NoteArchive {
           continue;
         }
       }
-      match &choice[..] {
-        "YES" | "yes" | "Yes" | "Y" | "y" => {
+      match &choice.to_ascii_lowercase()[..] {
+        "yes" | "y" => {
           self.delete_current_user();
           break;
         },
@@ -1517,7 +1515,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -1526,10 +1524,10 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_client_get_id();
           match maybe_new_id {
             Some(new_id) => self.update_current_clients(new_id),
@@ -1575,7 +1573,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -1584,7 +1582,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_client_get_id();
           match maybe_new_id {
             Some(new_id) => self.update_current_clients(new_id),
@@ -1592,15 +1590,15 @@ impl NoteArchive {
           }
           continue;
         },
-        "ADD" | "add" | "Add" | "a" | "A" => {
+        "add" | "a" => {
           self.add_client();
           continue;
         },
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           self.choose_edit_clients();
           continue;
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -1637,7 +1635,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -1646,7 +1644,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         },
         _ => {
@@ -1707,7 +1705,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -1716,7 +1714,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_client_get_id();
           match maybe_new_id {
             Some(new_id) => self.update_current_clients(new_id),
@@ -1724,7 +1722,7 @@ impl NoteArchive {
           }
           continue;
         },
-        "ADD" | "add" | "Add" | "a" | "A" => {
+        "add" | "a" => {
           self.add_client();
           continue;
         },
@@ -1767,7 +1765,7 @@ impl NoteArchive {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
-        Ok(_) => choice,
+        Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
           println!("Could not read input; try again ({}).", e);
           continue;
@@ -1775,17 +1773,17 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         }
-        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+        "delete" | "d" => {
           self.choose_delete_client();
           break;
         }
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           self.choose_edit_client();
         }
-        "COLLATERAL" | "collateral" | "Collateral" | "COLLAT" | "collat" | "Collat" | "COL" | "col" | "Col" => {
+        "collateral" | "collat" | "col" => {
           self.choose_client_collaterals();
         }
         _ => println!("Invalid command."),
@@ -1984,9 +1982,9 @@ impl NoteArchive {
                         }
                       }
                     };
-                    match &choice[..] {
-                      "YES" | "yes" | "Y" | "y" => break client.clone(),
-                      "NO" | "no" | "N" | "n" => continue,
+                    match &choice.to_ascii_lowercase()[..] {
+                      "yes" | "y" => break client.clone(),
+                      "no" | "n" => continue,
                       _ => println!("Invalid command.")
                     }
                   }
@@ -2130,16 +2128,15 @@ impl NoteArchive {
           continue;
         }
       }
-      field_to_edit = field_to_edit.trim().to_string();
+      field_to_edit = field_to_edit.to_ascii_lowercase().trim().to_string();
       match &field_to_edit[..] {
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         }
         _ => (),
       }
       match &field_to_edit[..] {
-        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name"
-        | "FIRST NAME" | "First Name" => {
+        "first" | "fst" | "f" | "1st" | "first name" => {
           println!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
@@ -2156,8 +2153,7 @@ impl NoteArchive {
             }
           }
         }
-        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
-        | "Last Name" => {
+        "last" | "lst" | "l" | "last name" => {
           println!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
@@ -2175,7 +2171,7 @@ impl NoteArchive {
             }
           }
         }
-        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+        "prns" | "p" | "pronouns" => {
           let maybe_pronouns = self.choose_pronouns_option();
           match maybe_pronouns {
             Some(p) => self.current_client_mut().pronouns = p,
@@ -2258,8 +2254,8 @@ impl NoteArchive {
           continue;
         }
       };
-      match &command[..] {
-        "YES" | "yes" | "Yes" | "Y" | "y" => {
+      match &command.to_ascii_lowercase()[..] {
+        "yes" | "y" => {
           self.delete_current_client();
           break;
         }
@@ -2674,7 +2670,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -2683,7 +2679,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             Some(new_id) => self.update_current_collaterals(new_id),
@@ -2691,15 +2687,15 @@ impl NoteArchive {
           }
           continue;
         },
-        "ADD" | "add" | "Add" | "a" | "A" => {
+        "add" | "a" => {
           self.add_collateral();
           continue;
         },
-        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+        "edit" | "e" => {
           self.choose_edit_client_collaterals();
           continue;
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -2756,7 +2752,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -2790,7 +2786,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -2799,7 +2795,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             Some(_) => (),
@@ -2807,11 +2803,11 @@ impl NoteArchive {
           }
           continue;
         },
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           self.choose_edit_collaterals();
           continue;
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -2854,7 +2850,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -2887,7 +2883,7 @@ impl NoteArchive {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
-        Ok(_) => choice,
+        Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
           println!("Could not read input; try again ({}).", e);
           continue;
@@ -2895,10 +2891,10 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         }
-        "CLIENT" | "client" | "Client" | "C" | "c" => {
+        "client" | "c" => {
           let c_id = self.specify_client(String::from("collateral"));
           let collat_id = self.foreign_key["current_collateral_id"];
           if !self.get_client_by_id(c_id)
@@ -2916,10 +2912,10 @@ impl NoteArchive {
                 .push(collat_id);
             }
         }
-        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+        "delete" | "d" => {
           self.choose_delete_collateral();
         }
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           self.choose_edit_collateral();
         }
         _ => {
@@ -3044,10 +3040,10 @@ impl NoteArchive {
           println!("NATURAL / N | FORMAL / F");
           let support_type_attempt = io::stdin().read_line(&mut support_type_choice);
           let s = match support_type_attempt {
-            Ok(_) => match support_type_choice.trim() {
-              "Natural" | "natural" | "NATURAL" | "NAT" | "Nat" | "nat" | "N" | "n" => Natural,
-              "Formal" | "formal" | "FORMAL" | "FORM" | "Form" | "form" | "F" | "f" => Formal,
-              "CANCEL" | "cancel" | "Cancel" => return None,
+            Ok(_) => match support_type_choice.to_ascii_lowercase().trim() {
+              "natural" | "nat" | "n" => Natural,
+              "formal" | "form" | "f" => Formal,
+              "cancel" => return None,
               _ => {
                 println!("Please choose NATURAL or FORMAL.");
                 thread::sleep(time::Duration::from_secs(1));
@@ -3069,10 +3065,10 @@ impl NoteArchive {
               println!("YES / Y | NO / N");
               let indirect_attempt = io::stdin().read_line(&mut indirect_choice);
               i = match indirect_attempt {
-                Ok(_) => match indirect_choice.trim() {
-                  "YES" | "yes" | "Y" | "y" => false,
-                  "NO" | "no" | "N" | "n" => true,
-                  "CANCEL" | "cancel" | "Cancel" => return None,
+                Ok(_) => match indirect_choice.to_ascii_lowercase().trim() {
+                  "yes" | "y" => false,
+                  "no" | "n" => true,
+                  "cancel" => return None,
                   _ => {
                     println!("Please choose YES or NO.");
                     thread::sleep(time::Duration::from_secs(1));
@@ -3392,7 +3388,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -3401,10 +3397,10 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             Some(new_id) => {
@@ -3458,16 +3454,15 @@ impl NoteArchive {
           continue;
         }
       }
-      field_to_edit = field_to_edit.trim().to_string();
+      field_to_edit = field_to_edit.to_ascii_lowercase().trim().to_string();
       match &field_to_edit[..] {
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         }
         _ => (),
       }
       match &field_to_edit[..] {
-        "FIRST" | "First" | "first" | "fst" | "f" | "F" | "1st" | "first name" | "First name"
-        | "FIRST NAME" | "First Name" => {
+        "first" | "fst" | "f" | "1st" | "first name" => {
           println!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
@@ -3484,8 +3479,7 @@ impl NoteArchive {
             }
           }
         },
-        "LAST" | "Last" | "last" | "lst" | "l" | "L" | "last name" | "Last name" | "LAST NAME"
-        | "Last Name" => {
+        "last" | "lst" | "l" | "last name" => {
           println!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
@@ -3503,7 +3497,7 @@ impl NoteArchive {
             }
           }
         },
-        "TITLE" | "title" | "Title" | "t" | "T" => {
+        "title" | "t" => {
           println!("Enter new title:");
           let mut title_choice = String::new();
           let title_attempt = io::stdin().read_line(&mut title_choice);
@@ -3521,7 +3515,7 @@ impl NoteArchive {
             }
           }
         },
-        "INSITUTION" | "Institution" | "institution" | "inst" | "INST" | "Inst" | "I" | "i" => {
+        "institution" | "inst" | "i" => {
           if self.current_collateral().support_type == Natural {
             println!("Unable to add institution for a natural support.");
             thread::sleep(time::Duration::from_secs(2));
@@ -3578,14 +3572,14 @@ impl NoteArchive {
             }
           }
         },
-        "PRNS" | "Prns" | "prns" | "P" | "p" | "pronouns" | "Pronouns" | "PRONOUNS" => {
+        "prns" | "p" | "pronouns" => {
           let maybe_pronouns = self.choose_pronouns_option();
           match maybe_pronouns {
             Some(p) => self.current_collateral_mut().pronouns = p,
             None => (),
           }
         },
-        "FORMAL" | "formal" | "Formal" => {
+        "formal" => {
           if self.current_collateral().support_type == Formal {
             println!("Collateral is already a formal support.");
             thread::sleep(time::Duration::from_secs(2));
@@ -3626,7 +3620,7 @@ impl NoteArchive {
             }
           }
         },
-        "NATURAL" | "natural" | "Natural" => {
+        "natural" => {
           if self.current_collateral().support_type == Natural {
             println!("Collateral is already a natural support.");
             thread::sleep(time::Duration::from_secs(2));
@@ -3673,7 +3667,7 @@ impl NoteArchive {
             self.current_collateral_mut().institution = None;
           }
         },
-        "INDIRECT" | "indirect" | "Indirect" => {
+        "indirect" => {
           if self.current_collateral().indirect_support == true {
             println!("Collateral is already an indirect support.");
             thread::sleep(time::Duration::from_secs(2));
@@ -3682,7 +3676,7 @@ impl NoteArchive {
             self.current_collateral_mut().indirect_support = true;
           }
         },
-        "DIRECT" | "direct" | "Direct" => {
+        "direct" => {
           if self.current_collateral().indirect_support == false {
             println!("Collateral is already a direct support.");
             thread::sleep(time::Duration::from_secs(2));
@@ -4135,7 +4129,7 @@ impl NoteArchive {
         );
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             thread::sleep(time::Duration::from_millis(10000));
@@ -4146,7 +4140,7 @@ impl NoteArchive {
       let input = input.trim();
 
       match input {
-        "NEW" | "new" | "New" | "N" | "n" => {
+        "new" | "n" => {
           let pronouns_option = self.create_get_pronouns();
           match pronouns_option {
             Some(p) => {
@@ -4156,11 +4150,11 @@ impl NoteArchive {
             None => continue,
           }
         },
-        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+        "edit" | "e" => {
           self.choose_edit_pronouns();
           continue;
         },
-        "DELETE" | "delete" | "Delete" | "D" | "d" => {
+        "delete" | "d" => {
           self.choose_delete_pronouns();
           continue;
         },
@@ -4194,7 +4188,7 @@ impl NoteArchive {
         println!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu/cancel ");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             thread::sleep(time::Duration::from_millis(10000));
@@ -4205,7 +4199,7 @@ impl NoteArchive {
       let input = input.trim();
 
       match input {
-        "NEW" | "new" | "New" | "N" | "n" => {
+        "new" | "n" => {
           let pronouns_option = self.create_get_pronouns();
           match pronouns_option {
             Some(p) => {
@@ -4215,15 +4209,15 @@ impl NoteArchive {
             None => continue,
           }
         },
-        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+        "edit" | "e" => {
           self.choose_edit_pronouns();
           continue;
         },
-        "DELETE" | "delete" | "D" | "d" => {
+        "delete" | "d" => {
           self.choose_delete_pronouns();
           continue;
         },
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break None;
         },
         _ => {
@@ -4289,8 +4283,8 @@ impl NoteArchive {
         println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
         let subject_attempt = io::stdin().read_line(&mut subject_choice);
         match subject_attempt {
-          Ok(_) => match subject_choice.trim() {
-            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+          Ok(_) => match subject_choice.to_ascii_lowercase().trim() {
+            "quit" | "q" => break 'pronouns None,
             _ => break String::from(subject_choice.trim()),
           }
           Err(e) => {
@@ -4306,8 +4300,8 @@ impl NoteArchive {
         );
         let object_attempt = io::stdin().read_line(&mut object_choice);
         match object_attempt {
-          Ok(_) => match object_choice.trim() {
-            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+          Ok(_) => match object_choice.to_ascii_lowercase().trim() {
+            "quit" | "q" => break 'pronouns None,
             _ => break String::from(object_choice.trim()),
           }
           Err(e) => {
@@ -4325,7 +4319,7 @@ impl NoteArchive {
           io::stdin().read_line(&mut possessive_determiner_choice);
         match possessive_determiner_attempt {
           Ok(_) => match possessive_determiner_choice.trim() {
-            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+            "quit" | "q" => break 'pronouns None,
             _ => break String::from(possessive_determiner_choice.trim()),
           }
           Err(e) => {
@@ -4341,8 +4335,8 @@ impl NoteArchive {
         );
         let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
         match possessive_attempt {
-          Ok(_) => match possessive_choice.trim() {
-            "quit" | "QUIT" | "q" | "Q" => break 'pronouns None,
+          Ok(_) => match possessive_choice.to_ascii_lowercase().trim() {
+            "quit" | "q" => break 'pronouns None,
             _ => break String::from(possessive_choice.trim()),
           },
           Err(e) => {
@@ -4547,8 +4541,8 @@ impl NoteArchive {
               }
             }
           };
-          match &input.trim().to_string()[..] {
-            "QUIT" | "quit" | "Q" | "q" => break 'choose_edit_pronouns,
+          match &input.to_ascii_lowercase().trim().to_string()[..] {
+            "quit" | "q" => break 'choose_edit_pronouns,
             _ => {
               let id = match input.trim().parse::<u32>() {
                 Ok(num) => num,
@@ -4579,9 +4573,9 @@ impl NoteArchive {
             continue;
           }
         }
-        pronoun_to_edit = pronoun_to_edit.trim().to_string();
+        pronoun_to_edit = pronoun_to_edit.to_ascii_lowercase().trim().to_string();
         match &pronoun_to_edit[..] {
-          "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+          "quit" | "q" => {
             continue;
           }
           _ => (),
@@ -4671,7 +4665,7 @@ impl NoteArchive {
         println!("| {} | {}", "Enter ID to delete.", "QUIT / Q: cancel");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             thread::sleep(time::Duration::from_millis(10000));
@@ -4682,7 +4676,7 @@ impl NoteArchive {
       let input = input.trim();
     
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         },
         _ => {
@@ -4740,16 +4734,16 @@ impl NoteArchive {
           continue;
         }
       }
-      decision = decision.trim().to_string();
+      decision = decision.to_ascii_lowercase().trim().to_string();
       match &decision[..] {
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => break,
-        "delete" | "DELETE" | "Delete" => {
+        "quit" | "q" => break,
+        "delete" => {
           self.delete_pronouns(prns_id);
           self.display_pronouns();
           thread::sleep(time::Duration::from_secs(1));
           continue;
         },
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
           println!("'Q'/'QUIT' to quit menu.");
           let mut pronoun_to_edit = String::new();
@@ -4761,32 +4755,25 @@ impl NoteArchive {
               continue;
             }
           }
-          pronoun_to_edit = pronoun_to_edit.trim().to_string();
+          pronoun_to_edit = pronoun_to_edit.to_ascii_lowercase().trim().to_string();
           match &pronoun_to_edit[..] {
-            "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+            "quit" | "q" => {
               continue;
             },
-            "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
+            "subj" | "subject" => {
               println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
             },
-            "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
+            "obj" | "object" => {
               println!(
                 "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
               );
             },
-            "posdet"
-            | "POSDET"
-            | "possessive determiner"
-            | "POSSESSIVE DETERMINER"
-            | "Possessive Determiner"
-            | "PosDet"
-            | "Possessive determiner" => {
+            "posdet" | "possessive determiner" => {
               println!(
                 "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
               );
             },
-            "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
-            | "POSSESS" => {
+            "possessive" | "pos" | "possess" => {
               println!(
                 "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
               );
@@ -4941,7 +4928,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -4950,11 +4937,11 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "ALL" | "all" | "All" | "A" | "a" => {
+        "all" | "a" => {
           display_all = true;
           continue;
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -5195,7 +5182,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -5204,7 +5191,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_note_day_get_id();
           match maybe_new_id {
             Some(_) => (),
@@ -5212,16 +5199,16 @@ impl NoteArchive {
           }
           continue;
         },
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           self.choose_edit_note_days(display_all);
         },
-        "TEMPLATES" | "templates" | "Templates" | "t" | "T" => {
+        "templates" | "t" => {
           self.choose_note_templates();
         },
-        "ALL" | "all" | "All" | "A" | "a" => {
+        "all" | "a" => {
           display_all = true;
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break;
         },
         _ => match input.parse() {
@@ -5349,7 +5336,7 @@ impl NoteArchive {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
-        Ok(_) => choice,
+        Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
           println!("Could not read input; try again ({}).", e);
           continue;
@@ -5357,18 +5344,18 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         }
-        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+        "delete" | "d" => {
           self.choose_delete_notes();
         }
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           println!("Choose note by ID to edit its content.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let n_id = self.create_note_get_id(None);
         }
         _ => {
@@ -5933,9 +5920,9 @@ impl NoteArchive {
           continue;
         }
       }
-      field_to_edit = field_to_edit.trim().to_string();
+      field_to_edit = field_to_edit.to_ascii_lowercase().trim().to_string();
       match &field_to_edit[..] {
-        "quit" | "q" | "QUIT" | "Q" | "Quit" => {
+        "quit" | "q" => {
           break ();
         }
         _ => match field_to_edit.parse() {
@@ -5981,6 +5968,7 @@ impl NoteArchive {
   }
   fn choose_edit_note_template(&mut self) {
     loop {
+      let num_blanks = self.current_note_template().get_ordered_blanks().len() as u32;
       self.display_edit_note_template();
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
@@ -6055,9 +6043,403 @@ impl NoteArchive {
             None => continue,
           }
         },
-        "blanks" | "b" => {
+        "content" | "c" => {
+          let mut content_focus_id: Option<u32> = Some(1);
+          let blank_focus_id: Option<u32> = None;
+          loop {
+            self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+            println!(
+              "{} | {}",
+              "EDIT / E: Edit selected content",
+              "DELETE / D: Delete content",
+            );
+            println!("Choose content section by ID.");
+            println!("Enter 'QUIT / Q' at any time to return to the editing menu.");
+            let mut content_choice = String::new();
+            let content_attempt = io::stdin().read_line(&mut content_choice);
+            match content_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let content = content_choice.trim();
+            match &content.to_ascii_lowercase()[..] {
+              "quit" | "q" => {
+                break;
+              },
+              "edit" | "e" => {
+                self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+                println!("Enter new content to replace the selected text.");
+                let mut new_section = String::new();
+                let new_section_choice = loop {
+                  let section_result = io::stdin().read_line(&mut new_section);
+                  break match section_result {
+                    Ok(_) => new_section,
+                    Err(e) => {
+                      println!("Failed to read line: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+                };
+
+                let nt_content = self.current_note_template().content.clone();
+
+                let mut new_content = String::new();
+
+                for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
+                  if i + 1 == content_focus_id.unwrap() as usize {
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
+                  }
+                }
+
+                self.current_note_template_mut().content = new_content;
+                self.write_note_templates().unwrap()
+              },
+              "delete" | "d" => {
+                loop {
+                  println!("Are you sure you want to delete the currently selected section of content? (Y/N)");
+                  let mut delete_choice = String::new();
+                  let delete_attempt = io::stdin().read_line(&mut delete_choice);
+                  match delete_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Invalid repsonse: {}", e);
+                      continue;
+                    }
+                  }
+                  let delete = delete_choice.trim();
+                  match &delete[..] {
+                    "YES" | "yes" | "Yes" | "Y" | "y" => {
+                      let nt_content = self.current_note_template().content.clone();
+
+                      let mut new_content = String::new();
+                      for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
+                        if i == content_focus_id.unwrap() as usize {
+                          new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
+                        }
+                      }
+                      self.current_note_template_mut().content = new_content;
+                      self.write_note_templates().unwrap();
+                      break;
+                    },
+                    "NO" | "no" | "No" | "N" | "n" => {
+                      break;
+                    },
+                    _ => {
+                      println!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              },
+              "insert" | "i" => {
+                let mut content_focus_id: Option<u32> = Some(1);
+                let blank_focus_id: Option<u32> = None;
+                let new_blank = match choose_blanks_option() {
+                  Some(nb) => Blank::vector_of_variants()[nb],
+                  None => continue,
+                };
+                loop {
+
+                  let mut entered_content = String::new();
+                  let enter_result = io::stdin().read_line(&mut entered_content);
+                  let chosen_text = match enter_result {
+                    Ok(_) => entered_content,
+                    Err(e) => {
+                      println!("Failed to read string: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+
+                  let typed_content_indices = self.current_note_template().get_typed_content_indices();
+                  self.display_edit_note_template();
+                  println!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
+                  println!("Enter CANCEL at any time to cancel.");
+
+                  let mut insert_choice = String::new();
+                  let insert_attempt = io::stdin().read_line(&mut insert_choice);
+                  match insert_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println!("Invalid input: {}", e);
+                      continue;
+                    }
+                  }
+                  let insert = insert_choice.trim();
+                  match &insert[..] {
+                    "CANCEL" | "cancel" | "C" | "c" => {
+                      break;
+                    },
+                    "" => {
+                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                      let mut current_location = 1;
+                      'insert_location_content: loop {
+                        let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
+                        let idx1 = indices.0 as usize;
+                        let idx2 = indices.1 as usize;
+                        let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
+                        let num_chars = display_string.chars().count();
+                        if num_chars <= 163 {
+                          println!("{}", &display_string);
+                          let mut pointer_string = String::new();
+                          for _ in 0..current_location {
+                            pointer_string.push_str("-");
+                          }
+                          pointer_string.push_str("^");
+                          println!("{}", &pointer_string);
+                        } else {
+                          let mut outer_vec: Vec<(String, String)> = vec![];
+                          let num_vecs = if num_chars % 163 == 0 {
+                            num_chars / 163
+                          } else {
+                            (num_chars / 163) + 1
+                          };
+
+                          let mut display_content = self.current_note_template().generate_display_content_string().clone();
+                          while display_content.chars().count() > 163 {
+                            let (p1, p2) = display_content.split_at(163);
+                            let mut pointer_string = String::new();
+                            for _ in 0..163 {
+                              pointer_string.push_str(" ");
+                            }
+                            outer_vec.push((format!("{}", p1), pointer_string));
+                            display_content = format!("{}", p2);
+                          }
+                          if display_content == String::new() {
+                            ()
+                          } else {
+                            let mut pointer_string = String::new();
+                            for _ in 1..pointer_string.chars().count() {
+                              pointer_string.push_str("-");
+                            }
+                            pointer_string.push_str("^");
+                            outer_vec.push((format!("{}", display_content), pointer_string));
+                          }
+                          for row_and_pointer in outer_vec {
+                            println!("{}", row_and_pointer.0);
+                            println!("{}", row_and_pointer.1);
+                          }
+                        }
+                        println!("New content: {}", &chosen_text);
+                        println!("Enter an integer to navigate to a point at which to insert the new content.");
+                        println!("Press ENTER to insert new_content in the current location.");
+                        println!(
+                          "{} | {} | {}",
+                          "BEFORE / B: Insert at start of section",
+                          "AFTER / A: Insert at end of section",
+                          "CANCEL / C: Cancel inserting new content",
+                        );
+
+                        let mut insert_string = String::new();
+                        let insert_attempt = io::stdin().read_line(&mut insert_string);
+                        match insert_attempt {
+                          Ok(_) => (),
+                          Err(e) => {
+                            println!("Invalid input: {}", e);
+                            thread::sleep(time::Duration::from_secs(2));
+                            continue;
+                          },
+                        }
+                        match &insert_string.to_ascii_lowercase()[..] {
+                          // integer to change current location
+                          // ENTER to insert it there, then show what it will look like and confirm
+                          
+                          "before" | "b" => {
+                            loop {
+                              let new_content = format!("{}{}", &chosen_text, &display_string[..]);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = new_content;
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "after" | "a" => {
+                            loop {
+                              let new_content = format!("{}{}", &display_string[..], &chosen_text);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = new_content;
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "" => {
+                            loop {
+
+                              let new_content = format!("{}{}{}", &display_string[..current_location], &chosen_text, &display_string[current_location..]);
+                              println!("Confirm editing the selection to the following? (Y/N)");
+                              println!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note_template().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_template_mut().content = format!(
+                                    "{}{}{}",
+                                    &current_content[..idx1],
+                                    &new_content,
+                                    &current_content[idx2..],
+                                  );
+                                  self.write_note_templates().unwrap();
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          _ => {
+                            match insert_string.parse() {
+                              Ok(num) => {
+                                current_location = num;
+                                continue;
+                              },
+                              Err(e) => {
+                                println!("Invalid command.");
+                                thread::sleep(time::Duration::from_secs(2));
+                                continue;
+                              }
+                            }
+                          }
+                        }
+                      }
+
+
+                    },
+                    _ => {
+                      match insert.parse::<u32>() {
+                        Err(_) => {
+                          println!("Invalid command.");
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        },
+                        Ok(num) => {
+                          content_focus_id = Some(num);
+                        },
+                      }
+                    }
+                  }
+                }
+                let blank_focus_id: Option<u32> = Some(1);
+                let content_focus_id: Option<u32> = None;
+                self.write_note_templates().unwrap();
+              },
+              _ => {
+                match content.parse::<u32>() {
+                  Err(_) => {
+                    println!("Invalid command.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  },
+                  Ok(num) => {
+                    let num_sections = self.current_note_template().get_typed_content_indices().len();
+                    if num as usize > num_sections || num == 0 {
+                      println!("Please choose from among the content IDs shown above.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    } else {
+                      content_focus_id = Some(num);
+                    }
+                  },
+                }
+              },
+            }
+          }
+        },
+        _ => { // THIS IS "blanks" | "b" option - because parsing to int will also lead to choosing blank condition
           let mut blank_focus_id: Option<u32> = Some(1);
-          let content_focus_id: Option<u32> = None;
+          let mut content_focus_id: Option<u32> = None;
+          if field_to_edit.clone() == String::from("blanks") || field_to_edit.clone() == String::from("b") {
+            ()
+          } else {
+            match field_to_edit.parse::<u32>() {
+              Ok(num) => {
+                if num > num_blanks || num == 0 {
+                  blank_focus_id = Some(num);
+                  content_focus_id = None;
+                } else {
+                  println!("Please choose from among the blank IDs shown above.");
+                  thread::sleep(time::Duration::from_secs(2));
+                }
+              },
+              Err(_) => {
+                println!("Invalid command.");
+                thread::sleep(time::Duration::from_secs(2));
+              }
+            }
+          }
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
             println!(
@@ -6439,384 +6821,6 @@ impl NoteArchive {
             }
           }
         },
-        "content" | "c" => {
-          let mut content_focus_id: Option<u32> = Some(1);
-          let blank_focus_id: Option<u32> = None;
-          loop {
-            self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-            println!(
-              "{} | {}",
-              "EDIT / E: Edit selected content",
-              "DELETE / D: Delete content",
-            );
-            println!("Choose content section by ID.");
-            println!("Enter 'QUIT / Q' at any time to return to the editing menu.");
-            let mut content_choice = String::new();
-            let content_attempt = io::stdin().read_line(&mut content_choice);
-            match content_attempt {
-              Ok(_) => (),
-              Err(e) => {
-                println!("Invalid repsonse: {}", e);
-                continue;
-              }
-            }
-            let content = content_choice.trim();
-            match &content.to_ascii_lowercase()[..] {
-              "quit" | "q" => {
-                break;
-              },
-              "edit" | "e" => {
-                self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-                println!("Enter new content to replace the selected text.");
-                let mut new_section = String::new();
-                let new_section_choice = loop {
-                  let section_result = io::stdin().read_line(&mut new_section);
-                  break match section_result {
-                    Ok(_) => new_section,
-                    Err(e) => {
-                      println!("Failed to read line: {}", e);
-                      thread::sleep(time::Duration::from_secs(2));
-                      continue;
-                    }
-                  };
-                };
-
-                let nt_content = self.current_note_template().content.clone();
-
-                let mut new_content = String::new();
-
-                for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
-                  if i + 1 == content_focus_id.unwrap() as usize {
-                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
-                  }
-                }
-
-                self.current_note_template_mut().content = new_content;
-                self.write_note_templates().unwrap()
-              },
-              "delete" | "d" => {
-                loop {
-                  println!("Are you sure you want to delete the currently selected section of content? (Y/N)");
-                  let mut delete_choice = String::new();
-                  let delete_attempt = io::stdin().read_line(&mut delete_choice);
-                  match delete_attempt {
-                    Ok(_) => (),
-                    Err(e) => {
-                      println!("Invalid repsonse: {}", e);
-                      continue;
-                    }
-                  }
-                  let delete = delete_choice.trim();
-                  match &delete[..] {
-                    "YES" | "yes" | "Yes" | "Y" | "y" => {
-                      let nt_content = self.current_note_template().content.clone();
-
-                      let mut new_content = String::new();
-                      for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
-                        if i == content_focus_id.unwrap() as usize {
-                          new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
-                        }
-                      }
-                      self.current_note_template_mut().content = new_content;
-                      self.write_note_templates().unwrap();
-                      break;
-                    },
-                    "NO" | "no" | "No" | "N" | "n" => {
-                      break;
-                    },
-                    _ => {
-                      println!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
-                      thread::sleep(time::Duration::from_secs(2));
-                      continue;
-                    }
-                  }
-                }
-              },
-              "insert" | "i" => {
-                let mut content_focus_id: Option<u32> = Some(1);
-                let blank_focus_id: Option<u32> = None;
-                let new_blank = match choose_blanks_option() {
-                  Some(nb) => Blank::vector_of_variants()[nb],
-                  None => continue,
-                };
-                loop {
-
-                  let mut entered_content = String::new();
-                  let enter_result = io::stdin().read_line(&mut entered_content);
-                  let chosen_text = match enter_result {
-                    Ok(_) => entered_content,
-                    Err(e) => {
-                      println!("Failed to read string: {}", e);
-                      thread::sleep(time::Duration::from_secs(2));
-                      continue;
-                    }
-                  };
-
-                  let typed_content_indices = self.current_note_template().get_typed_content_indices();
-                  self.display_edit_note_template();
-                  println!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
-                  println!("Enter CANCEL at any time to cancel.");
-
-                  let mut insert_choice = String::new();
-                  let insert_attempt = io::stdin().read_line(&mut insert_choice);
-                  match insert_attempt {
-                    Ok(_) => (),
-                    Err(e) => {
-                      println!("Invalid input: {}", e);
-                      continue;
-                    }
-                  }
-                  let insert = insert_choice.trim();
-                  match &insert[..] {
-                    "CANCEL" | "cancel" | "C" | "c" => {
-                      break;
-                    },
-                    "" => {
-                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                      let mut current_location = 1;
-                      'insert_location_content: loop {
-                        let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
-                        let idx1 = indices.0 as usize;
-                        let idx2 = indices.1 as usize;
-                        let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
-                        let num_chars = display_string.chars().count();
-                        if num_chars <= 163 {
-                          println!("{}", &display_string);
-                          let mut pointer_string = String::new();
-                          for _ in 0..current_location {
-                            pointer_string.push_str("-");
-                          }
-                          pointer_string.push_str("^");
-                          println!("{}", &pointer_string);
-                        } else {
-                          let mut outer_vec: Vec<(String, String)> = vec![];
-                          let num_vecs = if num_chars % 163 == 0 {
-                            num_chars / 163
-                          } else {
-                            (num_chars / 163) + 1
-                          };
-
-                          let mut display_content = self.current_note_template().generate_display_content_string().clone();
-                          while display_content.chars().count() > 163 {
-                            let (p1, p2) = display_content.split_at(163);
-                            let mut pointer_string = String::new();
-                            for _ in 0..163 {
-                              pointer_string.push_str(" ");
-                            }
-                            outer_vec.push((format!("{}", p1), pointer_string));
-                            display_content = format!("{}", p2);
-                          }
-                          if display_content == String::new() {
-                            ()
-                          } else {
-                            let mut pointer_string = String::new();
-                            for _ in 1..pointer_string.chars().count() {
-                              pointer_string.push_str("-");
-                            }
-                            pointer_string.push_str("^");
-                            outer_vec.push((format!("{}", display_content), pointer_string));
-                          }
-                          for row_and_pointer in outer_vec {
-                            println!("{}", row_and_pointer.0);
-                            println!("{}", row_and_pointer.1);
-                          }
-                        }
-                        println!("New content: {}", &chosen_text);
-                        println!("Enter an integer to navigate to a point at which to insert the new content.");
-                        println!("Press ENTER to insert new_content in the current location.");
-                        println!(
-                          "{} | {} | {}",
-                          "BEFORE / B: Insert at start of section",
-                          "AFTER / A: Insert at end of section",
-                          "CANCEL / C: Cancel inserting new content",
-                        );
-
-                        let mut insert_string = String::new();
-                        let insert_attempt = io::stdin().read_line(&mut insert_string);
-                        match insert_attempt {
-                          Ok(_) => (),
-                          Err(e) => {
-                            println!("Invalid input: {}", e);
-                            thread::sleep(time::Duration::from_secs(2));
-                            continue;
-                          },
-                        }
-                        match &insert_string.to_ascii_lowercase()[..] {
-                          // integer to change current location
-                          // ENTER to insert it there, then show what it will look like and confirm
-                          
-                          "before" | "b" => {
-                            loop {
-                              let new_content = format!("{}{}", &chosen_text, &display_string[..]);
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
-
-                              let mut confirm_insert = String::new();
-                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
-                              let confirm = match confirm_attempt {
-                                Ok(_) => confirm_insert.trim(),
-                                Err(e) => {
-                                  println!("Failed to read input.");
-                                  thread::sleep(time::Duration::from_secs(2));
-                                  continue;
-                                }
-                              };
-
-                              let current_content = self.current_note_template().content.clone();
-
-                              match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
-                                  self.current_note_template_mut().content = new_content;
-                                  self.write_note_templates().unwrap();
-                                },
-                                "NO" | "no" | "No" | "N" | "n" => {
-                                  continue 'insert_location_content;
-                                },
-                                _ => {
-                                  println!("Invalid command.");
-                                  thread::sleep(time::Duration::from_secs(2));
-                                  continue;
-                                }
-                              }
-                            }
-                          },
-                          "after" | "a" => {
-                            loop {
-                              let new_content = format!("{}{}", &display_string[..], &chosen_text);
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
-
-                              let mut confirm_insert = String::new();
-                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
-                              let confirm = match confirm_attempt {
-                                Ok(_) => confirm_insert.trim(),
-                                Err(e) => {
-                                  println!("Failed to read input.");
-                                  thread::sleep(time::Duration::from_secs(2));
-                                  continue;
-                                }
-                              };
-
-                              let current_content = self.current_note_template().content.clone();
-
-                              match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
-                                  self.current_note_template_mut().content = new_content;
-                                  self.write_note_templates().unwrap();
-                                },
-                                "NO" | "no" | "No" | "N" | "n" => {
-                                  continue 'insert_location_content;
-                                },
-                                _ => {
-                                  println!("Invalid command.");
-                                  thread::sleep(time::Duration::from_secs(2));
-                                  continue;
-                                }
-                              }
-                            }
-                          },
-                          "" => {
-                            loop {
-
-                              let new_content = format!("{}{}{}", &display_string[..current_location], &chosen_text, &display_string[current_location..]);
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
-
-                              let mut confirm_insert = String::new();
-                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
-                              let confirm = match confirm_attempt {
-                                Ok(_) => confirm_insert.trim(),
-                                Err(e) => {
-                                  println!("Failed to read input.");
-                                  thread::sleep(time::Duration::from_secs(2));
-                                  continue;
-                                }
-                              };
-
-                              let current_content = self.current_note_template().content.clone();
-
-                              match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
-                                  self.current_note_template_mut().content = format!(
-                                    "{}{}{}",
-                                    &current_content[..idx1],
-                                    &new_content,
-                                    &current_content[idx2..],
-                                  );
-                                  self.write_note_templates().unwrap();
-                                },
-                                "NO" | "no" | "No" | "N" | "n" => {
-                                  continue 'insert_location_content;
-                                },
-                                _ => {
-                                  println!("Invalid command.");
-                                  thread::sleep(time::Duration::from_secs(2));
-                                  continue;
-                                }
-                              }
-                            }
-                          },
-                          _ => {
-                            match insert_string.parse() {
-                              Ok(num) => {
-                                current_location = num;
-                                continue;
-                              },
-                              Err(e) => {
-                                println!("Invalid command.");
-                                thread::sleep(time::Duration::from_secs(2));
-                                continue;
-                              }
-                            }
-                          }
-                        }
-                      }
-
-
-                    },
-                    _ => {
-                      match insert.parse::<u32>() {
-                        Err(_) => {
-                          println!("Invalid command.");
-                          thread::sleep(time::Duration::from_secs(2));
-                          continue;
-                        },
-                        Ok(num) => {
-                          content_focus_id = Some(num);
-                        },
-                      }
-                    }
-                  }
-                }
-                let blank_focus_id: Option<u32> = Some(1);
-                let content_focus_id: Option<u32> = None;
-                self.write_note_templates().unwrap();
-              },
-              _ => {
-                match content.parse::<u32>() {
-                  Err(_) => {
-                    println!("Invalid command.");
-                    thread::sleep(time::Duration::from_secs(2));
-                    continue;
-                  },
-                  Ok(num) => {
-                    let num_sections = self.current_note_template().get_typed_content_indices().len();
-                    if num as usize > num_sections || num == 0 {
-                      println!("Please choose from among the content IDs shown above.");
-                      thread::sleep(time::Duration::from_secs(2));
-                      continue;
-                    } else {
-                      content_focus_id = Some(num);
-                    }
-                  },
-                }
-              },
-            }
-          }
-        },
-        _ => {
-          println!("Other");
-        },
       }
     }
   }
@@ -6886,7 +6890,7 @@ impl NoteArchive {
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
-          Ok(_) => break choice,
+          Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Could not read input; try again ({}).", e);
             continue;
@@ -6895,7 +6899,7 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "NEW" | "new" | "New" | "n" | "N" => {
+        "new" | "n" => {
           let maybe_new_id = self.create_note_template_get_id();
           match maybe_new_id {
             Some(_) => (),
@@ -6903,11 +6907,11 @@ impl NoteArchive {
           }
           continue;
         },
-        "EDIT" | "edit" | "Edit" | "e" | "E" => {
+        "edit" | "e" => {
           self.choose_edit_note_templates();
           continue;
         },
-        "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+        "quit" | "q" => {
           break None;
         },
         _ => match input.parse() {
@@ -6965,7 +6969,7 @@ impl NoteArchive {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
-        Ok(_) => choice,
+        Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
           println!("Could not read input; try again ({}).", e);
           continue;
@@ -6973,10 +6977,10 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         }
-        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+        "delete" | "d" => {
           if self.current_note_template().custom {
             self.choose_delete_note_template();
             break;
@@ -6986,14 +6990,14 @@ impl NoteArchive {
             continue;
           }
         }
-        "NOTE" | "note" | "Note" | "N" | "n" => {
+        "note" | "n" => {
           let n_id = self.create_note_from_template_get_id(Some(self.current_note_template().id));
         }
-        "COPY" | "copy" | "Copy" | "C" | "c" => {
+        "copy" | "c" => {
           self.copy_note_template(self.current_note_template().id);
           break;
         }
-        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+        "edit" | "e" => {
           if self.current_note_template().custom {
             self.choose_edit_note_template();
           } else {
@@ -7623,7 +7627,7 @@ impl NoteArchive {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
-        Ok(_) => choice,
+        Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
           println!("Could not read input; try again ({}).", e);
           continue;
@@ -7631,14 +7635,14 @@ impl NoteArchive {
       };
       let input = input.trim();
       match input {
-        "QUIT" | "quit" | "Quit" | "Q" | "q" => {
+        "quit" | "q" => {
           break;
         }
-        "DELETE" | "delete" | "Delete" | "d" | "D" => {
+        "delete" | "d" => {
           self.choose_delete_note();
           break;
         }
-        "EDIT" | "edit" | "Edit" | "E" | "e" => {
+        "edit" | "e" => {
           // self.choose_edit_note();
           println!("self.choose_edit_note();");
         }
@@ -8280,8 +8284,8 @@ impl NoteArchive {
                     }
                   }
                 };
-                match &initial_input[..] {
-                  "NEW" | "new" | "New" | "n" | "N" => {
+                match &initial_input.to_ascii_lowercase()[..] {
+                  "new" | "n" => {
                     let maybe_new_id = self.create_collateral_get_id();
                     match maybe_new_id {
                       Some(new_id) => self.update_current_collaterals(new_id),
@@ -8289,15 +8293,15 @@ impl NoteArchive {
                     }
                     continue;
                   },
-                  "ADD" | "add" | "Add" | "a" | "A" => {
+                  "add" | "a" => {
                     self.add_collateral();
                     continue;
                   },
-                  "EDIT" | "edit" | "Edit" | "E" | "e" => {
+                  "edit" | "e" => {
                     self.choose_edit_client_collaterals();
                     continue;
                   },
-                  "QUIT" | "quit" | "Quit" | "q" | "Q" => {
+                  "quit" | "q" => {
                     break;
                   },
                   _ => {
