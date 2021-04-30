@@ -206,7 +206,14 @@ impl NoteTemplate {
       let find_match_string = content_string.clone();
       let m = RE_BLANK.find(&find_match_string);
       let m = match m {
-        None => break,
+        None => {
+          if content.len() == 0 && find_match_string.chars().count() != 0 {
+            content.push(find_match_string.clone());
+            break;
+          } else {
+            break;
+          }
+        }
         Some(m) => m,
       };
 
@@ -262,7 +269,9 @@ impl NoteTemplate {
     for (i, sent) in display_content_vec.iter().enumerate() {
       if sent.chars().count() > 0 {
         let mut sentence = sent.clone();
-        sentence.push_str(".");
+        if i != display_content_vec.len() - 1 {
+          sentence.push_str(".");
+        }
         if sentence.len() < 140 {
           length_adjusted_vec.push((i, sentence))
         } else {
@@ -285,14 +294,15 @@ impl NoteTemplate {
     }
     length_adjusted_vec
   }
-  pub fn display_content_from_vec(length_adjusted_vec: Vec<(usize, String)>) {
+  pub fn display_content_from_vec(length_adjusted_vec: Vec<(usize, String)>, s: &StructureType) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
-    println!("{:-^163}", "Current content");
+    let heading = format!(" Current content for new {} note template ", s);
+    println!("{:-^163}", heading);
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
-    let mut current_i = 0;
+    let mut current_i = 100; // arbitrary value not equal to zero to allow first iteration 
     for (i, cont) in length_adjusted_vec {
       let display_i = if i == current_i {
         String::from("   ")
@@ -300,7 +310,7 @@ impl NoteTemplate {
         let d_i = i + 1;
         format!(" {} ", d_i)
       };
-      println!("{:-^20} | {:-^140}", display_i, cont);
+      println!("{:-^20} | {: <140}", display_i, cont);
       current_i = i;
     }
     println!("{:-^163}", "-");
@@ -337,7 +347,7 @@ impl NoteTemplate {
       } else {
         String::from("   ")
       };
-      println!("{:-^20} | {:-^140}", display_i, &format!(" {} ", cont));
+      println!("{:-^20} | {: <140}", display_i, &format!(" {} ", cont));
       current_i = i;
     }
     println!("{:-^163}", "-");
@@ -721,7 +731,7 @@ impl Note {
         String::from("   ")
       };
       let cont = format!(" {} ", cont);
-      println!("{:-^20} | {:-^140}", display_i, cont);
+      println!("{:-^20} | {: <140}", display_i, cont);
       current_i = i;
     }
     println!("{:-^163}", "-");

@@ -1,6 +1,3 @@
 ##### note_templates #####
-1 | Care Plan Meeting | This is a template for (---u---) for the client (---c---).  | 1 | 
-3 | Care Plan Meeting | This is a template for (---ndd---)This is now some different content, isn't it? What follows will behe client (---c---).  | 1 | 
-4 | Intake | This is NOT a template for(---u---) for the client (---c---).  | 1 | 
-2 | Scheduling | This is a template for (---td---) for the client (---c---).  | 1 | 
+1 | Intake | asdfasdfasdfasdf  | 1 | 
 ##### note_templates #####

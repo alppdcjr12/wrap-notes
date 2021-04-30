@@ -112,18 +112,6 @@ pub struct NoteArchive {
 
 // general functions
 
-fn display_blanks() {
-  print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-  println!("{:-^73}", "-");
-  println!("{:-^73}", " Blanks ");
-  println!("{:-^73}", "-");
-  println!("{:-^10} | {:-^60}", " ID ", " Type ");
-  println!("{:-^73}", "-");
-  for (i, b) in Blank::iterator().enumerate() {
-    println!("{:-^10} | {:-<60}", i + 1, b.display_to_user());
-  }
-  println!("Choose blank type by ID.");
-}
 fn display_blanks_empty() {
   print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
   println!("{:-^73}", "-");
@@ -138,7 +126,7 @@ fn display_blanks_empty() {
 }
 fn choose_blanks() -> usize {
   loop {
-    display_blanks();
+    display_blanks_empty();
     let mut input = String::new();
     let input_attempt = io::stdin().read_line(&mut input);
     match input_attempt {
@@ -6983,6 +6971,7 @@ impl NoteArchive {
         "delete" | "d" => {
           if self.current_note_template().custom {
             self.choose_delete_note_template();
+            self.write_note_templates().unwrap();
             break;
           } else {
             println!("Cannot delete default note.");
@@ -6992,6 +6981,18 @@ impl NoteArchive {
         }
         "note" | "n" => {
           let n_id = self.create_note_from_template_get_id(Some(self.current_note_template().id));
+          match n_id {
+            Some(id) => {
+              println!("Note #{} added to record.", id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            },
+            None => {
+              println!("Note discarded.");
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
         }
         "copy" | "c" => {
           self.copy_note_template(self.current_note_template().id);
@@ -7081,30 +7082,62 @@ impl NoteArchive {
       let mut display_content = String::new();
       loop {
         let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
-        NoteTemplate::display_content_from_vec(display_content_vec);
+        NoteTemplate::display_content_from_vec(display_content_vec, &structure);
         println!("Add text or blank?");
-        println!("{} | {} | {} ", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template");
+        println!("{} | {} | {} | {}", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template", "BACK: Delete last sentence");
         let mut custom_choice = String::new();
         let custom_attempt = io::stdin().read_line(&mut custom_choice);
-        match custom_attempt {
-          Ok(_) => (),
+        let custom_choice = match custom_attempt {
+          Ok(_) => custom_choice.to_ascii_lowercase(),
           Err(e) => {
             println!("Invalid repsonse: {}", e);
             continue;
           }
-        }
+        };
         let custom = custom_choice.trim();
         match &custom[..] {
-          "TEXT" | "text" | "Text" | "T" | "t" => {
+          "back" => {
+            let current_content = content.split(".");
+            let num_sentences = content.split(".").count() - 1;
+            let new_content = current_content.enumerate()
+              .filter(|(i, _)| i != &num_sentences )
+              .map(|(_, ele)| ele.trim() )
+              .collect::<Vec<&str>>()
+              .join(". ");
+            content = new_content;
+
+            let current_display_content = display_content.split(".");
+            let num_display_sentences = display_content.split(".").count() - 1;
+            let new_display_content = current_display_content.enumerate()
+              .filter(|(i, _)| i != &num_display_sentences )
+              .map(|(_, ele)| ele.trim() )
+              .collect::<Vec<&str>>()
+              .join(". ");
+            display_content = new_display_content;
+          },
+          "text" | "t" => {
             loop {
               println!("Enter custom text as you would like it to appear.");
               let mut text_choice = String::new();
               let text_attempt = io::stdin().read_line(&mut text_choice);
               match text_attempt {
                 Ok(_) => {
-                  content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                  display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                  continue;
+                  match content.chars().last() {
+                    Some(c) => {
+                      if c.is_whitespace() && c != '.' && c != '!' && c != '?'  {
+                        content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                        display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                      } else {
+                        content.push_str(&format!(" {}{}", &text_choice.trim()[..], " "));
+                        display_content.push_str(&format!(" {}{}", &text_choice.trim()[..], " "));
+                      }
+                    },
+                    None => {
+                      content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                      display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                    }
+                  }
+                  break;
                 },
                 Err(e) => {
                   println!("Invalid repsonse: {}", e);
@@ -7113,13 +7146,26 @@ impl NoteArchive {
               }
             }
           },
-          "BLANK" | "blank" | "Blank" | "B" | "b" => {
+          "blank" | "b" => {
             let blank_idx = choose_blanks();
-            content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
-            display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+            match content.chars().last() {
+              Some(c) => {
+                if c.is_whitespace() && c != '.' && c != '!' && c != '?' {
+                  content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
+                  display_content.push_str(&format!("[ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+                } else {
+                  content.push_str(&format!(" {}", Blank::vector_of_variants()[blank_idx]));
+                  display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+                }
+              },
+              None => {
+                content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
+                display_content.push_str(&format!("[ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+              }
+            }
             continue;
           },
-          "SAVE" | "save" | "Save" | "S" | "s" => {
+          "save" | "s" => {
             if display_content.len() == 0 {
               println!("You must add at least one field to the content of a template. Please add either some text or at least one blank.");
               thread::sleep(time::Duration::from_secs(4));
@@ -7127,11 +7173,23 @@ impl NoteArchive {
             }
             break;
           },
-          "CANCEL" | "cancel" | "Cancel" => return None,
+          "cancel" => return None,
           _ => {
-            println!("Invalid command.");
-            thread::sleep(time::Duration::from_secs(2));
-            continue;
+            match content.chars().last() {
+              Some(c) => {
+                if c.is_whitespace() && c != '.' && c != '!' && c != '?'  {
+                  content.push_str(&format!("{}{}", &custom.trim()[..], " "));
+                  display_content.push_str(&format!("{}{}", &custom.trim()[..], " "));
+                } else {
+                  content.push_str(&format!(" {}{}", &custom.trim()[..], " "));
+                  display_content.push_str(&format!(" {}{}", &custom.trim()[..], " "));
+                }
+              },
+              None => {
+                content.push_str(&format!("{}{}", &custom.trim()[..], " "));
+                display_content.push_str(&format!("{}{}", &custom.trim()[..], " "));
+              }
+            }
           }
         }
       };
@@ -7406,7 +7464,9 @@ impl NoteArchive {
   }
   fn save_note_template(&mut self, note_template: NoteTemplate) {
 
-    let pos = self.note_templates.binary_search_by(|nt| nt.structure.cmp(&note_template.structure)
+    let pos = self.note_templates.binary_search_by(|nt| nt.id.cmp(&note_template.id)
+      .then_with(||
+        nt.structure.cmp(&note_template.structure))
       .then_with(|| match (&nt.foreign_key.get("user_id"), &note_template.foreign_key.get("user_id")) {
         (Some(anum), Some(bnum)) => anum.cmp(&bnum),
         (Some(_), None) => std::cmp::Ordering::Greater,
