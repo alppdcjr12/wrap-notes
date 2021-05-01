@@ -5943,21 +5943,20 @@ impl NoteArchive {
     }
   }
   fn display_edit_note_template(&self) {
-    let current_nt = self.current_note_template();
-    current_nt.display_content();
-    println!(
-      "{} | {} | {} | {}",
-      "STRUCTURE / S: Edit structure type",
-      "BLANKS / B: Edit blanks",
-      "CONTENT / C: Edit default content",
-      "QUIT / Q: Quit menu",
-    );
-    println!("Choose blank by ID to delete or change it to a different type of blank.");
+    self.current_note_template().display_content();
   }
   fn choose_edit_note_template(&mut self) {
     loop {
       let num_blanks = self.current_note_template().get_ordered_blanks().len() as u32;
       self.display_edit_note_template();
+      println!(
+        "{} | {} | {} | {}",
+        "STRUCTURE / S: Edit structure type",
+        "BLANKS / B: Edit blanks",
+        "CONTENT / C: Edit default content",
+        "QUIT / Q: Quit menu",
+      );
+      println!("Choose blank by ID to delete or change it to a different type of blank.");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
@@ -6064,7 +6063,7 @@ impl NoteArchive {
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
                   break match section_result {
-                    Ok(_) => new_section,
+                    Ok(_) => new_section.trim().to_string(),
                     Err(e) => {
                       println!("Failed to read line: {}", e);
                       thread::sleep(time::Duration::from_secs(2));
@@ -6124,7 +6123,7 @@ impl NoteArchive {
                   }
                 }
               },
-              "insert" | "i" => {
+              "insert" | "i" => { // in content choice
                 let mut content_focus_id: Option<u32> = Some(1);
                 let blank_focus_id: Option<u32> = None;
                 let new_blank = match choose_blanks_option() {
@@ -6145,7 +6144,7 @@ impl NoteArchive {
                   };
 
                   let typed_content_indices = self.current_note_template().get_typed_content_indices();
-                  self.display_edit_note_template();
+                  self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
                   println!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
                   println!("Enter CANCEL at any time to cancel.");
 
@@ -6425,6 +6424,7 @@ impl NoteArchive {
               Err(_) => {
                 println!("Invalid command.");
                 thread::sleep(time::Duration::from_secs(2));
+                continue;
               }
             }
           }
@@ -6519,7 +6519,7 @@ impl NoteArchive {
                   }
                 }
               },
-              "insert" | "i" => {
+              "insert" | "i" => { // in blanks choice
                 let blank_focus_id: Option<u32> = None;
                 let mut content_focus_id: Option<u32> = Some(1);
                 let new_blank = match choose_blanks_option() {
@@ -6528,7 +6528,7 @@ impl NoteArchive {
                 };
                 loop {
                   let typed_content_indices = self.current_note_template().get_typed_content_indices();
-                  self.display_edit_note_template();
+                  self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
                   println!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
                   println!("Enter CANCEL at any time to cancel.");
                   let mut insert_choice = String::new();
@@ -6548,10 +6548,10 @@ impl NoteArchive {
                     "" => {
                       let mut new_blanks = self.current_note_template().get_ordered_blanks();
                       new_blanks.insert(content_focus_id.unwrap() as usize - 1, new_blank.clone());
-                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
                       'insert_location_blanks: loop {
-                        let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
+                        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                        let indices = typed_content_indices[content_focus_id.unwrap() as usize - 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
                         let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
@@ -6611,7 +6611,7 @@ impl NoteArchive {
                             continue;
                           },
                         }
-                        match &insert_string[..] {
+                        match &insert_string.trim()[..] {
                           // integer to change current location
                           // ENTER to insert it there, then show what it will look like and confirm
                           "" => {
@@ -6642,13 +6642,13 @@ impl NoteArchive {
                                     &new_content,
                                     &current_content[idx2..],
                                   );
-                                  let formatted_blanks = NoteTemplate::get_blanks_with_new_ids(new_blanks, content_focus_id.unwrap() - 1);
+                                  let formatted_blanks = NoteTemplate::get_blanks_with_new_ids(new_blanks.clone(), content_focus_id.unwrap() - 1);
 
                                   lazy_static! {
                                     static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
                                   }
 
-                                  for (i, m) in RE_BLANK.find_iter(&edited_content).enumerate() {
+                                  for (i, m) in RE_BLANK.find_iter(&edited_content.clone()).enumerate() {
                                     edited_content = format!("{}{}{}", &edited_content[..m.start()], &formatted_blanks[i].to_string()[..], &edited_content[m.end()..]);
                                   }
 
@@ -6746,7 +6746,7 @@ impl NoteArchive {
                             }
                           },
                           _ => {
-                            match insert_string.parse() {
+                            match insert_string.trim().parse() {
                               Ok(num) => {
                                 current_location = num;
                                 continue;
@@ -6771,12 +6771,12 @@ impl NoteArchive {
                           continue;
                         },
                         Ok(num) => {
-                          if num as usize >= typed_content_indices.len() - 1 {
-                            println!("Please choose a number from among the displayed content indices.");
+                          if num as usize > typed_content_indices.len() || num as usize == 0 {
+                            println!("Please choose from among the displayed content indices: {}.", typed_content_indices.len());
                             thread::sleep(time::Duration::from_secs(2));
                             continue;
                           } else {
-                            content_focus_id = Some(num + 1);
+                            content_focus_id = Some(num);
                           }
                         },
                       }
@@ -7169,21 +7169,21 @@ impl NoteArchive {
 
             let num_blanks = RE_BLANK.find_iter(&content).count();
             
-            let connected_blank_id = match chosen_blank {
+            let connected_blank_id: Option<usize> = match chosen_blank {
               Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
                 loop {
                   println!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
                   let mut input_string = String::new();
                   let input_result = io::stdin().read_line(&mut input_string);
                   let input = match input_result {
-                    Ok(_) => input_string.to_ascii_lowercase().trim(),
+                    Ok(_) => input_string.trim(),
                     Err(e) => {
                       println!("Failed to read input.");
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
                     }
                   };
-                  if &input[..] == "cancel" {
+                  if &input.to_ascii_lowercase()[..] == "cancel" {
                     break None;
                   }
                   match input.parse() {
@@ -7208,11 +7208,11 @@ impl NoteArchive {
             };
             let (blank_string, display_blank_string) = match connected_blank_id {
               Some(num) => {
-                let new_blank = match chosen_blank {
-                  Pronoun1ForBlank(_) => Pronoun1ForBlank(Some(num)),
-                  Pronoun2ForBlank(_) => Pronoun2ForBlank(Some(num)),
-                  Pronoun3ForBlank(_) => Pronoun3ForBlank(Some(num)),
-                  Pronoun4ForBlank(_) => Pronoun4ForBlank(Some(num)),
+                let new_blank: Blank = match chosen_blank {
+                  Pronoun1ForBlank(_) => Pronoun1ForBlank(Some(num as u32)),
+                  Pronoun2ForBlank(_) => Pronoun2ForBlank(Some(num as u32)),
+                  Pronoun3ForBlank(_) => Pronoun3ForBlank(Some(num as u32)),
+                  Pronoun4ForBlank(_) => Pronoun4ForBlank(Some(num as u32)),
                   _ => panic!("User was asked to select connected_blank_id even though blank type is not linked to another blank."),
                 };
                 (format!("{}", new_blank), new_blank.display_to_user())

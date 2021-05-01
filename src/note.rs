@@ -186,9 +186,8 @@ impl NoteTemplate {
     }
     typed_content_indices
   }
-  pub fn get_blanks_with_new_ids(blanks: Vec<Blank>, position: u32) -> Vec<Blank> {
-    let mut current_idx = 1;
-    let mut copied_blanks = blanks.clone();
+  pub fn get_blanks_with_new_ids(mut blanks: Vec<Blank>, position: u32) -> Vec<Blank> {
+    let copied_blanks = blanks.clone();
 
     for (i, b) in copied_blanks.iter().enumerate() {
       match b {
@@ -425,7 +424,7 @@ impl NoteTemplate {
       } else {
         String::from("   ")
       };
-      println!("{:-^20} | {:-^140}", display_i, cont);
+      println!("{:-^20} | {: <140}", display_i, cont);
       current_i = i;
     }
     println!("{:-^163}", "-");
