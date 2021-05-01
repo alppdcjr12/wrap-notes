@@ -191,6 +191,40 @@ fn choose_blanks_option() -> Option<usize> {
     }
   }
 }
+pub fn get_spacing_buffers(last_content_char: Option<char>, next_content_char: Option<char>) -> (String, String) {
+  match (last_content_char, next_content_char) {
+    (Some(lc), Some(nc)) => {
+      if lc == ' ' && nc == ' ' {
+        (String::new(), String::new())
+      } else if lc == ' ' {
+        (String::new(), String::from(" "))
+      } else if nc == ' ' {
+        (String::from(" "), String::new())
+      } else {
+        (String::from(" "), String::from(" "))
+      }
+    },
+    (Some(lc), None) => {
+      if lc == ' ' {
+        (String::new(), String::from(" "))
+      } else {
+        (String::from(" "), String::from(" "))
+      }
+    },
+    (None, Some(nc)) => {
+      if nc == ' ' {
+        (String::from(" "), String::new())
+      } else {
+        (String::from(" "), String::from(" "))
+      }
+    },
+    (None, None) => {
+      // in this case, there is no prior char, which means we wouldn't want a random space at the start of the text.
+      // however, a space on the end would be permissible because the input is often trimmed and there are checks for double spacing.
+      (String::new(), String::from(" "))
+    }
+  }
+}
 
 impl NoteArchive {
   pub fn run(&mut self) {
@@ -6036,8 +6070,10 @@ impl NoteArchive {
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
             println!(
-              "{} | {}",
+              "{} | {} | {} | {}",
               "EDIT / E: Edit selected content",
+              "ADD / A: Add content to end of template",
+              "INSERT / I: Insert additional content",
               "DELETE / D: Delete content",
             );
             println!("Choose content section by ID.");
@@ -6056,6 +6092,9 @@ impl NoteArchive {
               "quit" | "q" => {
                 break;
               },
+              "append" | "add" | "a" => {
+
+              }
               "edit" | "e" => {
                 self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
                 println!("Enter new content to replace the selected text.");
@@ -6126,12 +6165,10 @@ impl NoteArchive {
               "insert" | "i" => { // in content choice
                 let mut content_focus_id: Option<u32> = Some(1);
                 let blank_focus_id: Option<u32> = None;
-                let new_blank = match choose_blanks_option() {
-                  Some(nb) => Blank::vector_of_variants()[nb],
-                  None => continue,
-                };
                 loop {
 
+                  self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+                  println!("Enter new content to insert.");
                   let mut entered_content = String::new();
                   let enter_result = io::stdin().read_line(&mut entered_content);
                   let chosen_text = match enter_result {
@@ -6144,7 +6181,6 @@ impl NoteArchive {
                   };
 
                   let typed_content_indices = self.current_note_template().get_typed_content_indices();
-                  self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
                   println!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
                   println!("Enter CANCEL at any time to cancel.");
 
@@ -6232,13 +6268,27 @@ impl NoteArchive {
                             continue;
                           },
                         }
-                        match &insert_string.to_ascii_lowercase()[..] {
+                        match &insert_string.trim().to_ascii_lowercase()[..] {
                           // integer to change current location
                           // ENTER to insert it there, then show what it will look like and confirm
-                          
+                          "cancel" => {
+                            break 'insert_location_content;
+                          }
                           "before" | "b" => {
                             loop {
-                              let new_content = format!("{}{}", &chosen_text, &display_string[..]);
+                              let last_content_char = if current_location == 0 {
+                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_content = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
                               println!("Confirm editing the selection to the following? (Y/N)");
                               println!("{}", &new_content);
 
@@ -6255,12 +6305,13 @@ impl NoteArchive {
 
                               let current_content = self.current_note_template().content.clone();
 
-                              match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                              match &confirm.to_ascii_lowercase()[..] {
+                                "yes" | "y" => {
                                   self.current_note_template_mut().content = new_content;
                                   self.write_note_templates().unwrap();
+                                  break 'insert_location_content;
                                 },
-                                "NO" | "no" | "No" | "N" | "n" => {
+                                "no" | "n" => {
                                   continue 'insert_location_content;
                                 },
                                 _ => {
@@ -6273,7 +6324,19 @@ impl NoteArchive {
                           },
                           "after" | "a" => {
                             loop {
-                              let new_content = format!("{}{}", &display_string[..], &chosen_text);
+                              let last_content_char = if current_location == 0 {
+                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_content = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
                               println!("Confirm editing the selection to the following? (Y/N)");
                               println!("{}", &new_content);
 
@@ -6294,6 +6357,7 @@ impl NoteArchive {
                                 "YES" | "yes" | "Yes" | "Y" | "y" => {
                                   self.current_note_template_mut().content = new_content;
                                   self.write_note_templates().unwrap();
+                                  break 'insert_location_content;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
                                   continue 'insert_location_content;
@@ -6308,8 +6372,26 @@ impl NoteArchive {
                           },
                           "" => {
                             loop {
+                              let last_content_char = if current_location == 0 {
+                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
-                              let new_content = format!("{}{}{}", &display_string[..current_location], &chosen_text, &display_string[current_location..]);
+                              let new_content = format!(
+                                "{}{}{}{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0,
+                                &chosen_text,
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
                               println!("Confirm editing the selection to the following? (Y/N)");
                               println!("{}", &new_content);
 
@@ -6335,6 +6417,7 @@ impl NoteArchive {
                                     &current_content[idx2..],
                                   );
                                   self.write_note_templates().unwrap();
+                                  break 'insert_location_content;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
                                   continue 'insert_location_content;
@@ -6348,7 +6431,7 @@ impl NoteArchive {
                             }
                           },
                           _ => {
-                            match insert_string.parse() {
+                            match insert_string.trim().parse() {
                               Ok(num) => {
                                 current_location = num;
                                 continue;
@@ -6431,8 +6514,9 @@ impl NoteArchive {
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
             println!(
-              "{} | {}",
+              "{} | {} | {}",
               "EDIT / E: Edit selected blank type",
+              "INSERT / I: Insert new blank",
               "DELETE / D: Delete blank",
             );
             println!("Choose blank by blank ID.");
@@ -6614,12 +6698,41 @@ impl NoteArchive {
                         match &insert_string.trim()[..] {
                           // integer to change current location
                           // ENTER to insert it there, then show what it will look like and confirm
+                          "cancel" => {
+                            break 'insert_location_blanks;
+                          }
                           "" => {
                             loop {
 
-                              let new_content = format!("{}{}{}", &display_string[..current_location], &new_blank.display_to_user_empty(), &display_string[current_location..]);
+                              let last_content_char = if current_location == 0 {
+                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_display_content = format!(
+                                "{}{}{}{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0, &new_blank.display_to_user_empty()[..],
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
+                              let new_content = format!(
+                                "{}{}{}{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0,
+                                new_blank,
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
                               println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
+                              println!("{}", &new_display_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -6653,8 +6766,8 @@ impl NoteArchive {
                                   }
 
                                   self.current_note_template_mut().content = edited_content;
-
                                   self.write_note_templates().unwrap();
+                                  break 'insert_location_blanks;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
                                   continue 'insert_location_blanks;
@@ -6669,9 +6782,34 @@ impl NoteArchive {
                           },
                           "before" | "b" => {
                             loop {
-                              let new_content = format!("{}{}", &new_blank.display_to_user_empty(), &display_string[..]);
+                              let last_content_char = if current_location == 0 {
+                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_display_content = format!(
+                                "{}{}{}{}",
+                                &bfrs.0,
+                                &new_blank.display_to_user_empty()[..],
+                                &bfrs.1,
+                                &display_string[..]
+                              );
+                              let new_content = format!(
+                                "{}{}{}{}",
+                                &bfrs.0,
+                                new_blank,
+                                &bfrs.1,
+                                &display_string[..]
+                              );
                               println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
+                              println!("{}", &new_display_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -6694,6 +6832,7 @@ impl NoteArchive {
                                     &current_content[..],
                                   );
                                   self.write_note_templates().unwrap();
+                                  break 'insert_location_blanks;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
                                   continue 'insert_location_blanks;
@@ -6708,7 +6847,32 @@ impl NoteArchive {
                           },
                           "after" | "a" => {
                             loop {
-                              let new_content = format!("{}{}", &display_string[..], &new_blank.display_to_user_empty());
+                              let last_content_char = if current_location == 0 {
+                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_display_content = format!(
+                                "{}{}{}{}",
+                                &display_string[..],
+                                &bfrs.0,
+                                &new_blank.display_to_user_empty()[..],
+                                &bfrs.1
+                              );
+                              let new_content = format!(
+                                "{}{}{}{}",
+                                &display_string[..],
+                                &bfrs.0,
+                                new_blank,
+                                &bfrs.1
+                              );
                               println!("Confirm editing the selection to the following? (Y/N)");
                               println!("{}", &new_content);
 
@@ -6733,6 +6897,7 @@ impl NoteArchive {
                                     &new_blank,
                                   );
                                   self.write_note_templates().unwrap();
+                                  break 'insert_location_blanks;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
                                   continue 'insert_location_blanks;
@@ -6748,7 +6913,12 @@ impl NoteArchive {
                           _ => {
                             match insert_string.trim().parse() {
                               Ok(num) => {
-                                current_location = num;
+                                let num_chars = self.current_note_template().content.chars().count();
+                                if num > num_chars {
+                                  current_location = num_chars;
+                                } else {
+                                  current_location = num;
+                                }
                                 continue;
                               },
                               Err(e) => {

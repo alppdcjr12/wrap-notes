@@ -1,4 +1,4 @@
 ##### note_templates #####
 1 | Intake | asdfasdfasdfasdf  | 1 | 
-2 | Phone Call | The name of the client I[ Wraparound meeting title ] am writing a note about is  am writing a note about is (---im---). | 1 | 
+2 | Phone Call |  16 nt note ]of the cur [ Possessive p | 1 | 
 ##### note_templates #####
