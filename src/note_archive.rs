@@ -6546,6 +6546,8 @@ impl NoteArchive {
                       break;
                     },
                     "" => {
+                      let mut new_blanks = self.current_note_template().get_ordered_blanks();
+                      new_blanks.insert(content_focus_id.unwrap() as usize - 1, new_blank.clone());
                       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
                       'insert_location_blanks: loop {
@@ -6612,7 +6614,6 @@ impl NoteArchive {
                         match &insert_string[..] {
                           // integer to change current location
                           // ENTER to insert it there, then show what it will look like and confirm
-                          // 
                           "" => {
                             loop {
 
@@ -6635,12 +6636,24 @@ impl NoteArchive {
 
                               match &confirm[..] {
                                 "YES" | "yes" | "Yes" | "Y" | "y" => {
-                                  self.current_note_template_mut().content = format!(
+                                  let mut edited_content = format!(
                                     "{}{}{}",
                                     &current_content[..idx1],
                                     &new_content,
                                     &current_content[idx2..],
                                   );
+                                  let formatted_blanks = NoteTemplate::get_blanks_with_new_ids(new_blanks, content_focus_id.unwrap() - 1);
+
+                                  lazy_static! {
+                                    static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                                  }
+
+                                  for (i, m) in RE_BLANK.find_iter(&edited_content).enumerate() {
+                                    edited_content = format!("{}{}{}", &edited_content[..m.start()], &formatted_blanks[i].to_string()[..], &edited_content[m.end()..]);
+                                  }
+
+                                  self.current_note_template_mut().content = edited_content;
+
                                   self.write_note_templates().unwrap();
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
@@ -7083,12 +7096,12 @@ impl NoteArchive {
       loop {
         let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
         NoteTemplate::display_content_from_vec(display_content_vec, &structure);
-        println!("Add text or blank?");
+        println!("Enter text to add text to the template, or choose from among the following options:");
         println!("{} | {} | {} | {}", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template", "BACK: Delete last sentence");
         let mut custom_choice = String::new();
         let custom_attempt = io::stdin().read_line(&mut custom_choice);
         let custom_choice = match custom_attempt {
-          Ok(_) => custom_choice.to_ascii_lowercase(),
+          Ok(_) => custom_choice,
           Err(e) => {
             println!("Invalid repsonse: {}", e);
             continue;
@@ -7115,7 +7128,7 @@ impl NoteArchive {
               .join(". ");
             display_content = new_display_content;
           },
-          "text" | "t" => {
+          "text" | "t" | "TEXT" | "Text" | "T" => {
             loop {
               println!("Enter custom text as you would like it to appear.");
               let mut text_choice = String::new();
@@ -7124,17 +7137,17 @@ impl NoteArchive {
                 Ok(_) => {
                   match content.chars().last() {
                     Some(c) => {
-                      if c.is_whitespace() && c != '.' && c != '!' && c != '?'  {
-                        content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                        display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                      if c.is_whitespace() && c != '.' && c != '!' && c != '?' || &custom.trim()[..] == "." || &custom.trim()[..] == "!" {
+                        content.push_str(&text_choice.trim()[..]);
+                        display_content.push_str(&text_choice.trim()[..]);
                       } else {
-                        content.push_str(&format!(" {}{}", &text_choice.trim()[..], " "));
-                        display_content.push_str(&format!(" {}{}", &text_choice.trim()[..], " "));
+                        content.push_str(&format!(" {}", &text_choice.trim()[..]));
+                        display_content.push_str(&format!(" {}", &text_choice.trim()[..]));
                       }
                     },
                     None => {
-                      content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
-                      display_content.push_str(&format!("{}{}", &text_choice.trim()[..], " "));
+                      content.push_str(&text_choice.trim()[..]);
+                      display_content.push_str(&text_choice.trim()[..]);
                     }
                   }
                   break;
@@ -7146,26 +7159,84 @@ impl NoteArchive {
               }
             }
           },
-          "blank" | "b" => {
+          "blank" | "b" | "BLANK" | "Blank" | "B" => {
             let blank_idx = choose_blanks();
+            let chosen_blank = Blank::vector_of_variants()[blank_idx];
+            
+            lazy_static! {
+              static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+            }
+
+            let num_blanks = RE_BLANK.find_iter(&content).count();
+            
+            let connected_blank_id = match chosen_blank {
+              Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
+                loop {
+                  println!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
+                  let mut input_string = String::new();
+                  let input_result = io::stdin().read_line(&mut input_string);
+                  let input = match input_result {
+                    Ok(_) => input_string.to_ascii_lowercase().trim(),
+                    Err(e) => {
+                      println!("Failed to read input.");
+                      thread::sleep(time::Duration::from_secs(1));
+                      continue;
+                    }
+                  };
+                  if &input[..] == "cancel" {
+                    break None;
+                  }
+                  match input.parse() {
+                    Ok(num) => {
+                      if num > num_blanks {
+                        println!("Please choose an integer in the range of the number of current blanks already added to this template.");
+                        thread::sleep(time::Duration::from_secs(1));
+                        continue;
+                      } else {
+                        break Some(num);
+                      }
+                    },
+                    Err(e) => {
+                      println!("Invalid command.");
+                      thread::sleep(time::Duration::from_secs(1));
+                      continue;
+                    }
+                  }
+                }
+              },
+              _ => None,
+            };
+            let (blank_string, display_blank_string) = match connected_blank_id {
+              Some(num) => {
+                let new_blank = match chosen_blank {
+                  Pronoun1ForBlank(_) => Pronoun1ForBlank(Some(num)),
+                  Pronoun2ForBlank(_) => Pronoun2ForBlank(Some(num)),
+                  Pronoun3ForBlank(_) => Pronoun3ForBlank(Some(num)),
+                  Pronoun4ForBlank(_) => Pronoun4ForBlank(Some(num)),
+                  _ => panic!("User was asked to select connected_blank_id even though blank type is not linked to another blank."),
+                };
+                (format!("{}", new_blank), new_blank.display_to_user())
+              },
+              None => (format!("{}", chosen_blank), chosen_blank.display_to_user()),
+            };
             match content.chars().last() {
               Some(c) => {
                 if c.is_whitespace() && c != '.' && c != '!' && c != '?' {
-                  content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
-                  display_content.push_str(&format!("[ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+                  content.push_str(&format!("{}", blank_string));
+                  display_content.push_str(&format!("[ {} ]", display_blank_string));
                 } else {
-                  content.push_str(&format!(" {}", Blank::vector_of_variants()[blank_idx]));
-                  display_content.push_str(&format!(" [ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+                  content.push_str(&format!(" {}", blank_string));
+                  display_content.push_str(&format!(" [ {} ]", display_blank_string));
                 }
               },
               None => {
-                content.push_str(&format!("{}", Blank::vector_of_variants()[blank_idx]));
-                display_content.push_str(&format!("[ {} ]", Blank::vector_of_variants()[blank_idx].display_to_user()));
+                content.push_str(&format!("{}", blank_string));
+                display_content.push_str(&format!("[ {} ]", display_blank_string));
               }
             }
             continue;
           },
-          "save" | "s" => {
+          "save" | "s" | "SAVE" | "Save" | "S" => {
             if display_content.len() == 0 {
               println!("You must add at least one field to the content of a template. Please add either some text or at least one blank.");
               thread::sleep(time::Duration::from_secs(4));
@@ -7173,21 +7244,21 @@ impl NoteArchive {
             }
             break;
           },
-          "cancel" => return None,
+          "cancel" | "Cancel" | "CANCEL" => return None,
           _ => {
             match content.chars().last() {
               Some(c) => {
-                if c.is_whitespace() && c != '.' && c != '!' && c != '?'  {
-                  content.push_str(&format!("{}{}", &custom.trim()[..], " "));
-                  display_content.push_str(&format!("{}{}", &custom.trim()[..], " "));
+                if c.is_whitespace() && c != '.' && c != '!' && c != '?' || &custom.trim()[..] == "." || &custom.trim()[..] == "!" {
+                  content.push_str(&custom.trim()[..]);
+                  display_content.push_str(&custom.trim()[..]);
                 } else {
-                  content.push_str(&format!(" {}{}", &custom.trim()[..], " "));
-                  display_content.push_str(&format!(" {}{}", &custom.trim()[..], " "));
+                  content.push_str(&format!(" {}", &custom.trim()[..]));
+                  display_content.push_str(&format!(" {}", &custom.trim()[..]));
                 }
               },
               None => {
-                content.push_str(&format!("{}{}", &custom.trim()[..], " "));
-                display_content.push_str(&format!("{}{}", &custom.trim()[..], " "));
+                content.push_str(&custom.trim()[..]);
+                display_content.push_str(&custom.trim()[..]);
               }
             }
           }

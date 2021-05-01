@@ -186,6 +186,62 @@ impl NoteTemplate {
     }
     typed_content_indices
   }
+  pub fn get_blanks_with_new_ids(blanks: Vec<Blank>, position: u32) -> Vec<Blank> {
+    let mut current_idx = 1;
+    let mut copied_blanks = blanks.clone();
+
+    for (i, b) in copied_blanks.iter().enumerate() {
+      match b {
+        Pronoun1ForBlank(id) => {
+          if id.unwrap() + 1 >= position {
+            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+              if oi == i {
+                Pronoun1ForBlank(Some(id.unwrap()+1))
+              } else {
+                Pronoun1ForBlank(Some(id.unwrap()))
+              }
+            ).collect::<Vec<Blank>>();
+
+          }
+        },
+        Pronoun2ForBlank(id) => {
+          if id.unwrap() + 1 >= position {
+            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+              if oi == i {
+                Pronoun2ForBlank(Some(id.unwrap()+1))
+              } else {
+                Pronoun2ForBlank(Some(id.unwrap()))
+              }
+            ).collect::<Vec<Blank>>();
+          }
+        },
+        Pronoun3ForBlank(id) => {
+          if id.unwrap() + 1 >= position {
+            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+              if oi == i {
+                Pronoun3ForBlank(Some(id.unwrap()+1))
+              } else {
+                Pronoun3ForBlank(Some(id.unwrap()))
+              }
+            ).collect::<Vec<Blank>>();
+          }
+        },
+        Pronoun4ForBlank(id) => {
+          if id.unwrap() + 1 >= position {
+            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+              if oi == i {
+                Pronoun4ForBlank(Some(id.unwrap()+1))
+              } else {
+                Pronoun4ForBlank(Some(id.unwrap()))
+              }
+            ).collect::<Vec<Blank>>();
+          }
+        },
+        _ => (),
+      }
+    }
+    blanks
+  }
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> String {
     let mut content_string = self.content.clone();
 

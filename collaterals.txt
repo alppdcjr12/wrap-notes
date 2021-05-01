@@ -1,3 +1,4 @@
 ##### collaterals #####
 1 | Sauron | Darklordson | Dark Lord | Mordor | 1 | Formal | false
+2 | Jack | Smith | OPT | --NONE-- | 1 | Natural | false
 ##### collaterals #####
