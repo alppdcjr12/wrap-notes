@@ -9,6 +9,7 @@
 #[macro_use] use lazy_static::lazy_static;
 use regex::Regex;
 use regex::Match;
+use colored::*;
 
 use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc, Weekday};
 use std::fmt;

@@ -6,7 +6,6 @@
 #![allow(unused_comparisons)]
 #![allow(unused_attributes)]
 
-
 // use std::fs::File;
 // use std::io::prelude::*;
 pub mod note_archive;
