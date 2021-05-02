@@ -10,6 +10,7 @@ use std::fmt;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White};
+use ansi_term::{Style, ANSIStrings, ANSIString};
 
 use std::{thread, time};
 
@@ -317,6 +318,60 @@ impl NoteTemplate {
       static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
     }
     RE_BLANK.find_iter(&self.content).map(|m| Blank::get_blank_from_str(&self.content[m.start()..m.end()]) ).collect::<Vec<Blank>>()
+  }
+  pub fn get_display_content_vec_color(&self) -> Vec<(usize, ANSIStrings)> {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+    }
+
+    let blank_indices: Vec<(usize, usize)> = RE_BLANK.find_iter(&self.content).map(|m| (m.start(), m.end()) ).collect();
+    let mut current_idx = 0;
+
+    let display_content_vec: Vec<String> = self.content.split(". ").map(|s| s.to_string() ).collect();
+    let mut output_vec: Vec<(usize, ANSIStrings)> = vec![];
+    for (i, sent) in display_content_vec.iter().enumerate() {
+      let mut sentence = sent.clone();
+      match RE_BLANK.find(&sent) {
+        None => {
+          if sent.chars().count() > 0 {
+            if i != display_content_vec.len() - 1 {
+              sentence.push_str(".");
+            }
+            if sentence.chars().count() < 140 {
+              let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&sentence)];
+              output_vec.push((i, ANSIStrings(ansi_strings)));
+              current_idx += sentence.chars().count() + 1;
+            } else {
+              let mut long_sent = sentence.clone();
+              while long_sent.len() > 140 {
+                let long_sent_copy = long_sent.clone();
+                match &long_sent_copy[..140].rfind(' ') {
+                  None => {
+                    let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&long_sent[..140])];
+                    output_vec.push((i, ANSIStrings(ansi_strings)));
+                    long_sent = String::from(&long_sent[140..]);
+                    current_idx += 140;
+                  },
+                  Some(idx) => {
+                    let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&long_sent[..*idx])];
+                    output_vec.push((i, ANSIStrings(ansi_strings)));
+                    long_sent = String::from(&long_sent[*idx..]);
+                    current_idx += idx;
+                  }
+                }
+              }
+              let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&long_sent)];
+              output_vec.push((i, ANSIStrings(ansi_strings)));
+              current_idx += long_sent.chars().count();
+            }
+          }
+        },
+        Some(m) => {
+
+        },
+      }
+    }
+    output_vec
   }
   pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();

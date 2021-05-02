@@ -30,6 +30,7 @@ pub const NT_FL: &str = "note_templates.txt";
 pub const N_FL: &str = "note.txt";
 
 fn main() {
+  let enabled = ansi_term::enable_ansi_support();
   let filepaths = [
     (String::from("user_filepath"), String::from(USR_FL),),
     (String::from("client_filepath"), String::from(CLT_FL),),
