@@ -29,6 +29,9 @@ pub const ND_FL: &str = "note_days.txt";
 pub const NT_FL: &str = "note_templates.txt";
 pub const N_FL: &str = "note.txt";
 
+use std::{thread, time};
+use ansi_term::Colour::{Blue, Red, Green, Yellow, Cyan};
+
 fn main() {
   let enabled = ansi_term::enable_ansi_support();
   let filepaths = [

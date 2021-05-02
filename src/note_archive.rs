@@ -5977,7 +5977,7 @@ impl NoteArchive {
     }
   }
   fn display_edit_note_template(&self) {
-    self.current_note_template().display_content();
+    self.current_note_template().display_edit_content(None, None);
   }
   fn choose_edit_note_template(&mut self) {
     loop {
@@ -7264,7 +7264,8 @@ impl NoteArchive {
       let mut content = String::new();
       let mut display_content = String::new();
       loop {
-        let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content.clone());
+        let display_content_vec_color_opt = NoteTemplate::get_display_content_vec_from_string(display_content.clone(), None);
+        let display_content_vec: Vec<(usize, String)> = display_content_vec_color_opt.iter().map(|(e1, e2, _)| (*e1, e2.clone()) ).collect();
         NoteTemplate::display_content_from_vec(display_content_vec, &structure);
         println!("Enter text to add text to the template, or choose from among the following options:");
         println!("{} | {} | {} | {}", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template", "BACK: Delete last sentence");

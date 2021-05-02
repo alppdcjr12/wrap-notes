@@ -9,7 +9,7 @@
 use std::fmt;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White};
+use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White, RGB};
 use ansi_term::{Style, ANSIStrings, ANSIString};
 
 use std::{thread, time};
@@ -242,8 +242,9 @@ impl NoteTemplate {
     }
     blanks
   }
-  pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> String {
+  pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> (String, Vec<(String, usize, usize)>) {
     let mut content_string = self.content.clone();
+    let mut format_vec: Vec<(String, usize, usize)> = vec![];
 
     match (blank_focus_id, content_focus_id) {
       (Some(_), Some(_)) => panic!("Focus IDs for both content and blank passed to generate_display_content_string_with_blanks on NoteTemplate."),
@@ -255,18 +256,30 @@ impl NoteTemplate {
     }
 
     let mut prev_end_idx: usize = 0;
-    let mut content: Vec<String> = vec![];
+    let mut content = String::new();
 
     let mut i: u32 = 1;
     loop {
+      thread::sleep(time::Duration::from_secs(2));
       let find_match_string = content_string.clone();
       let m = RE_BLANK.find(&find_match_string);
       let m = match m {
         None => {
           if content.len() == 0 && find_match_string.chars().count() != 0 {
-            content.push(find_match_string.clone());
+            content.push_str(&find_match_string.clone());
+            match content_focus_id {
+              Some(_) => format_vec.push((String::from("HIGHLIGHTED CONTENT"), 0, find_match_string.len()-1)),
+              None => format_vec.push((String::from("CONTENT"), 0, find_match_string.len()-1)),
+            }
             break;
           } else {
+            if prev_end_idx <= find_match_string.chars().count()-1 {
+              content.push_str(&find_match_string[prev_end_idx..]);
+              match content_focus_id {
+                Some(_) => format_vec.push((String::from("HIGHLIGHTED CONTENT"), 0, find_match_string.len()-1)),
+                None => format_vec.push((String::from("CONTENT"), 0, find_match_string.len()-1)),
+              }
+            }
             break;
           }
         }
@@ -286,9 +299,9 @@ impl NoteTemplate {
         None => format!("{}", b.display_to_user()),
         Some(f_id) => {
           if i == f_id {
-            format!("(>- [{}]: {} -<)", i, b.display_to_user())
+            format!("[{}]: {}", i, b.display_to_user())
           } else {
-            format!("| [{}]: {} |", i, b.display_to_user())
+            format!("[{}]: {}", i, b.display_to_user())
           }
         }
       };
@@ -297,21 +310,52 @@ impl NoteTemplate {
         None => String::from(&content_string[prev_end_idx..m.start()]),
         Some(f_id) => {
           if i == f_id {
-            format!("(>- [{}]: {} -<)", i, &String::from(&content_string[prev_end_idx..m.start()]))
+            format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
           } else {
-            format!("| [{}]: {} |", i, &String::from(&content_string[prev_end_idx..m.start()]))
+            format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
           }
         }
       };
 
-      content.push(display_content);
-      content.push(display_blank);
+      let cidx1 = content.chars().count();
+      content.push_str(&display_content);
+      let cidx2 = content.chars().count() - 1;
+      
+      let bidx1 = content.chars().count();
+      content.push_str(&display_blank);
+      let bidx2 = content.chars().count() - 1;
+
+      match content_focus_id {
+        Some(f_id) => {
+          if f_id == i {
+            format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
+          } else {
+            format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
+          }
+        },
+        None => {
+          format_vec.push((String::from("CONTENT"), cidx1, cidx2));
+        }
+      }
+
+      match blank_focus_id {
+        Some(f_id) => {
+          if f_id == i {
+            format_vec.push((String::from("HIGHLIGHTED BLANK"), bidx1, bidx2));
+          } else {
+            format_vec.push((String::from("UNHIGHLIGHTED BLANK"), bidx1, bidx2));
+          }
+        },
+        None => {
+          format_vec.push((String::from("BLANK"), bidx1, bidx2));
+        }
+      }
+
       prev_end_idx = m.end();
 
       i += 1;
     }
-
-    content.join("")
+    (content, format_vec)
   }
   pub fn get_ordered_blanks(&self) -> Vec<Blank> {
     lazy_static! {
@@ -319,86 +363,98 @@ impl NoteTemplate {
     }
     RE_BLANK.find_iter(&self.content).map(|m| Blank::get_blank_from_str(&self.content[m.start()..m.end()]) ).collect::<Vec<Blank>>()
   }
-  pub fn get_display_content_vec_color(&self) -> Vec<(usize, ANSIStrings)> {
-    lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
-    }
-
-    let blank_indices: Vec<(usize, usize)> = RE_BLANK.find_iter(&self.content).map(|m| (m.start(), m.end()) ).collect();
-    let mut current_idx = 0;
-
-    let display_content_vec: Vec<String> = self.content.split(". ").map(|s| s.to_string() ).collect();
-    let mut output_vec: Vec<(usize, ANSIStrings)> = vec![];
-    for (i, sent) in display_content_vec.iter().enumerate() {
-      let mut sentence = sent.clone();
-      match RE_BLANK.find(&sent) {
-        None => {
-          if sent.chars().count() > 0 {
-            if i != display_content_vec.len() - 1 {
-              sentence.push_str(".");
-            }
-            if sentence.chars().count() < 140 {
-              let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&sentence)];
-              output_vec.push((i, ANSIStrings(ansi_strings)));
-              current_idx += sentence.chars().count() + 1;
-            } else {
-              let mut long_sent = sentence.clone();
-              while long_sent.len() > 140 {
-                let long_sent_copy = long_sent.clone();
-                match &long_sent_copy[..140].rfind(' ') {
-                  None => {
-                    let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&long_sent[..140])];
-                    output_vec.push((i, ANSIStrings(ansi_strings)));
-                    long_sent = String::from(&long_sent[140..]);
-                    current_idx += 140;
-                  },
-                  Some(idx) => {
-                    let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&long_sent[..*idx])];
-                    output_vec.push((i, ANSIStrings(ansi_strings)));
-                    long_sent = String::from(&long_sent[*idx..]);
-                    current_idx += idx;
-                  }
-                }
-              }
-              let ansi_strings: &[ANSIString<'static>] = &[Style::new().paint(&long_sent)];
-              output_vec.push((i, ANSIStrings(ansi_strings)));
-              current_idx += long_sent.chars().count();
-            }
-          }
-        },
-        Some(m) => {
-
-        },
-      }
-    }
-    output_vec
-  }
-  pub fn get_display_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
+  pub fn get_display_content_vec_from_string(display_content: String, color_formatting: Option<Vec<(String, usize, usize)>>) -> Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
+    let mut current_idx = 0;
     for (i, sent) in display_content_vec.iter().enumerate() {
       if sent.chars().count() > 0 {
         let mut sentence = sent.clone();
         if i != display_content_vec.len() - 1 {
           sentence.push_str(".");
         }
-        if sentence.len() < 140 {
-          length_adjusted_vec.push((i, sentence))
+        if sentence.chars().count() < 140 {
+          match color_formatting.clone() {
+            None => length_adjusted_vec.push((i, sentence.clone(), None)),
+            Some(f) => {
+              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(sentence.chars().count() + current_idx) )
+                .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
+                .collect();
+              
+              length_adjusted_vec.push((i, sentence.clone(), Some(sentence_formatting)));
+            },
+          }
+          current_idx += sentence.chars().count();
         } else {
           let mut long_sent = sentence.clone();
           while long_sent.len() > 140 {
             match &long_sent[..140].rfind(' ') {
               None => {
-                length_adjusted_vec.push((i, String::from(&long_sent[..140])));
-                long_sent = String::from(&long_sent[141..]);
+                match color_formatting.clone() {
+                  None => {
+                    length_adjusted_vec.push((i, String::from(&long_sent[..140]), None));
+                    long_sent = String::from(&long_sent[141..]);
+                    current_idx += 140;
+                  },
+                  Some(f) => {
+                    let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                      .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(sentence.chars().count() + current_idx) )
+                      .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
+                      .collect();
+                    
+                    let overflowing_blank = sentence_formatting.iter().find(|(_, i1, i2)| i1 < &140 && i2 > &140 );
+                    match overflowing_blank {
+                      Some(b) => {
+                        length_adjusted_vec.push((i, String::from(&long_sent[..b.1]), Some(sentence_formatting.clone())));
+                        thread::sleep(time::Duration::from_secs(10));
+                        long_sent = String::from(&long_sent[b.1..]);
+                        current_idx += b.1;
+                      },
+                      None => {
+                        length_adjusted_vec.push((i, String::from(&long_sent[..140]), Some(sentence_formatting.clone())));
+                        long_sent = String::from(&long_sent[141..]);
+                        current_idx += 140;
+                      }
+                    }
+                  }
+                }
               },
               Some(idx) => {
-                length_adjusted_vec.push((i, String::from(&long_sent[..*idx])));
-                long_sent = String::from(&long_sent[idx+1..]);
+
+                // Need to check to make sure that this is not an index in the middle of a blank--because they DO have spaces, now.
+                // Spaces are not necessarily not blanks.
+                // Gotta do the same check to see if there are any index pairs that wrap the current location, and if so, then use idx1 instead
+                // of the space.
+
+                match color_formatting.clone() {
+                  None => length_adjusted_vec.push((i, String::from(&long_sent[..*idx]), None)),
+                  Some(f) => {
+                    let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                      .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(String::from(&long_sent[..*idx]).chars().count() + current_idx) )
+                      .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
+                      .collect();
+                      
+                      length_adjusted_vec.push((i, String::from(&long_sent[..*idx]), Some(sentence_formatting)));
+                    },
+                  }
+                long_sent = String::from(&long_sent[*idx..]);
+                current_idx += idx;
               }
             }
           }
-          length_adjusted_vec.push((i, long_sent));
+          match color_formatting.clone() {
+            None => length_adjusted_vec.push((i, long_sent, None)),
+            Some(f) => {
+              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(long_sent.chars().count() + current_idx) )
+                .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
+                .collect();
+                
+              length_adjusted_vec.push((i, long_sent.clone(), Some(sentence_formatting)));
+              current_idx += long_sent.chars().count();
+            }
+          }
         }
       }
     }
@@ -433,7 +489,10 @@ impl NoteTemplate {
     content_slice.clone()
   }
   pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
-    Self::get_display_content_vec_from_string(self.generate_display_content_string_with_blanks(None, None))
+    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(None, None);
+    Self::get_display_content_vec_from_string(display_content_string, Some(formatting)).iter()
+      .map(|(u, s, o)| (*u, s.to_string()) )
+      .collect::<Vec<(usize, String)>>()
   }
   pub fn display_content(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -470,17 +529,52 @@ impl NoteTemplate {
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
-    let mut current_i = 0;
-    let display_content_string = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
-    for (i, cont) in NoteTemplate::get_display_content_vec_from_string(display_content_string) {
-      let display_i = if i == current_i {
+    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
+    let mut prev_i = 100; // 0 is the actual index
+    for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+      // f is Option<Vec<(String, usize, usize)>>
+      let display_i = if i == prev_i {
+        String::from("   ")
+      } else {
         let display_i = i + 1;
         format!(" {} ", display_i)
-      } else {
-        String::from("   ")
       };
-      println!("{:-^20} | {: <140}", display_i, cont);
-      current_i = i;
+      prev_i = i;
+      match f {
+        None => println!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
+        Some(f_vec) => {
+          print!("{:-^20} | ", display_i);
+          if f_vec.len() == 0 {
+            print!("{}", Style::new().paint(&cont));
+          } else {
+            for (s, idx1, idx2) in f_vec {
+              let to_format = &cont[idx1..idx2];
+              match &s[..] {
+                "HIGHLIGHTED CONTENT" => {
+                  print!("{: <140}", Black.on(Cyan).italic().paint(to_format));
+                },
+                "UNHIGHLIGHTED CONTENT" => {
+                  print!("{: <140}", Cyan.on(Blue).paint(to_format));
+                },
+                "CONTENT" => {
+                  print!("{: <140}", Style::new().paint(to_format));
+                },
+                "HIGHLIGHTED BLANK" => {
+                  print!("{: <140}", Black.on(Yellow).bold().paint(to_format));
+                },
+                "UNHIGHLIGHTED BLANK" => {
+                  print!("{: <140}", Style::new().on(White).paint(to_format));
+                },
+                "BLANK" => {
+                  print!("{}", Black.on(White).paint(to_format));
+                },
+                _ => (),
+              }
+            }
+          }
+        }
+      }
+      print!("\n");
     }
     println!("{:-^163}", "-");
   }

@@ -1,4 +1,5 @@
 ##### note_templates #####
 1 | Intake | asdfasdfasdfasdf  | 1 | 
+3 | Assessment | Here is some text that I am adding to the template. It has a few sentences, starting with that one, and then following with this. It isn't until the third sentence that there's a blank in the form of (---pc3---) which is quite nice and useful to have. Following that, there is an extensive series of words that goes on and on about (---td---) and (---ndd---) and (---id---) ad nauseum, until the point that you really feel like, okay, we get it, this is a note template that has some content in it which you are able to test and see how it works and whatnot. Then I wrap up with a short little bit about (---allco---). And that's pretty much it. | 1 | 
 2 | Phone Call |  16 nt note ]of the cur [ Possessive p | 1 | 
 ##### note_templates #####
