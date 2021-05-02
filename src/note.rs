@@ -9,8 +9,7 @@
 use std::fmt;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-
-use colored::*;
+use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White};
 
 use std::{thread, time};
 
@@ -282,18 +281,13 @@ impl NoteTemplate {
       let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
       content_string = format!("{}{}{}", &content_string[..m.start()], &replacement, &content_string[m.end()..]);
 
-      let display_text = b.display_to_user();
       let display_blank = match blank_focus_id {
-        None => Black.on(White).underline().paint(display_text).to_string(),
+        None => format!("{}", b.display_to_user()),
         Some(f_id) => {
           if i == f_id {
-            Black.on(Yellow).underline().paint(
-              format!("[{}]: {}", i, display_text)
-            ).to_string()
+            format!("(>- [{}]: {} -<)", i, b.display_to_user())
           } else {
-            Black.on(White).dimmed().underline().paint(
-              format!("[{}]: {}", i, display_text)
-            ).to_string()
+            format!("| [{}]: {} |", i, b.display_to_user())
           }
         }
       };
@@ -302,13 +296,9 @@ impl NoteTemplate {
         None => String::from(&content_string[prev_end_idx..m.start()]),
         Some(f_id) => {
           if i == f_id {
-            Black.on(Cyan).bold().paint(
-              format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
-            ).to_string()
+            format!("(>- [{}]: {} -<)", i, &String::from(&content_string[prev_end_idx..m.start()]))
           } else {
-            Cyan.dimmed().on(Black).paint(
-              format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
-            ).to_string()
+            format!("| [{}]: {} |", i, &String::from(&content_string[prev_end_idx..m.start()]))
           }
         }
       };
@@ -664,92 +654,6 @@ impl Note {
     }
     length_adjusted_vec
   }
-  pub fn get_content_vec_from_string_with_blanks(display_content: String) -> Vec<(usize, String)> {
-    let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
-    let mut length_adjusted_vec = vec![];
-    for (i, sent) in display_content_vec.iter().enumerate() {
-      if sent.chars().count() > 0 {
-        let mut sentence = sent.clone();
-        sentence.push_str(".");
-        if sentence.len() < 140 {
-          length_adjusted_vec.push((i, sentence))
-        } else {
-          let mut long_sent = sentence.clone();
-          while long_sent.len() > 140 {
-            match &long_sent[..140].rfind(' ') {
-              None => {
-                length_adjusted_vec.push((i, String::from(&long_sent[..140])));
-                long_sent = String::from(&long_sent[141..]);
-              },
-              Some(idx) => {
-                let isize_idx_option = isize::try_from(*idx);
-                let usize_idx = match isize_idx_option {
-                  Ok(i) => i as usize,
-                  Err(_) => panic!("Failed to cast index of string from REGEX match to isize in fn 'get_content_vec_from_string'"),
-                };
-                length_adjusted_vec.push((i, String::from_utf8(long_sent.as_bytes()[0..usize_idx].to_vec()).unwrap()));
-                long_sent = String::from(&long_sent[idx+1..]);
-              }
-            }
-          }
-          length_adjusted_vec.push((i, long_sent));
-        }
-      }
-    }
-    length_adjusted_vec
-  }
-  pub fn get_content_vec_from_ansistrings_with_blanks(mut display_content: Vec<ANSIString>) -> Vec<(usize, ANSIStrings)> {
-    
-    let mut output_content: Vec<(usize, ANSIStrings)> = vec![];
-
-    loop {
-      let mut row: &[ANSIString<'static>] = &[];
-
-      if display_content[0].chars().count() > 140 {
-        let current_words = 
-        if String::from(&display_content[0][..140]).contains(".") {
-          let idx = 
-        }
-      }
-
-
-    }
-
-
-
-    let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
-    let mut length_adjusted_vec = vec![];
-    for (i, sent) in display_content_vec.iter().enumerate() {
-      if sent.chars().count() > 0 {
-        let mut sentence = sent.clone();
-        sentence.push_str(".");
-        if sentence.len() < 140 {
-          length_adjusted_vec.push((i, sentence))
-        } else {
-          let mut long_sent = sentence.clone();
-          while long_sent.len() > 140 {
-            match &long_sent[..140].rfind(' ') {
-              None => {
-                length_adjusted_vec.push((i, String::from(&long_sent[..140])));
-                long_sent = String::from(&long_sent[141..]);
-              },
-              Some(idx) => {
-                let isize_idx_option = isize::try_from(*idx);
-                let usize_idx = match isize_idx_option {
-                  Ok(i) => i as usize,
-                  Err(_) => panic!("Failed to cast index of string from REGEX match to isize in fn 'get_content_vec_from_string'"),
-                };
-                length_adjusted_vec.push((i, String::from_utf8(long_sent.as_bytes()[0..usize_idx].to_vec()).unwrap()));
-                long_sent = String::from(&long_sent[idx+1..]);
-              }
-            }
-          }
-          length_adjusted_vec.push((i, long_sent));
-        }
-      }
-    }
-    length_adjusted_vec
-  }
   pub fn generate_display_content_string(&self) -> String {
     let mut content_string = self.content.clone();
     for (_, (blank_type, display_string, _)) in self.blanks.iter() {
@@ -760,8 +664,7 @@ impl Note {
     }
     content_string
   }
-  pub fn generate_display_content_string_with_blanks(&self, focus_id: Option<u32>) -> Vec<ANSIString> {
-
+  pub fn generate_display_content_string_with_blanks(&self, focus_id: Option<u32>) -> String {
     let mut content_string = self.content.clone();
     for (i, (blank_type, display_string, _)) in self.blanks.iter() {
       content_string = content_string.replacen(&format!("{}", blank_type)[..], &format!("[{}] {}", i, &display_string[..])[..], 1);
@@ -773,8 +676,6 @@ impl Note {
     
     let mut i: u32 = 1;
     let mut unfilled = 0;
-    let mut prev_end_idx = 0;
-    let mut ansi_strings: Vec<ANSIString> = vec![];
     loop {
       if self.blanks.keys().any(|ki| ki == &i ) {
         i += 1;
@@ -783,34 +684,23 @@ impl Note {
       unfilled += 1;
       let m = RE_BLANK.find(&content_string);
       let m = match m {
-        None => {
-          ansi_strings.push(ANSIString::from(&content_string[prev_end_idx..]));
-          break;
-        }
+        None => break,
         Some(m) => m,
       };
 
       let display_blank = match focus_id {
         None => {
           if unfilled == 1 {
-            Black.on(Yellow).underline().paint(
-              i.to_string()
-            )
+            format!("[===| {} |===]", i)
           } else {
-            Black.on(RGB(200,200,200)).underline().paint(
-              i.to_string()
-            )
+            format!("_______{}_______", i)
           }
         },
         Some(f_id) => {
           if i == f_id {
-            Black.on(Yellow).underline().paint(
-              i.to_string()
-            )
+            format!("[===| {} |===]", i)
           } else {
-            Black.on(RGB(200,200,200)).underline().paint(
-              i.to_string()
-            )
+            format!("_______{}_______", i)
           }
         }
       };
@@ -818,21 +708,19 @@ impl Note {
       content_string = format!(
         "{}{}{}",
         &content_string[..m.start()],
-        &display_blank.to_string()[..],
+        display_blank,
         &content_string[m.end()..]
       );
 
-      ansi_strings.push(display_blank);
-
       i += 1;
     }
-    ansi_strings
+    content_string
   }
   pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
     Self::get_content_vec_from_string(self.generate_display_content_string())
   }
   pub fn get_display_content_vec_and_blanks(&self, focus_id: Option<u32>) -> Vec<(usize, String)> {
-    Self::get_content_vec_from_ansistrings_with_blanks(self.generate_display_content_string_with_blanks(focus_id))
+    Self::get_content_vec_from_string(self.generate_display_content_string_with_blanks(focus_id))
   }
   pub fn get_blank_types(&self) -> Vec<Blank> {
     lazy_static! {
