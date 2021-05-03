@@ -149,7 +149,7 @@ impl NoteTemplate {
     let mut content_string = self.content.clone();
 
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     
     let mut typed_content_indices: Vec<(usize, usize)> = vec![];
@@ -252,7 +252,7 @@ impl NoteTemplate {
     }
 
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
 
     let mut prev_end_idx: usize = 0;
@@ -260,7 +260,6 @@ impl NoteTemplate {
 
     let mut i: u32 = 1;
     loop {
-      thread::sleep(time::Duration::from_secs(2));
       let find_match_string = content_string.clone();
       let m = RE_BLANK.find(&find_match_string);
       let m = match m {
@@ -276,8 +275,14 @@ impl NoteTemplate {
             if prev_end_idx <= find_match_string.chars().count()-1 {
               content.push_str(&find_match_string[prev_end_idx..]);
               match content_focus_id {
-                Some(_) => format_vec.push((String::from("HIGHLIGHTED CONTENT"), 0, find_match_string.len()-1)),
-                None => format_vec.push((String::from("CONTENT"), 0, find_match_string.len()-1)),
+                Some(focus_id) => {
+                  if i == focus_id {
+                    format_vec.push((String::from("HIGHLIGHTED CONTENT"), prev_end_idx, find_match_string.len()-1));
+                  } else {
+                    format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), prev_end_idx, find_match_string.len()-1));
+                  }
+                }
+                None => format_vec.push((String::from("CONTENT"), prev_end_idx, find_match_string.len()-1)),
               }
             }
             break;
@@ -319,35 +324,48 @@ impl NoteTemplate {
 
       let cidx1 = content.chars().count();
       content.push_str(&display_content);
-      let cidx2 = content.chars().count() - 1;
+      let cidx2 = if content.chars().count() > 0 {
+        content.chars().count() - 1
+      } else {
+        0
+      };
       
       let bidx1 = content.chars().count();
       content.push_str(&display_blank);
       let bidx2 = content.chars().count() - 1;
-
-      match content_focus_id {
-        Some(f_id) => {
-          if f_id == i {
-            format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
-          } else {
-            format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
+      let bidx2 = if content.chars().count() > 0 {
+        content.chars().count() - 1
+      } else {
+        0
+      };
+      
+      if cidx1 != cidx2 {
+        match content_focus_id {
+          Some(f_id) => {
+            if f_id == i {
+              format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
+            } else {
+              format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
+            }
+          },
+          None => {
+            format_vec.push((String::from("CONTENT"), cidx1, cidx2));
           }
-        },
-        None => {
-          format_vec.push((String::from("CONTENT"), cidx1, cidx2));
         }
       }
 
-      match blank_focus_id {
-        Some(f_id) => {
-          if f_id == i {
-            format_vec.push((String::from("HIGHLIGHTED BLANK"), bidx1, bidx2));
-          } else {
-            format_vec.push((String::from("UNHIGHLIGHTED BLANK"), bidx1, bidx2));
+      if bidx1 != bidx2 {
+        match blank_focus_id {
+          Some(f_id) => {
+            if f_id == i {
+              format_vec.push((String::from("HIGHLIGHTED BLANK"), bidx1, bidx2));
+            } else {
+              format_vec.push((String::from("UNHIGHLIGHTED BLANK"), bidx1, bidx2));
+            }
+          },
+          None => {
+            format_vec.push((String::from("BLANK"), bidx1, bidx2));
           }
-        },
-        None => {
-          format_vec.push((String::from("BLANK"), bidx1, bidx2));
         }
       }
 
@@ -359,7 +377,7 @@ impl NoteTemplate {
   }
   pub fn get_ordered_blanks(&self) -> Vec<Blank> {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     RE_BLANK.find_iter(&self.content).map(|m| Blank::get_blank_from_str(&self.content[m.start()..m.end()]) ).collect::<Vec<Blank>>()
   }
@@ -820,7 +838,7 @@ impl Note {
     }
 
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     
     let mut i: u32 = 1;
@@ -873,7 +891,7 @@ impl Note {
   }
   pub fn get_blank_types(&self) -> Vec<Blank> {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     let mut blank_content = self.content.clone();
     let mut blanks: Vec<Blank> = vec![];
@@ -886,7 +904,7 @@ impl Note {
   }
   pub fn get_empty_blanks_and_indexes(&self) -> Vec<(u32, Blank)> {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     let num_total_blanks = RE_BLANK.find_iter(&self.content).count();
     let ordered_blanks = self.get_blank_types();
@@ -904,13 +922,13 @@ impl Note {
   }
   pub fn has_unfilled_blanks(&self) -> bool {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     RE_BLANK.find_iter(&self.content[..]).count() < self.blanks.len()
   }
   pub fn number_of_blanks(&self) -> usize {
     lazy_static! {
-      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
     }
     RE_BLANK.find_iter(&self.content[..]).count()
   }

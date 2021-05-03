@@ -6548,7 +6548,7 @@ impl NoteArchive {
                 let nt_content = self.current_note_template().content.clone();
 
                 lazy_static! {
-                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
                 }
 
                 let mut new_content = String::new();
@@ -6579,7 +6579,7 @@ impl NoteArchive {
                       let nt_content = self.current_note_template().content.clone();
 
                       lazy_static! {
-                        static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                        static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
                       }
 
                       let mut new_content = String::new();
@@ -6758,7 +6758,7 @@ impl NoteArchive {
                                   let formatted_blanks = NoteTemplate::get_blanks_with_new_ids(new_blanks.clone(), content_focus_id.unwrap() - 1);
 
                                   lazy_static! {
-                                    static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                                    static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
                                   }
 
                                   for (i, m) in RE_BLANK.find_iter(&edited_content.clone()).enumerate() {
@@ -6966,7 +6966,7 @@ impl NoteArchive {
               _ => {
                 let nt_content = self.current_note_template().content.clone();
                 lazy_static! {
-                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
                 }
 
                 let num_matches = RE_BLANK.find_iter(&nt_content).count();
@@ -7335,7 +7335,7 @@ impl NoteArchive {
             let chosen_blank = Blank::vector_of_variants()[blank_idx];
             
             lazy_static! {
-              static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*#?[0-9]*#?---[)]").unwrap();
+              static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
             }
 
             let num_blanks = RE_BLANK.find_iter(&content).count();
@@ -9832,6 +9832,7 @@ mod tests {
     fs::remove_file("some_random_blank_pronouns_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_note_day_file_name.txt").unwrap();
     fs::remove_file("some_random_blank_note_template_file_name.txt").unwrap();
+    fs::remove_file("some_random_blank_note_file_name.txt").unwrap();
   }
   #[test]
   fn can_load_from_files() {
@@ -10026,5 +10027,177 @@ mod tests {
     for (_, v) in filepaths {
       fs::remove_file(v).unwrap();
     }
+  }
+  #[test]
+  fn note_template_accurate_display_string() {
+    let nt1 = NoteTemplate::new(
+      1,
+      CarePlan,
+      true,
+      format!(
+        "{} is a {}. There is also a {} in {} until a {} comes along and {}, with what have you and such and such. {}, therefore, {}, and also {} is {}. How can anyone {}? What way of doing {} is there unless one {} unto the highest and utmost? {} is not as {} as {} is. Neither can {} be a {} until {} is a thing that does {} and {}.",
+        CurrentUser,
+        CurrentClientName,
+        Collaterals,
+        AllCollaterals,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+        Pronoun3ForUser,
+        Pronoun4ForUser,
+        Pronoun1ForClient,
+        Pronoun2ForClient,
+        Pronoun3ForClient,
+        Pronoun4ForClient,
+        TodayDate,
+        NoteDayDate,
+        InternalDocument,
+        ExternalDocument,
+        InternalMeeting,
+        ExternalMeeting,
+        Action,
+        Phrase,
+        CustomBlank,
+      ),
+      Some(1)
+    );
+
+    let nt2 = NoteTemplate::new(
+      2,
+      HomeVisit,
+      true,
+      format!(
+        "{}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}.",
+        CurrentUser,
+        Pronoun1ForBlank(Some(1)),
+        Collaterals,
+        Pronoun2ForBlank(Some(3)),
+        Collaterals,
+        Pronoun3ForBlank(Some(5)),
+        Collaterals,
+        Pronoun4ForBlank(Some(7)),
+      ),
+      Some(1)
+    );
+    
+    // (String, Vec<(String, usize, usize)>)
+    
+    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None);
+    assert_eq!(
+      display_content_string1,
+      format!(
+        "{} is a {}. There is also a {} in {} until a {} comes along and {}, with what have you and such and such. {}, therefore, {}, and also {} is {}. How can anyone {}? What way of doing {} is there unless one {} unto the highest and utmost? {} is not as {} as {} is. Neither can {} be a {} until {} is a thing that does {} and {}.",
+        CurrentUser.display_to_user(),
+        CurrentClientName.display_to_user(),
+        Collaterals.display_to_user(),
+        AllCollaterals.display_to_user(),
+        Pronoun1ForUser.display_to_user(),
+        Pronoun2ForUser.display_to_user(),
+        Pronoun3ForUser.display_to_user(),
+        Pronoun4ForUser.display_to_user(),
+        Pronoun1ForClient.display_to_user(),
+        Pronoun2ForClient.display_to_user(),
+        Pronoun3ForClient.display_to_user(),
+        Pronoun4ForClient.display_to_user(),
+        TodayDate.display_to_user(),
+        NoteDayDate.display_to_user(),
+        InternalDocument.display_to_user(),
+        ExternalDocument.display_to_user(),
+        InternalMeeting.display_to_user(),
+        ExternalMeeting.display_to_user(),
+        Action.display_to_user(),
+        Phrase.display_to_user(),
+        CustomBlank.display_to_user(),
+      ),
+    );
+    
+    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None);
+    assert_eq!(
+      display_content_string2,
+      format!(
+        "{}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}.",
+        CurrentUser.display_to_user(),
+        Pronoun1ForBlank(Some(1)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun2ForBlank(Some(3)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun3ForBlank(Some(5)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun4ForBlank(Some(7)).display_to_user(),
+      ),
+    );
+  }
+  #[test]
+  fn note_template_accurate_formatting_vector() {
+    let nt1 = NoteTemplate::new(
+      1,
+      CarePlan,
+      true,
+      format!(
+        "{} is a user with {}/{} for pronouns.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+      ),
+      None
+    );
+
+    let s1a = CurrentUser.display_to_user().chars().count() - 1;
+    let s1b = String::from(" is a user with ").chars().count() + s1a;
+    let s1c = Pronoun1ForUser.display_to_user().chars().count() + s1b;
+    let s1d = String::from("/").chars().count() + s1c;
+    let s1e = Pronoun2ForUser.display_to_user().chars().count() + s1d;
+    let s1f = String::from(" for pronouns.").chars().count() + s1e;
+
+    let formatting1: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED BLANK"), 0, s1a),
+      (String::from("CONTENT"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED BLANK"), s1b, s1c),
+      (String::from("CONTENT"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED BLANK"), s1d, s1e),
+      (String::from("CONTENT"), s1e, s1f),
+    ];
+
+    // (String, Vec<(String, usize, usize)>)
+    
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(Some(1), None);
+
+    assert_eq!(formatting1, formatting_vector1);
+  }
+  #[test]
+  fn note_template_accurate_formatting_vector_without_focus() {
+    let nt1 = NoteTemplate::new(
+      1,
+      CarePlan,
+      true,
+      format!(
+        "{} is a user with {}/{} for pronouns.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+      ),
+      None
+    );
+
+    let s1a = CurrentUser.display_to_user().chars().count() - 1;
+    let s1b = String::from(" is a user with ").chars().count() + s1a;
+    let s1c = Pronoun1ForUser.display_to_user().chars().count() + s1b;
+    let s1d = String::from("/").chars().count() + s1c;
+    let s1e = Pronoun2ForUser.display_to_user().chars().count() + s1d;
+    let s1f = String::from(" for pronouns.").chars().count() + s1e;
+
+    let formatting1: Vec<(String, usize, usize)> = vec![
+      (String::from("BLANK"), 0, s1a),
+      (String::from("CONTENT"), s1a, s1b),
+      (String::from("BLANK"), s1b, s1c),
+      (String::from("CONTENT"), s1c, s1d),
+      (String::from("BLANK"), s1d, s1e),
+      (String::from("CONTENT"), s1e, s1f),
+    ];
+
+    // (String, Vec<(String, usize, usize)>)
+    
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None);
+
+    assert_eq!(formatting1, formatting_vector1);
   }
 }
