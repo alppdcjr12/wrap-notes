@@ -273,16 +273,41 @@ impl NoteTemplate {
             break;
           } else {
             if prev_end_idx <= find_match_string.chars().count()-1 {
-              content.push_str(&find_match_string[prev_end_idx..]);
               match content_focus_id {
                 Some(focus_id) => {
-                  if i == focus_id {
-                    format_vec.push((String::from("HIGHLIGHTED CONTENT"), prev_end_idx, find_match_string.len()-1));
+                  let end_string = format!("[{}]: {}", i, &find_match_string[prev_end_idx..]);
+                  let cidx1 = if content.chars().count() > 0 {
+                    content.chars().count() - 1
                   } else {
-                    format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), prev_end_idx, find_match_string.len()-1));
+                    0
+                  };
+                  content.push_str(&end_string);
+                  let cidx2 = if content.chars().count() > 0 {
+                    content.chars().count() - 1
+                  } else {
+                    0
+                  };
+                  if i == focus_id {
+                    format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
+                  } else {
+                    format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
                   }
                 }
-                None => format_vec.push((String::from("CONTENT"), prev_end_idx, find_match_string.len()-1)),
+                None => {
+                  let end_string = String::from(&find_match_string[prev_end_idx..]);
+                  let cidx1 = if content.chars().count() > 0 {
+                    content.chars().count() - 1
+                  } else {
+                    0
+                  };
+                  content.push_str(&end_string);
+                  let cidx2 = if content.chars().count() > 0 {
+                    content.chars().count() - 1
+                  } else {
+                    0
+                  };
+                  format_vec.push((String::from("CONTENT"), cidx1, cidx2));
+                }
               }
             }
             break;
@@ -302,27 +327,22 @@ impl NoteTemplate {
 
       let display_blank = match blank_focus_id {
         None => format!("{}", b.display_to_user()),
-        Some(f_id) => {
-          if i == f_id {
-            format!("[{}]: {}", i, b.display_to_user())
-          } else {
-            format!("[{}]: {}", i, b.display_to_user())
-          }
-        }
+        Some(f_id) => format!("[{}]: {}", i, b.display_to_user()),
       };
 
       let display_content =  match content_focus_id {
         None => String::from(&content_string[prev_end_idx..m.start()]),
         Some(f_id) => {
-          if i == f_id {
-            format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
-          } else {
-            format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
-          }
+          format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
         }
       };
-
-      let cidx1 = content.chars().count();
+      
+      let cidx1 = if content.chars().count() > 0 {
+        content.chars().count() - 1
+      } else {
+        0
+      };
+        
       content.push_str(&display_content);
       let cidx2 = if content.chars().count() > 0 {
         content.chars().count() - 1
@@ -330,9 +350,12 @@ impl NoteTemplate {
         0
       };
       
-      let bidx1 = content.chars().count();
+      let bidx1 = if content.chars().count() > 0 {
+        content.chars().count() - 1
+      } else {
+        0
+      };
       content.push_str(&display_blank);
-      let bidx2 = content.chars().count() - 1;
       let bidx2 = if content.chars().count() > 0 {
         content.chars().count() - 1
       } else {
@@ -1217,7 +1240,7 @@ impl Blank {
       },
       Pronoun3ForBlank(b_id_option) => {
         let b_id = b_id_option.unwrap();
-        format!("Possessive detemriner pronouns of the person in blank #{} (his, her, their)", b_id)
+        format!("Possessive determiner pronouns of the person in blank #{} (his, her, their)", b_id)
       },
       Pronoun4ForBlank(b_id_option) => {
         let b_id = b_id_option.unwrap();

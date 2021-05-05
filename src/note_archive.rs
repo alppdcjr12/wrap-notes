@@ -10125,6 +10125,38 @@ mod tests {
         Pronoun4ForBlank(Some(7)).display_to_user(),
       ),
     );
+
+    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(Some(1), None);
+    assert_eq!(
+      display_content_string3,
+      format!(
+        "[1]: {}'s pronouns are [2]: {}. [3]: {}'s pronouns are [4]: {}. [5]: {}'s pronouns are [6]: {}. [7]: {}'s pronouns are [8]: {}.",
+        CurrentUser.display_to_user(),
+        Pronoun1ForBlank(Some(1)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun2ForBlank(Some(3)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun3ForBlank(Some(5)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun4ForBlank(Some(7)).display_to_user(),
+      ),
+    );
+
+    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, Some(1));
+    assert_eq!(
+      display_content_string4,
+      format!(
+        "[1]: {}[2]: 's pronouns are {}[3]: . {}[4]: 's pronouns are {}[5]: . {}[6]: 's pronouns are {}[7]: . {}[8]: 's pronouns are {}[9]: .",
+        CurrentUser.display_to_user(),
+        Pronoun1ForBlank(Some(1)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun2ForBlank(Some(3)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun3ForBlank(Some(5)).display_to_user(),
+        Collaterals.display_to_user(),
+        Pronoun4ForBlank(Some(7)).display_to_user(),
+      ),
+    );
   }
   #[test]
   fn note_template_accurate_formatting_vector() {
@@ -10141,11 +10173,11 @@ mod tests {
       None
     );
 
-    let s1a = CurrentUser.display_to_user().chars().count() - 1;
+    let s1a = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() - 1;
     let s1b = String::from(" is a user with ").chars().count() + s1a;
-    let s1c = Pronoun1ForUser.display_to_user().chars().count() + s1b;
+    let s1c = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1b;
     let s1d = String::from("/").chars().count() + s1c;
-    let s1e = Pronoun2ForUser.display_to_user().chars().count() + s1d;
+    let s1e = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1d;
     let s1f = String::from(" for pronouns.").chars().count() + s1e;
 
     let formatting1: Vec<(String, usize, usize)> = vec![
