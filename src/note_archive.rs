@@ -10189,8 +10189,6 @@ mod tests {
       (String::from("CONTENT"), s1e, s1f),
     ];
 
-    // (String, Vec<(String, usize, usize)>)
-    
     let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(Some(1), None);
 
     assert_eq!(formatting1, formatting_vector1);

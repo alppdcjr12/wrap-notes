@@ -1309,3 +1309,54 @@ impl fmt::Display for Blank {
     write!(f, "(---{}---)", self.abbreviate())
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn note_template_accurately_applies_formatting() {
+    let nt1 = NoteTemplate::new(
+      1,
+      CarePlan,
+      true,
+      format!(
+        "{}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}.",
+        CurrentUser,
+        Pronoun1ForBlank(Some(1)),
+        Collaterals,
+        Pronoun2ForBlank(Some(3)),
+        Collaterals,
+        Pronoun3ForBlank(Some(5)),
+        Collaterals,
+        Pronoun4ForBlank(Some(7)),
+      ),
+      None
+    );
+
+    let (display_content_string, formatting) = nt1.generate_display_content_string_with_blanks(None, None);
+    
+    // assert_eq!(
+      //   display_content_string2,
+      //   format!(
+        //     "{}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}.",
+        //     CurrentUser.display_to_user(),
+        //     Pronoun1ForBlank(Some(1)).display_to_user(),
+    //     Collaterals.display_to_user(),
+    //     Pronoun2ForBlank(Some(3)).display_to_user(),
+    //     Collaterals.display_to_user(),
+    //     Pronoun3ForBlank(Some(5)).display_to_user(),
+    //     Collaterals.display_to_user(),
+    //     Pronoun4ForBlank(Some(7)).display_to_user(),
+    //   ),
+    // );
+
+    let content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
+      // -> Vec<(usize, String, Option<Vec<(String, usize, usize)>>)>
+
+    let comparison_vec: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![];
+    assert_eq!(comparison_vec, content_vec);
+
+  }
+
+}
