@@ -6496,6 +6496,10 @@ impl NoteArchive {
           } else {
             match field_to_edit.parse::<u32>() {
               Ok(num) => {
+                lazy_static! {
+                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+                }
+                let num_blanks = RE_BLANK.find_iter(&self.current_note_template().content).count() as u32;
                 if num > num_blanks || num == 0 {
                   blank_focus_id = Some(num);
                   content_focus_id = None;
@@ -6541,10 +6545,73 @@ impl NoteArchive {
                 let b = match b_idx_opt {
                   None => break,
                   Some(b_idx) => {
-                    Blank::vector_of_variants()[b_idx]
+                    let new_b = Blank::vector_of_variants()[b_idx];
+                    let num_blanks = RE_BLANK.find_iter(&self.current_note_template().content).count() as u32;
+                    let connected_blank_id: Option<u32> = match new_b {
+                      Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
+                        loop {
+                          println!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
+                          let mut input_string = String::new();
+                          let input_result = io::stdin().read_line(&mut input_string);
+                          let input = match input_result {
+                            Ok(_) => input_string.trim(),
+                            Err(e) => {
+                              println!("Failed to read input.");
+                              thread::sleep(time::Duration::from_secs(1));
+                              continue;
+                            }
+                          };
+                          if &input.to_ascii_lowercase()[..] == "cancel" {
+                            break None;
+                          }
+                          match input.parse() {
+                            Ok(num) => {
+                              if num > num_blanks {
+                                println!("Please choose an integer in the range of the number of current blanks already added to this template.");
+                                thread::sleep(time::Duration::from_secs(1));
+                                continue;
+                              } else {
+                                break Some(num);
+                              }
+                            },
+                            Err(e) => {
+                              println!("Invalid command.");
+                              thread::sleep(time::Duration::from_secs(1));
+                              continue;
+                            }
+                          }
+                        }
+                      },
+                      _ => None,
+                    };
+                    match new_b {
+                      Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
+                        if let None = connected_blank_id {
+                          println!("Blank discarded.");
+                          thread::sleep(time::Duration::from_secs(1));
+                          continue;
+                        }
+                        match new_b {
+                          Pronoun1ForBlank(_) => {
+                            Pronoun1ForBlank(connected_blank_id)
+                          },
+                          Pronoun2ForBlank(_) => {
+                            Pronoun2ForBlank(connected_blank_id)
+                          },
+                          Pronoun3ForBlank(_) => {
+                            Pronoun3ForBlank(connected_blank_id)
+                          },
+                          Pronoun4ForBlank(_) => {
+                            Pronoun4ForBlank(connected_blank_id)
+                          },
+                          _ => panic!("There was another blank type after a blank ID was already established as being needed for a blank ID connection."),
+                        }
+                      },
+                      _ => new_b,
+                    }
                   }
                 };
-
+                
                 let nt_content = self.current_note_template().content.clone();
 
                 lazy_static! {
@@ -6559,7 +6626,7 @@ impl NoteArchive {
                 }
 
                 self.current_note_template_mut().content = new_content;
-                self.write_note_templates().unwrap()
+                self.write_note_templates().unwrap();
               },
               "delete" | "d" => {
                 loop {
@@ -10192,6 +10259,46 @@ mod tests {
     let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(Some(1), None);
 
     assert_eq!(formatting1, formatting_vector1);
+
+    let nt2 = NoteTemplate::new(
+      2,
+      Sncd,
+      true,
+      format!(
+        "Here is a sentence. Here is another one with a blank ({}) in it. Here is another sentence that has a {}, {}, and {}.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+        AllCollaterals,
+      ),
+      None
+    );
+    
+    let s1a = String::from("Here is a sentence. Here is another one with a blank (").chars().count() - 1;
+    let s1b = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1a;
+    let s1c = String::from(") in it. Here is another sentence that has a ").chars().count() + s1b;
+    let s1d = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1c;
+    let s1e = String::from(", ").chars().count() + s1d;
+    let s1f = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1e;
+    let s1g = String::from(", and ").chars().count() + s1f;
+    let s1h = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1g;
+    let s1i = String::from(".").chars().count() + s1h;
+
+    let formatting2: Vec<(String, usize, usize)> = vec![
+      (String::from("CONTENT"), 0, s1a),
+      (String::from("HIGHLIGHTED BLANK"), s1a, s1b),
+      (String::from("CONTENT"), s1b, s1c),
+      (String::from("UNHIGHLIGHTED BLANK"), s1c, s1d),
+      (String::from("CONTENT"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED BLANK"), s1e, s1f),
+      (String::from("CONTENT"), s1f, s1g),
+      (String::from("UNHIGHLIGHTED BLANK"), s1g, s1h),
+      (String::from("CONTENT"), s1h, s1i),
+    ];
+
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
+
+    assert_eq!(formatting2, formatting_vector2);
   }
   #[test]
   fn note_template_accurate_formatting_vector_without_focus() {
@@ -10229,5 +10336,77 @@ mod tests {
     let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None);
 
     assert_eq!(formatting1, formatting_vector1);
+  }
+  #[test]
+  fn note_template_gets_accurate_formatting_vec() {
+    let nt2 = NoteTemplate::new(
+      2,
+      Sncd,
+      true,
+      format!(
+        "Here is a sentence. Here is another one with a blank ({}) in it. Here is another sentence that has a {}, {}, and {}.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+        AllCollaterals,
+      ),
+      None
+    );
+    
+    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
+    let nt_output_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = NoteTemplate::get_display_content_vec_from_string(nt_display_string, Some(formatting_vector2));
+
+    let display_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
+      (
+        0,
+        String::from("Here is a sentence."),
+        Some(vec![
+          (String::from("CONTENT"), 0, 19),
+        ])
+      ),
+      (
+        1,
+        format!("Here is another one with a blank ({}) in it.", CurrentUser.display_to_user()),
+        Some(vec![
+          (String::from("CONTENT"), 0, 34),
+          (String::from("HIGHLIGHTED BLANK"), 34, 34+CurrentUser.display_to_user().chars().count()),
+          (String::from("CONTENT"), 34+CurrentUser.display_to_user().chars().count(), 34+CurrentUser.display_to_user().chars().count()+8),
+        ])
+      ),
+      (
+        2,
+        format!("Here is another sentence that has a {}, {}, and {}.", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user(), AllCollaterals.display_to_user()),
+        Some(vec![
+          (String::from("CONTENT"), 0, 36),
+          (String::from("HIGHLIGHTED BLANK"), 36, 71),
+          (String::from("CONTENT"), 71, 73),
+          (String::from("UNHIGHLIGHTED BLANK"), 73, 107),
+          (String::from("CONTENT"), 107, 113),
+          (String::from("UNHIGHLIGHTED BLANK"), 113, 151),
+        ])
+      ),
+      (
+        2,
+        format!("Here is another sentence that has a {}, {}, and ", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
+        Some(vec![
+          (String::from("CONTENT"), 0, 36),
+          (String::from("HIGHLIGHTED BLANK"), 36, 71),
+          (String::from("CONTENT"), 71, 73),
+          (String::from("UNHIGHLIGHTED BLANK"), 73, 107),
+          (String::from("CONTENT"), 107, 113),
+        ])
+      ),
+      (
+        2,
+        format!("{}.", AllCollaterals.display_to_user()),
+        Some(vec![
+          (String::from("UNHIGHLIGHTED BLANK"), 0, 38),
+          (String::from("CONTENT"), 38, 39),
+        ])
+      ),
+    ];
+
+    assert_eq!(display_vecs, nt_output_vecs);
+
   }
 }

@@ -604,7 +604,7 @@ impl NoteTemplate {
                   print!("{: <140}", Black.on(Yellow).bold().paint(to_format));
                 },
                 "UNHIGHLIGHTED BLANK" => {
-                  print!("{: <140}", Style::new().on(White).paint(to_format));
+                  print!("{: <140}", Black.on(White).paint(to_format));
                 },
                 "BLANK" => {
                   print!("{}", Black.on(White).paint(to_format));
