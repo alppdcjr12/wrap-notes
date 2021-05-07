@@ -134,7 +134,7 @@ impl NoteTemplate {
     }
   }
   pub fn preview(&self) -> String {
-    let this_content = self.generate_display_content_string();
+    let (this_content, _) = self.generate_display_content_string_with_blanks(None, None);
     if this_content.len() > 95 {
       format!("{}{}", &this_content[0..95], "...")
     } else {
@@ -419,7 +419,7 @@ impl NoteTemplate {
             None => length_adjusted_vec.push((i, sentence.clone(), None)),
             Some(f) => {
               let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(sentence.chars().count() + current_idx) )
+                .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx) )
                 .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                 .collect();
               
@@ -440,7 +440,7 @@ impl NoteTemplate {
                   },
                   Some(f) => {
                     let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                      .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(sentence.chars().count() + current_idx) )
+                      .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx) )
                       .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                       .collect();
                     
@@ -549,16 +549,16 @@ impl NoteTemplate {
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
-    let mut current_i = 0;
+    let mut prev_i = 100;
     for (i, cont) in self.get_display_content_vec() {
-      let display_i = if i == current_i {
+      let display_i = if i == prev_i {
+        String::from("   ")
+      } else {
         let d_i = i + 1;
         format!(" {} ", d_i)
-      } else {
-        String::from("   ")
       };
       println!("{:-^20} | {: <140}", display_i, &format!(" {} ", cont));
-      current_i = i;
+      prev_i = i;
     }
     println!("{:-^163}", "-");
   }
@@ -1219,7 +1219,7 @@ impl Blank {
           "(---pb2---)" => Pronoun2ForBlank(Some(blank_id)),
           "(---pb3---)" => Pronoun3ForBlank(Some(blank_id)),
           "(---pb4---)" => Pronoun4ForBlank(Some(blank_id)),
-          _ => panic!("Failed to read Blank type from string."),
+          _ => panic!("Failed to read Blank type from string: {}", &format!("{}{}{}", components[0], components[1], components[2])),
         }
       },
     }
