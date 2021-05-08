@@ -10354,6 +10354,45 @@ mod tests {
     );
     
     let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
+
+    let s1a = String::from("Here is a sentence. Here is another one with a blank (").chars().count() - 1;
+    let s1b = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1a;
+    let s1c = String::from(") in it. Here is another sentence that has a ").chars().count() + s1b;
+    let s1d = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1c;
+    let s1e = String::from(", ").chars().count() + s1d;
+    let s1f = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1e;
+    let s1g = String::from(", and ").chars().count() + s1f;
+    let s1h = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1g;
+    let s1i = String::from(".").chars().count() + s1h;
+
+    let formatting2: Vec<(String, usize, usize)> = vec![
+      (String::from("CONTENT"), 0, s1a),
+      (String::from("HIGHLIGHTED BLANK"), s1a, s1b),
+      (String::from("CONTENT"), s1b, s1c),
+      (String::from("UNHIGHLIGHTED BLANK"), s1c, s1d),
+      (String::from("CONTENT"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED BLANK"), s1e, s1f),
+      (String::from("CONTENT"), s1f, s1g),
+      (String::from("UNHIGHLIGHTED BLANK"), s1g, s1h),
+      (String::from("CONTENT"), s1h, s1i),
+    ];
+
+    // [
+    //   ("CONTENT", 0, 53),
+    //   ("HIGHLIGHTED BLANK", 53, 70),
+    //   ("CONTENT", 70, 115),
+    //   ("UNHIGHLIGHTED BLANK", 115, 155),
+    //   ("CONTENT", 155, 157),
+    //   ("UNHIGHLIGHTED BLANK", 157, 196),
+    //   ("CONTENT", 196, 202),
+    //   ("UNHIGHLIGHTED BLANK", 202, 245),
+    //   ("CONTENT", 245, 246)
+    // ]
+
+    // let blank_vec: Vec<(String, usize, usize)> = vec![];
+
+    assert_eq!(formatting2, formatting_vector2);
+
     let nt_output_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = NoteTemplate::get_display_content_vec_from_string(nt_display_string, Some(formatting_vector2));
 
     let display_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
@@ -10371,18 +10410,6 @@ mod tests {
           (String::from("CONTENT"), 0, 34),
           (String::from("HIGHLIGHTED BLANK"), 34, 34+CurrentUser.display_to_user().chars().count()),
           (String::from("CONTENT"), 34+CurrentUser.display_to_user().chars().count(), 34+CurrentUser.display_to_user().chars().count()+8),
-        ])
-      ),
-      (
-        2,
-        format!("Here is another sentence that has a {}, {}, and {}.", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user(), AllCollaterals.display_to_user()),
-        Some(vec![
-          (String::from("CONTENT"), 0, 36),
-          (String::from("HIGHLIGHTED BLANK"), 36, 71),
-          (String::from("CONTENT"), 71, 73),
-          (String::from("UNHIGHLIGHTED BLANK"), 73, 107),
-          (String::from("CONTENT"), 107, 113),
-          (String::from("UNHIGHLIGHTED BLANK"), 113, 151),
         ])
       ),
       (

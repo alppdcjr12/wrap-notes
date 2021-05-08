@@ -258,6 +258,12 @@ impl NoteTemplate {
     let mut prev_end_idx: usize = 0;
     let mut content = String::new();
 
+    // any time you push to the format_vec, check to see if those indices contain a period. If so, have indices for up to and including
+    // the period and also for the next section after the period. So basically, end it on idx of period + 1 for the first one,
+    // have idx of period + 1 .. idx of period + 2 for the next one and that's literally just the space,
+    // and then have idx of period + 2 .. end to then test for a period again
+
+
     let mut i: u32 = 1;
     loop {
       let find_match_string = content_string.clone();
@@ -411,7 +417,7 @@ impl NoteTemplate {
     for (i, sent) in display_content_vec.iter().enumerate() {
       if sent.chars().count() > 0 {
         let mut sentence = sent.clone();
-        if i != display_content_vec.len() - 1 {
+        if i != display_content_vec.len() - 1 || sentence != String::from("") || sentence != String::from(" ") {
           sentence.push_str(".");
         }
         if sentence.chars().count() < 140 {
@@ -1308,55 +1314,4 @@ impl fmt::Display for Blank {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "(---{}---)", self.abbreviate())
   }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn note_template_accurately_applies_formatting() {
-    let nt1 = NoteTemplate::new(
-      1,
-      CarePlan,
-      true,
-      format!(
-        "{}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}.",
-        CurrentUser,
-        Pronoun1ForBlank(Some(1)),
-        Collaterals,
-        Pronoun2ForBlank(Some(3)),
-        Collaterals,
-        Pronoun3ForBlank(Some(5)),
-        Collaterals,
-        Pronoun4ForBlank(Some(7)),
-      ),
-      None
-    );
-
-    let (display_content_string, formatting) = nt1.generate_display_content_string_with_blanks(None, None);
-    
-    // assert_eq!(
-      //   display_content_string2,
-      //   format!(
-        //     "{}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}. {}'s pronouns are {}.",
-        //     CurrentUser.display_to_user(),
-        //     Pronoun1ForBlank(Some(1)).display_to_user(),
-    //     Collaterals.display_to_user(),
-    //     Pronoun2ForBlank(Some(3)).display_to_user(),
-    //     Collaterals.display_to_user(),
-    //     Pronoun3ForBlank(Some(5)).display_to_user(),
-    //     Collaterals.display_to_user(),
-    //     Pronoun4ForBlank(Some(7)).display_to_user(),
-    //   ),
-    // );
-
-    let content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
-      // -> Vec<(usize, String, Option<Vec<(String, usize, usize)>>)>
-
-    let comparison_vec: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![];
-    assert_eq!(comparison_vec, content_vec);
-
-  }
-
 }
