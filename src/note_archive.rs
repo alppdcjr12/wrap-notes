@@ -10240,7 +10240,7 @@ mod tests {
       None
     );
 
-    let s1a = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() - 1;
+    let s1a = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count();
     let s1b = String::from(" is a user with ").chars().count() + s1a;
     let s1c = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1b;
     let s1d = String::from("/").chars().count() + s1c;
@@ -10274,26 +10274,30 @@ mod tests {
       None
     );
     
-    let s1a = String::from("Here is a sentence. Here is another one with a blank (").chars().count() - 1;
-    let s1b = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1a;
-    let s1c = String::from(") in it. Here is another sentence that has a ").chars().count() + s1b;
-    let s1d = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1c;
-    let s1e = String::from(", ").chars().count() + s1d;
-    let s1f = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1e;
-    let s1g = String::from(", and ").chars().count() + s1f;
-    let s1h = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1g;
-    let s1i = String::from(".").chars().count() + s1h;
+    let s1a = String::from("Here is a sentence. ").chars().count();
+    let s1b = String::from("Here is another one with a blank (").chars().count() + s1a;
+    let s1c = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1b;
+    let s1d = String::from(") in it. ").chars().count() + s1c;
+    let s1e = String::from("Here is another sentence that has a ").chars().count() + s1d;
+    let s1f = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1e;
+    let s1g = String::from(", ").chars().count() + s1f;
+    let s1h = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1g;
+    let s1i = String::from(", and ").chars().count() + s1h;
+    let s1j = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1i;
+    let s1k = String::from(".").chars().count() + s1j;
 
     let formatting2: Vec<(String, usize, usize)> = vec![
       (String::from("CONTENT"), 0, s1a),
-      (String::from("HIGHLIGHTED BLANK"), s1a, s1b),
-      (String::from("CONTENT"), s1b, s1c),
-      (String::from("UNHIGHLIGHTED BLANK"), s1c, s1d),
+      (String::from("CONTENT"), s1a, s1b),
+      (String::from("HIGHLIGHTED BLANK"), s1b, s1c),
+      (String::from("CONTENT"), s1c, s1d),
       (String::from("CONTENT"), s1d, s1e),
       (String::from("UNHIGHLIGHTED BLANK"), s1e, s1f),
       (String::from("CONTENT"), s1f, s1g),
       (String::from("UNHIGHLIGHTED BLANK"), s1g, s1h),
       (String::from("CONTENT"), s1h, s1i),
+      (String::from("UNHIGHLIGHTED BLANK"), s1i, s1j),
+      (String::from("CONTENT"), s1j, s1k),
     ];
 
     let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
@@ -10315,7 +10319,7 @@ mod tests {
       None
     );
 
-    let s1a = CurrentUser.display_to_user().chars().count() - 1;
+    let s1a = CurrentUser.display_to_user().chars().count();
     let s1b = String::from(" is a user with ").chars().count() + s1a;
     let s1c = Pronoun1ForUser.display_to_user().chars().count() + s1b;
     let s1d = String::from("/").chars().count() + s1c;
@@ -10355,39 +10359,31 @@ mod tests {
     
     let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
 
-    let s1a = String::from("Here is a sentence. Here is another one with a blank (").chars().count() - 1;
-    let s1b = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1a;
-    let s1c = String::from(") in it. Here is another sentence that has a ").chars().count() + s1b;
-    let s1d = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1c;
-    let s1e = String::from(", ").chars().count() + s1d;
-    let s1f = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1e;
-    let s1g = String::from(", and ").chars().count() + s1f;
-    let s1h = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1g;
-    let s1i = String::from(".").chars().count() + s1h;
+    let s1a = String::from("Here is a sentence. ").chars().count();
+    let s1b = String::from("Here is another one with a blank (").chars().count() + s1a;
+    let s1c = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1b;
+    let s1d = String::from(") in it. ").chars().count() + s1c;
+    let s1e = String::from("Here is another sentence that has a ").chars().count() + s1d;
+    let s1f = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1e;
+    let s1g = String::from(", ").chars().count() + s1f;
+    let s1h = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1g;
+    let s1i = String::from(", and ").chars().count() + s1h;
+    let s1j = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1i;
+    let s1k = String::from(".").chars().count() + s1j;
 
     let formatting2: Vec<(String, usize, usize)> = vec![
       (String::from("CONTENT"), 0, s1a),
-      (String::from("HIGHLIGHTED BLANK"), s1a, s1b),
-      (String::from("CONTENT"), s1b, s1c),
-      (String::from("UNHIGHLIGHTED BLANK"), s1c, s1d),
+      (String::from("CONTENT"), s1a, s1b),
+      (String::from("HIGHLIGHTED BLANK"), s1b, s1c),
+      (String::from("CONTENT"), s1c, s1d),
       (String::from("CONTENT"), s1d, s1e),
       (String::from("UNHIGHLIGHTED BLANK"), s1e, s1f),
       (String::from("CONTENT"), s1f, s1g),
       (String::from("UNHIGHLIGHTED BLANK"), s1g, s1h),
       (String::from("CONTENT"), s1h, s1i),
+      (String::from("UNHIGHLIGHTED BLANK"), s1i, s1j),
+      (String::from("CONTENT"), s1j, s1k),
     ];
-
-    // [
-    //   ("CONTENT", 0, 53),
-    //   ("HIGHLIGHTED BLANK", 53, 70),
-    //   ("CONTENT", 70, 115),
-    //   ("UNHIGHLIGHTED BLANK", 115, 155),
-    //   ("CONTENT", 155, 157),
-    //   ("UNHIGHLIGHTED BLANK", 157, 196),
-    //   ("CONTENT", 196, 202),
-    //   ("UNHIGHLIGHTED BLANK", 202, 245),
-    //   ("CONTENT", 245, 246)
-    // ]
 
     // let blank_vec: Vec<(String, usize, usize)> = vec![];
 
@@ -10400,40 +10396,52 @@ mod tests {
         0,
         String::from("Here is a sentence."),
         Some(vec![
-          (String::from("CONTENT"), 0, 19),
+          (String::from("CONTENT"), 0, 20),
         ])
       ),
       (
         1,
-        format!("Here is another one with a blank ({}) in it.", CurrentUser.display_to_user()),
+        format!("Here is another one with a blank ([1]: {}) in it.", CurrentUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 34),
-          (String::from("HIGHLIGHTED BLANK"), 34, 34+CurrentUser.display_to_user().chars().count()),
-          (String::from("CONTENT"), 34+CurrentUser.display_to_user().chars().count(), 34+CurrentUser.display_to_user().chars().count()+8),
+          (String::from("HIGHLIGHTED BLANK"), 34, 34+CurrentUser.display_to_user().chars().count() + 5),
+          (String::from("CONTENT"), 34+CurrentUser.display_to_user().chars().count()+5, 34+CurrentUser.display_to_user().chars().count()+13),
         ])
       ),
       (
         2,
-        format!("Here is another sentence that has a {}, {}, and ", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
+        format!("Here is another sentence that has a [2]: {}, [3]: {}, and ", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 36),
-          (String::from("HIGHLIGHTED BLANK"), 36, 71),
-          (String::from("CONTENT"), 71, 73),
-          (String::from("UNHIGHLIGHTED BLANK"), 73, 107),
-          (String::from("CONTENT"), 107, 113),
+          (String::from("HIGHLIGHTED BLANK"), 36, 76),
+          (String::from("CONTENT"), 76, 78),
+          (String::from("UNHIGHLIGHTED BLANK"), 78, 117),
+          (String::from("CONTENT"), 117, 123),
         ])
       ),
       (
         2,
-        format!("{}.", AllCollaterals.display_to_user()),
+        format!("[4]: {}.", AllCollaterals.display_to_user()),
         Some(vec![
-          (String::from("UNHIGHLIGHTED BLANK"), 0, 38),
-          (String::from("CONTENT"), 38, 39),
+          (String::from("UNHIGHLIGHTED BLANK"), 0, 43),
+          (String::from("CONTENT"), 43, 44),
         ])
       ),
     ];
 
     assert_eq!(display_vecs, nt_output_vecs);
 
+  }
+  #[test]
+  fn note_template_gets_sentence_end_indices() {
+    let some_sentences = String::from("Sentence. Another sentence. Here's a third.");
+    let sentence_indices: Vec<(usize, usize)> = vec![(0, 9), (10, 27), (28, 42)];
+    let nt_indices = NoteTemplate::get_sentence_end_indices(0, some_sentences, None);
+    assert_eq!(sentence_indices, nt_indices);
+    let some_sentences2 = String::from("Sentence. Another sentence. Here's a third.");
+    // String::from("[1]: Sentence. [2]: Another sentence. [3]: Here's a third.")
+    let sentence_indices2: Vec<(usize, usize)> = vec![(0, 14), (15, 37), (38, 57)];
+    let nt_indices2 = NoteTemplate::get_sentence_end_indices(0, some_sentences2, Some(1));
+    assert_eq!(sentence_indices2, nt_indices2);
   }
 }
