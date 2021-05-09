@@ -10408,9 +10408,22 @@ mod tests {
           (String::from("CONTENT"), 51, 60),
         ])
       ),
+      // [
+      //   ("CONTENT", 0, 20),
+      //   ("CONTENT", 20, 54),
+      //   ("HIGHLIGHTED BLANK", 54, 71),
+      //   ("CONTENT", 71, 80),
+      //   ("CONTENT", 80, 116),
+      //   ("UNHIGHLIGHTED BLANK", 116, 156),
+      //   ("CONTENT", 156, 158),
+      //   ("UNHIGHLIGHTED BLANK", 158, 197),
+      //   ("CONTENT", 197, 203),
+      //   ("UNHIGHLIGHTED BLANK", 203, 246),
+      //   ("CONTENT", 246, 247)
+      // ]
       (
         2,
-        format!("Here is another sentence that has a [2]: {}, [3]: {}, and ", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
+        format!("Here is another sentence that has a [2]: {}, [3]: {}", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 36),
           (String::from("HIGHLIGHTED BLANK"), 36, 76),
@@ -10421,10 +10434,11 @@ mod tests {
       ),
       (
         2,
-        format!("[4]: {}.", AllCollaterals.display_to_user()),
+        format!(", and [4]: {}.", AllCollaterals.display_to_user()),
         Some(vec![
-          (String::from("UNHIGHLIGHTED BLANK"), 0, 43),
-          (String::from("CONTENT"), 43, 44),
+          (String::from("CONTENT"), 0, 6),
+          (String::from("UNHIGHLIGHTED BLANK"), 6, 49),
+          (String::from("CONTENT"), 49, 50),
         ])
       ),
     ];

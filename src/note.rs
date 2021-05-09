@@ -470,7 +470,7 @@ impl NoteTemplate {
     for (i, sent) in display_content_vec.iter().enumerate() {
       if sent.chars().count() > 0 {
         let mut sentence = sent.clone();
-        if i != display_content_vec.len() - 1 || sentence != String::from("") || sentence != String::from(" ") {
+        if i != display_content_vec.len() - 1 && sentence != String::from("") && sentence != String::from(" ") {
           sentence.push_str(". ");
         }
         if sentence.chars().count() < 140 {
@@ -571,7 +571,7 @@ impl NoteTemplate {
                           Some(idx_tup) => {
                             let pos = idx_tup.1 - current_idx;
                             let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                              .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+pos) )
+                              .filter(|(s, i1, i2)| i1 >= &current_idx && i2 <= &(current_idx+pos) )
                               .map(|(s, i1, i2)|
                                 if i2 <= &(current_idx+pos) {
                                   (s.to_string(), i1-current_idx, i2-current_idx)
@@ -587,6 +587,16 @@ impl NoteTemplate {
                         }
                       },
                       Some(spc) => {
+                        let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                          .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140) )
+                          .map(|(s, i1, i2)|
+                            if i2 > &(current_idx+spc) {
+                              (s.to_string(), i1-current_idx, spc)
+                            } else {
+                              (s.to_string(), i1-current_idx, i2-current_idx)
+                            }
+                          )
+                          .collect();
                         length_adjusted_vec.push((i, String::from(&long_sent[..spc]), None));
                         long_sent = String::from(&long_sent[spc..]);
                         current_idx += 140;
@@ -601,7 +611,7 @@ impl NoteTemplate {
             None => length_adjusted_vec.push((i, long_sent, None)),
             Some(f) => {
               let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                .filter(|(_, i1, i2)| i1 > &current_idx && i2 <= &(long_sent.chars().count() + current_idx) )
+                .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(long_sent.chars().count() + current_idx) )
                 .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                 .collect();
                 
