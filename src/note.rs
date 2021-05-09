@@ -489,65 +489,119 @@ impl NoteTemplate {
         } else {
           let mut long_sent = sentence.clone();
           while long_sent.len() > 140 {
-            match &long_sent[..140].rfind(' ') {
+            let overflowing_blank: Option<(String, usize, usize)> = match color_formatting.clone() {
+              None => None,
+              Some(f) => {
+                let maybe_blank = f.iter().find(|(_, i1, i2)| i1 != &0 && i1 < &140 && i2 > &140 );
+                match maybe_blank {
+                  None => None,
+                  Some(tup) => Some(tup.clone()),
+                }
+              },
+            };
+            match overflowing_blank {
+              Some(b) => {
+                let sentence_formatting: Vec<(String, usize, usize)> = color_formatting.clone().unwrap().iter()
+                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &b.2)
+                  .map(|(s, i1, i2)|
+                    if i2 > &140 {
+                      (s.to_string(), i1-current_idx, i2-current_idx)
+                    } else {
+                      (s.to_string(), i1-current_idx, b.1)
+                    }
+                  )
+                  .collect();
+                length_adjusted_vec.push((i, String::from(&long_sent[..b.1+1]), Some(sentence_formatting)));
+                long_sent = String::from(&long_sent[b.1+1..]);
+                current_idx += b.1+1;
+              },
               None => {
                 match color_formatting.clone() {
                   None => {
-                    length_adjusted_vec.push((i, String::from(&long_sent[..140]), None));
-                    long_sent = String::from(&long_sent[141..]);
-                    current_idx += 140;
-                  },
-                  Some(f) => {
-                    let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                      .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx) )
-                      .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
-                      .collect();
-                    
-                    let overflowing_blank = sentence_formatting.iter().find(|(_, i1, i2)| i1 < &140 && i2 > &140 );
-                    match overflowing_blank {
-                      Some(b) => {
-                        length_adjusted_vec.push((i, String::from(&long_sent[..b.1]), Some(sentence_formatting.clone())));
-                        thread::sleep(time::Duration::from_secs(10));
-                        long_sent = String::from(&long_sent[b.1..]);
-                        current_idx += b.1;
-                      },
+                    match &long_sent[..140].rfind(' ') {
                       None => {
-                        length_adjusted_vec.push((i, String::from(&long_sent[..140]), Some(sentence_formatting.clone())));
+                        length_adjusted_vec.push((i, String::from(&long_sent[..140]), None));
                         long_sent = String::from(&long_sent[141..]);
                         current_idx += 140;
+                      },
+                      Some(idx) => {
+                        length_adjusted_vec.push((i, String::from(&long_sent[..*idx]), None));
+                        long_sent = String::from(&long_sent[*idx..]);
+                        current_idx += idx;
+                      },
+                    }
+                  },
+                  Some(f) => {
+                    let mut current_sent = long_sent.clone();
+                    let rightmost_space = loop {
+                      match current_sent.rfind(' ') {
+                        None => break None,
+                        Some(space_idx) => {
+                          match f.iter().find(|(s, i1, i2)| i1-current_idx < space_idx && i2-current_idx > space_idx && !String::from("UNHIGHLIGHTED BLANK").contains(&s[..]) ) {
+                            // "UNHIGHLIGHTED BLANK" contains all 3 blank descriptor variations
+                            Some(tup) => {
+                              current_sent = String::from(&current_sent[..tup.1-current_idx]);
+                              continue;
+                            },
+                            None => break Some(space_idx),
+                          }
+                        }
                       }
+                    };
+                    match rightmost_space {
+                      None => {
+                        let last_divider_idx = f.iter().find(|(s, i1, i2)| i1 > &current_idx && i2 >= &(current_idx+140) );
+                        match last_divider_idx {
+                          None => {
+                            let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                              .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140) )
+                              .map(|(s, i1, i2)|
+                                if i2 <= &(current_idx+140) {
+                                  (s.to_string(), i1-current_idx, i2-current_idx)
+                                } else {
+                                  (s.to_string(), i1-current_idx, 140)
+                                }
+                              )
+                              .collect();
+                              
+                            length_adjusted_vec.push((i, String::from(&long_sent[..140]), Some(sentence_formatting)));
+                            long_sent = String::from(&long_sent[141..]);
+                            current_idx += 140;
+                          },
+                          Some(idx_tup) => {
+                            let pos = idx_tup.1 - current_idx;
+                            let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                              .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+pos) )
+                              .map(|(s, i1, i2)|
+                                if i2 <= &(current_idx+pos) {
+                                  (s.to_string(), i1-current_idx, i2-current_idx)
+                                } else {
+                                  (s.to_string(), i1-current_idx, pos)
+                                }
+                              )
+                              .collect();
+                            length_adjusted_vec.push((i, String::from(&long_sent[..pos]), Some(sentence_formatting)));
+                            long_sent = String::from(&long_sent[pos..]);
+                            current_idx += pos;
+                          }
+                        }
+                      },
+                      Some(spc) => {
+                        length_adjusted_vec.push((i, String::from(&long_sent[..spc]), None));
+                        long_sent = String::from(&long_sent[spc..]);
+                        current_idx += 140;
+                      },
                     }
                   }
                 }
               },
-              Some(idx) => {
-
-                // Need to check to make sure that this is not an index in the middle of a blank--because they DO have spaces, now.
-                // Spaces are not necessarily not blanks.
-                // Gotta do the same check to see if there are any index pairs that wrap the current location, and if so, then use idx1 instead
-                // of the space.
-
-                match color_formatting.clone() {
-                  None => length_adjusted_vec.push((i, String::from(&long_sent[..*idx]), None)),
-                  Some(f) => {
-                    let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                      .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(String::from(&long_sent[..*idx]).chars().count() + current_idx) )
-                      .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
-                      .collect();
-                      
-                      length_adjusted_vec.push((i, String::from(&long_sent[..*idx]), Some(sentence_formatting)));
-                    },
-                  }
-                long_sent = String::from(&long_sent[*idx..]);
-                current_idx += idx;
-              }
             }
           }
           match color_formatting.clone() {
             None => length_adjusted_vec.push((i, long_sent, None)),
             Some(f) => {
               let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                .filter(|(_, i1, i2)| i1 > &current_idx && i2 < &(long_sent.chars().count() + current_idx) )
+                .filter(|(_, i1, i2)| i1 > &current_idx && i2 <= &(long_sent.chars().count() + current_idx) )
                 .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                 .collect();
                 

@@ -10394,18 +10394,18 @@ mod tests {
     let display_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
       (
         0,
-        String::from("Here is a sentence."),
+        String::from("Here is a sentence. "),
         Some(vec![
           (String::from("CONTENT"), 0, 20),
         ])
       ),
       (
         1,
-        format!("Here is another one with a blank ([1]: {}) in it.", CurrentUser.display_to_user()),
+        format!("Here is another one with a blank ([1]: {}) in it. ", CurrentUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 34),
-          (String::from("HIGHLIGHTED BLANK"), 34, 34+CurrentUser.display_to_user().chars().count() + 5),
-          (String::from("CONTENT"), 34+CurrentUser.display_to_user().chars().count()+5, 34+CurrentUser.display_to_user().chars().count()+13),
+          (String::from("HIGHLIGHTED BLANK"), 34, 51),
+          (String::from("CONTENT"), 51, 60),
         ])
       ),
       (
