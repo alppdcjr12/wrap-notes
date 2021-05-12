@@ -242,33 +242,22 @@ impl NoteTemplate {
     }
     blanks
   }
-  pub fn get_sentence_end_indices(current_idx: usize, content: String, starting_id: Option<usize>) -> Vec<(usize, usize)> {
+  pub fn get_sentence_end_indices(current_idx: usize, content: String) -> Vec<(usize, usize)> {
     let mut output_vec: Vec<(usize, usize)> = vec![];
     let mut content_string = content.clone();
     let mut offset = 0;
-    let mut id_offset = 0;
 
-    while content_string.contains(". ") {
-
-      let first_sent = match starting_id {
-        Some(id) => {
-          let display = format!("[{}]: {}", id+id_offset, content_string.split(". ").collect::<Vec<&str>>()[0].clone());
-          id_offset += 1;
-          display
-        },
-        None => content_string.split(". ").map(|s| s.to_string() ).collect::<Vec<String>>()[0].clone(),
-      };
+    while content_string.contains(". ") && content_string != String::from(". ") {
+      let first_sent = content_string.split(". ").map(|s| s.to_string() ).nth(0).unwrap().clone();
       let num_chars = first_sent.chars().count() + 1;
       output_vec.push((current_idx + offset, current_idx + offset + num_chars));
       offset += num_chars+1;
       content_string = content_string.split(". ").collect::<Vec<&str>>()[1..].join(". ");
     }
-    let num_chars = match starting_id {
-      Some(id) => format!("[{}]: {}", id+id_offset, &content_string).chars().count(),
-      None => content_string.chars().count(),
-    };
-
-    output_vec.push((current_idx + offset, current_idx + offset + num_chars-1));
+    let num_chars = content_string.chars().count();
+    if num_chars > 0 && content_string != String::from(". ") {
+      output_vec.push((current_idx + offset, (current_idx + offset + num_chars)-1));
+    }
     output_vec
   }
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> (String, Vec<(String, usize, usize)>) {
@@ -299,7 +288,7 @@ impl NoteTemplate {
             content.push_str(&find_match_string.clone());
             match content_focus_id {
               Some(id) => {
-                let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone(), Some(i as usize));
+                let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
                 for (idx1, idx2) in sentence_indices {
                   if i == id {
                     format_vec.push((String::from("HIGHLIGHTED CONTENT"), idx1, idx2+1));
@@ -309,7 +298,7 @@ impl NoteTemplate {
                 }
               },
               None => {
-                let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone(), None);
+                let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
                 for (idx1, idx2) in sentence_indices {
                   format_vec.push((String::from("CONTENT"), idx1, idx2+1));
                 }
@@ -325,7 +314,6 @@ impl NoteTemplate {
                   let sentence_indices = NoteTemplate::get_sentence_end_indices(
                     content.chars().count(),
                     format!("{}", &find_match_string[prev_end_idx..]),
-                    Some(i as usize)
                   );
                   if i == focus_id {
                     for (idx1, idx2) in sentence_indices {
@@ -342,7 +330,6 @@ impl NoteTemplate {
                   let sentence_indices = NoteTemplate::get_sentence_end_indices(
                     content.chars().count(),
                     format!("{}", &find_match_string[prev_end_idx..]),
-                    None
                   );
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
@@ -368,7 +355,7 @@ impl NoteTemplate {
 
       let display_blank = match blank_focus_id {
         None => format!("{}", b.display_to_user()),
-        Some(f_id) => format!("[{}]: {}", i, b.display_to_user()),
+        Some(_) => format!("[{}]: {}", i, b.display_to_user()),
       };
 
       let display_content =  match content_focus_id {
@@ -376,16 +363,19 @@ impl NoteTemplate {
         Some(f_id) => {
           let mut output_strings: Vec<String> = vec![];
           let sentence_indices = NoteTemplate::get_sentence_end_indices(
-            content.chars().count(),
+            prev_end_idx,
             format!("{}", &content_string[prev_end_idx..m.start()]),
-            Some(i as usize),
           );
-          for (idx1, idx2) in sentence_indices {
+          for (idx1, idx2) in sentence_indices.clone() {
             output_strings.push(
-              format!("[{}]: {}", i, &String::from(&content_string[idx1..idx2]))
+              format!("[{}]: {}", i, &String::from(&content_string[idx1..idx2+1]))
             );
           }
-          output_strings.join(". ")
+          if output_strings.len() > 0 {
+            output_strings.join(". ")
+          } else {
+            format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
+          }
         }
       };
       let last_idx_before_adding = content.chars().count();
@@ -413,7 +403,6 @@ impl NoteTemplate {
             let sentence_indices = NoteTemplate::get_sentence_end_indices(
               last_idx_before_adding,
               format!("{}", &content_string[prev_end_idx..m.start()]),
-              Some(i as usize),
             );
             for (idx1, idx2) in sentence_indices {
               if f_id == i {
@@ -427,7 +416,6 @@ impl NoteTemplate {
             let sentence_indices = NoteTemplate::get_sentence_end_indices(
               last_idx_before_adding,
               format!("{}", &content_string[prev_end_idx..m.start()]),
-              None,
             );
             for (idx1, idx2) in sentence_indices {
               format_vec.push((String::from("CONTENT"), idx1, idx2+1));

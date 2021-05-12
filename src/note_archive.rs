@@ -10211,7 +10211,6 @@ mod tests {
 
     let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, Some(1));
     assert_eq!(
-      display_content_string4,
       format!(
         "[1]: {}[2]: 's pronouns are {}[3]: . {}[4]: 's pronouns are {}[5]: . {}[6]: 's pronouns are {}[7]: . {}[8]: 's pronouns are {}[9]: .",
         CurrentUser.display_to_user(),
@@ -10223,6 +10222,7 @@ mod tests {
         Collaterals.display_to_user(),
         Pronoun4ForBlank(Some(7)).display_to_user(),
       ),
+      display_content_string4,
     );
   }
   #[test]
@@ -10450,12 +10450,11 @@ mod tests {
   fn note_template_gets_sentence_end_indices() {
     let some_sentences = String::from("Sentence. Another sentence. Here's a third.");
     let sentence_indices: Vec<(usize, usize)> = vec![(0, 9), (10, 27), (28, 42)];
-    let nt_indices = NoteTemplate::get_sentence_end_indices(0, some_sentences, None);
+    let nt_indices = NoteTemplate::get_sentence_end_indices(0, some_sentences);
     assert_eq!(sentence_indices, nt_indices);
-    let some_sentences2 = String::from("Sentence. Another sentence. Here's a third.");
-    // String::from("[1]: Sentence. [2]: Another sentence. [3]: Here's a third.")
-    let sentence_indices2: Vec<(usize, usize)> = vec![(0, 14), (15, 37), (38, 57)];
-    let nt_indices2 = NoteTemplate::get_sentence_end_indices(0, some_sentences2, Some(1));
-    assert_eq!(sentence_indices2, nt_indices2);
+    let some_sentences_2 = String::from("Current user's pronouns are he. Jack's pronouns are them. Your pronouns are you. My pronouns are me.");
+    let sentence_indices_2: Vec<(usize, usize)> = vec![(0, 31), (32, 57), (58, 80), (81, 99)];
+    let nt_indices_2 = NoteTemplate::get_sentence_end_indices(0, some_sentences_2);
+    assert_eq!(sentence_indices_2, nt_indices_2);
   }
 }
