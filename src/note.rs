@@ -492,7 +492,7 @@ impl NoteTemplate {
             let overflowing_blank: Option<(String, usize, usize)> = match color_formatting.clone() {
               None => None,
               Some(f) => {
-                let maybe_blank = f.iter().find(|(_, i1, i2)| i1 != &0 && i1 < &140 && i2 > &140 );
+                let maybe_blank = f.iter().find(|(_, i1, i2)| i1 != &0 && i1 <= &(current_idx+140) && i2 >= &(current_idx+140) );
                 match maybe_blank {
                   None => None,
                   Some(tup) => Some(tup.clone()),
@@ -502,18 +502,14 @@ impl NoteTemplate {
             match overflowing_blank {
               Some(b) => {
                 let sentence_formatting: Vec<(String, usize, usize)> = color_formatting.clone().unwrap().iter()
-                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &b.2)
+                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 < &b.2)
                   .map(|(s, i1, i2)|
-                    if i2 > &140 {
-                      (s.to_string(), i1-current_idx, i2-current_idx)
-                    } else {
-                      (s.to_string(), i1-current_idx, b.1)
-                    }
+                    (s.to_string(), i1-current_idx, i2-current_idx)
                   )
                   .collect();
-                length_adjusted_vec.push((i, String::from(&long_sent[..b.1+1]), Some(sentence_formatting)));
-                long_sent = String::from(&long_sent[b.1+1..]);
-                current_idx += b.1+1;
+                length_adjusted_vec.push((i, String::from(&long_sent[..b.1-current_idx]), Some(sentence_formatting)));
+                long_sent = String::from(&long_sent[b.1-current_idx..]);
+                current_idx += b.1-current_idx;
               },
               None => {
                 match color_formatting.clone() {

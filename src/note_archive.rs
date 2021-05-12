@@ -10408,25 +10408,26 @@ mod tests {
           (String::from("CONTENT"), 51, 60),
         ])
       ),
+      // Here is another sentence that has a [2]: Subject pronoun of the current user, [3]: Object pronoun of the current user, and [4]: All collaterals for the current client.
       // [
       //   ("CONTENT", 0, 20),
       //   ("CONTENT", 20, 54),
       //   ("HIGHLIGHTED BLANK", 54, 71),
       //   ("CONTENT", 71, 80),
-      //   ("CONTENT", 80, 116),
-      //   ("UNHIGHLIGHTED BLANK", 116, 156),
-      //   ("CONTENT", 156, 158),
-      //   ("UNHIGHLIGHTED BLANK", 158, 197),
-      //   ("CONTENT", 197, 203),
-      //   ("UNHIGHLIGHTED BLANK", 203, 246),
-      //   ("CONTENT", 246, 247)
+      //   ("CONTENT", 80, 116),                    <--- 0, 36
+      //   ("UNHIGHLIGHTED BLANK", 116, 156),       <--- 36, 76
+      //   ("CONTENT", 156, 158),                   <--- 76, 78
+      //   ("UNHIGHLIGHTED BLANK", 158, 197),       <--- 78, 117
+      //   ("CONTENT", 197, 203),                   <--- 117, 123
+      //   ("UNHIGHLIGHTED BLANK", 203, 246),       <--- 0, 43
+      //   ("CONTENT", 246, 247)                    <--- 43, 44
       // ]
       (
         2,
-        format!("Here is another sentence that has a [2]: {}, [3]: {}", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
+        format!("Here is another sentence that has a [2]: {}, [3]: {}, and ", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 36),
-          (String::from("HIGHLIGHTED BLANK"), 36, 76),
+          (String::from("UNHIGHLIGHTED BLANK"), 36, 76),
           (String::from("CONTENT"), 76, 78),
           (String::from("UNHIGHLIGHTED BLANK"), 78, 117),
           (String::from("CONTENT"), 117, 123),
@@ -10434,11 +10435,10 @@ mod tests {
       ),
       (
         2,
-        format!(", and [4]: {}.", AllCollaterals.display_to_user()),
+        format!("[4]: {}.", AllCollaterals.display_to_user()),
         Some(vec![
-          (String::from("CONTENT"), 0, 6),
-          (String::from("UNHIGHLIGHTED BLANK"), 6, 49),
-          (String::from("CONTENT"), 49, 50),
+          (String::from("UNHIGHLIGHTED BLANK"), 0, 43),
+          (String::from("CONTENT"), 43, 44),
         ])
       ),
     ];
