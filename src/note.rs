@@ -248,7 +248,8 @@ impl NoteTemplate {
     let mut offset = 0;
 
     while content_string.contains(". ") && content_string != String::from(". ") {
-      let first_sent = content_string.split(". ").map(|s| s.to_string() ).nth(0).unwrap().clone();
+      let mut sents = content_string.split(". ");
+      let first_sent = sents.nth(0).unwrap().to_string();
       let num_chars = first_sent.chars().count() + 1;
       output_vec.push((current_idx + offset, current_idx + offset + num_chars));
       offset += num_chars+1;
@@ -263,6 +264,7 @@ impl NoteTemplate {
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> (String, Vec<(String, usize, usize)>) {
     let mut content_string = self.content.clone();
     let mut format_vec: Vec<(String, usize, usize)> = vec![];
+    let mut cont_i = 1;
 
     match (blank_focus_id, content_focus_id) {
       (Some(_), Some(_)) => panic!("Focus IDs for both content and blank passed to generate_display_content_string_with_blanks on NoteTemplate."),
@@ -290,11 +292,12 @@ impl NoteTemplate {
               Some(id) => {
                 let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
                 for (idx1, idx2) in sentence_indices {
-                  if i == id {
+                  if cont_i == id {
                     format_vec.push((String::from("HIGHLIGHTED CONTENT"), idx1, idx2+1));
                   } else {
                     format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), idx1, idx2+1));
                   }
+                  cont_i += 1;
                 }
               },
               None => {
@@ -309,21 +312,24 @@ impl NoteTemplate {
             if prev_end_idx <= find_match_string.chars().count()-1 {
               match content_focus_id {
                 Some(focus_id) => {
-                  let end_string = format!("[{}]: {}", i, &find_match_string[prev_end_idx..]);
-                  content.push_str(&end_string);
                   let sentence_indices = NoteTemplate::get_sentence_end_indices(
-                    content.chars().count(),
-                    format!("{}", &find_match_string[prev_end_idx..]),
+                    prev_end_idx,
+                    format!("{}", &content_string[prev_end_idx..]),
                   );
-                  if i == focus_id {
-                    for (idx1, idx2) in sentence_indices {
-                      format_vec.push((String::from("HIGHLIGHTED CONTENT"), idx1, idx2+1));
+                  for (idx1, idx2) in sentence_indices.clone() {
+                    let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2]));
+                    let cidx1 = content.chars().count();
+                    content.push_str(&display_content);
+                    let cidx2 = content.chars().count();
+                    if focus_id == cont_i {
+                      format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
+                    } else {
+                      format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
                     }
-                  } else {
-                    for (idx1, idx2) in sentence_indices {
-                      format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), idx1, idx2+1));
-                    }
+                    cont_i += 1;
                   }
+                  // cont_i += 1;
+                  // last iteration, so no need to increment
                 },
                 None => {
                   let end_string = String::from(&find_match_string[prev_end_idx..]);
@@ -333,7 +339,7 @@ impl NoteTemplate {
                   );
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
-                    format_vec.push((String::from("CONTENT"), idx1, idx2+1));
+                    format_vec.push((String::from("CONTENT"), idx1, idx2));
                   }
                 }
               }
@@ -358,61 +364,17 @@ impl NoteTemplate {
         Some(_) => format!("[{}]: {}", i, b.display_to_user()),
       };
 
-      let display_content =  match content_focus_id {
-        None => String::from(&content_string[prev_end_idx..m.start()]),
-        Some(f_id) => {
-          let mut output_strings: Vec<String> = vec![];
-          let sentence_indices = NoteTemplate::get_sentence_end_indices(
-            prev_end_idx,
-            format!("{}", &content_string[prev_end_idx..m.start()]),
-          );
-          for (idx1, idx2) in sentence_indices.clone() {
-            output_strings.push(
-              format!("[{}]: {}", i, &String::from(&content_string[idx1..idx2+1]))
-            );
-          }
-          if output_strings.len() > 0 {
-            output_strings.join(". ")
-          } else {
-            format!("[{}]: {}", i, &String::from(&content_string[prev_end_idx..m.start()]))
-          }
-        }
-      };
-      let last_idx_before_adding = content.chars().count();
+      match content_focus_id {
+        None => {
+          let display_content = String::from(&content_string[prev_end_idx..m.start()]);
 
-      let cidx1 = if content.chars().count() > 0 {
-        content.chars().count() - 1
-      } else {
-        0
-      };
-        
-      content.push_str(&display_content);
-      let cidx2 = if content.chars().count() > 0 {
-        content.chars().count() - 1
-      } else {
-        0
-      };
-      
-      let bidx1 = content.chars().count();
-      content.push_str(&display_blank);
-      let bidx2 = content.chars().count();
-      
-      if cidx1 != cidx2 {
-        match content_focus_id {
-          Some(f_id) => {
-            let sentence_indices = NoteTemplate::get_sentence_end_indices(
-              last_idx_before_adding,
-              format!("{}", &content_string[prev_end_idx..m.start()]),
-            );
-            for (idx1, idx2) in sentence_indices {
-              if f_id == i {
-                format_vec.push((String::from("HIGHLIGHTED CONTENT"), idx1, idx2));
-              } else {
-                format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), idx1, idx2));
-              }
-            }
-          },
-          None => {
+          let last_idx_before_adding = content.chars().count();
+
+          let cidx1 = content.chars().count();
+          content.push_str(&display_content);
+          let cidx2 = content.chars().count();
+
+          if cidx1 != cidx2 {
             let sentence_indices = NoteTemplate::get_sentence_end_indices(
               last_idx_before_adding,
               format!("{}", &content_string[prev_end_idx..m.start()]),
@@ -421,9 +383,32 @@ impl NoteTemplate {
               format_vec.push((String::from("CONTENT"), idx1, idx2+1));
             }
           }
+        },
+        Some(f_id) => {
+          
+          let sentence_indices = NoteTemplate::get_sentence_end_indices(
+            prev_end_idx,
+            format!("{}", &content_string[prev_end_idx..m.start()]),
+          );
+          for (idx1, idx2) in sentence_indices.clone() {
+            let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2]));
+            let cidx1 = content.chars().count();
+            content.push_str(&display_content);
+            let cidx2 = content.chars().count();
+            if f_id == cont_i {
+              format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
+            } else {
+              format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
+            }
+            cont_i += 1;
+          }
         }
       }
 
+      let bidx1 = content.chars().count();
+      content.push_str(&display_blank);
+      let bidx2 = content.chars().count();
+      
       if bidx1 != bidx2 {
         match blank_focus_id {
           Some(f_id) => {
@@ -672,14 +657,16 @@ impl NoteTemplate {
   pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
-    let heading = format!(" Edit {} template ", self.structure);
+    let heading = format!(" Edit custom {} template ", self.structure);
     println!("{:-^163}", heading);
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
+    println!("{}", display_content_string);
     let mut prev_i = 100; // 0 is the actual index
     for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+      println!("{}, {}, {:?}", i, cont, f);
       // f is Option<Vec<(String, usize, usize)>>
       let display_i = if i == prev_i {
         String::from("   ")

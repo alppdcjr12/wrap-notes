@@ -1,4 +1,4 @@
 ##### note_templates #####
-4 | Care Plan Meeting | (---u---) 's pronouns are (---pb1@1@---). (---ndd---) 's pronouns are (---pb4@3@---) | 1 | 
-2 | SNCD | Here is some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
+1 | SNCD | Here is some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
+2 | Debrief | Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool. | 1 | 
 ##### note_templates #####

@@ -10303,6 +10303,137 @@ mod tests {
     let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
 
     assert_eq!(formatting2, formatting_vector2);
+
+    let nt3 = NoteTemplate::new(
+      3,
+      Sncd,
+      true,
+      String::from("Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool."),
+      None
+    );
+    
+    let s1a = String::from("Here is a sentence. ").chars().count();
+    let s1b = String::from("This is a new template. ").chars().count() + s1a;
+    let s1c = String::from("And it has a blank here: ").chars().count() + s1b;
+    let s1d = format!("[1]: {}", &Pronoun4ForClient.display_to_user()).chars().count() + s1c;
+    let s1e = String::from(" which is pretty cool.").chars().count() + s1d;
+
+    let formatting3: Vec<(String, usize, usize)> = vec![
+      (String::from("CONTENT"), 0, s1a),
+      (String::from("CONTENT"), s1a, s1b),
+      (String::from("CONTENT"), s1b, s1c),
+      (String::from("HIGHLIGHTED BLANK"), s1c, s1d),
+      (String::from("CONTENT"), s1d, s1e),
+    ];
+
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(Some(1), None);
+
+    assert_eq!(formatting3, formatting_vector3);
+  }
+  #[test]
+  fn note_template_accurate_formatting_vector_content_focus() {
+    let nt1 = NoteTemplate::new(
+      1,
+      CarePlan,
+      true,
+      format!(
+        "{} is a user with {}/{} for pronouns.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+      ),
+      None
+    );
+
+    let s1a = format!("{}", &CurrentUser.display_to_user()).chars().count();
+    let s1b = String::from("[1]:  is a user with ").chars().count() + s1a;
+    let s1c = format!("{}", &Pronoun1ForUser.display_to_user()).chars().count() + s1b;
+    let s1d = String::from("[2]: /").chars().count() + s1c;
+    let s1e = format!("{}", &Pronoun2ForUser.display_to_user()).chars().count() + s1d;
+    let s1f = String::from("[3]:  for pronouns.").chars().count() + s1e;
+
+    let formatting1: Vec<(String, usize, usize)> = vec![
+      (String::from("BLANK"), 0, s1a),
+      (String::from("HIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("BLANK"), s1b, s1c),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1c, s1d),
+      (String::from("BLANK"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
+    ];
+
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, Some(1));
+
+    assert_eq!(formatting1, formatting_vector1);
+
+    let nt2 = NoteTemplate::new(
+      2,
+      Sncd,
+      true,
+      format!(
+        "Here is a sentence. Here is another one with a blank ({}) in it. Here is another sentence that has a {}, {}, and {}.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+        AllCollaterals,
+      ),
+      None
+    );
+    
+    let s1a = String::from("[1]: Here is a sentence. ").chars().count();
+    let s1b = String::from("[2]: Here is another one with a blank (").chars().count() + s1a;
+    let s1c = format!("{}", &CurrentUser.display_to_user()).chars().count() + s1b;
+    let s1d = String::from("[3]: ) in it. ").chars().count() + s1c;
+    let s1e = String::from("[4]: Here is another sentence that has a ").chars().count() + s1d;
+    let s1f = format!("{}", &Pronoun1ForUser.display_to_user()).chars().count() + s1e;
+    let s1g = String::from("[5]: , ").chars().count() + s1f;
+    let s1h = format!("{}", &Pronoun2ForUser.display_to_user()).chars().count() + s1g;
+    let s1i = String::from("[6]: , and ").chars().count() + s1h;
+    let s1j = format!("{}", &AllCollaterals.display_to_user()).chars().count() + s1i;
+    let s1k = String::from("[7]: .").chars().count() + s1j;
+
+    let formatting2: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("BLANK"), s1b, s1c),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+      (String::from("BLANK"), s1e, s1f),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
+      (String::from("BLANK"), s1g, s1h),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1h, s1i),
+      (String::from("BLANK"), s1i, s1j),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1j, s1k),
+    ];
+
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1));
+
+    assert_eq!(formatting2, formatting_vector2);
+
+    let nt3 = NoteTemplate::new(
+      3,
+      Sncd,
+      true,
+      String::from("Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool."),
+      None
+    );
+    
+    let s1a = String::from("[1]: Here is a sentence. ").chars().count();
+    let s1b = String::from("[2]: This is a new template. ").chars().count() + s1a;
+    let s1c = String::from("[3]: And it has a blank here: ").chars().count() + s1b;
+    let s1d = format!("{}", &Pronoun4ForClient.display_to_user()).chars().count() + s1c;
+    let s1e = String::from("[4]:  which is pretty cool.").chars().count() + s1d;
+
+    let formatting3: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+    ];
+
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, Some(1));
+
+    assert_eq!(formatting3, formatting_vector3);
   }
   #[test]
   fn note_template_accurate_formatting_vector_without_focus() {
