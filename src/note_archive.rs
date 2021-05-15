@@ -6097,7 +6097,7 @@ impl NoteArchive {
               }
               "edit" | "e" => {
                 self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-                println!("Enter new content to replace the selected text.");
+                println!("Enter new content to replace the selected text, including spaces.");
                 let mut new_section = String::new();
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
@@ -6115,7 +6115,7 @@ impl NoteArchive {
 
                 let mut new_content = String::new();
 
-                for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
+                for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
                   if i + 1 == content_focus_id.unwrap() as usize {
                     new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
                   }
@@ -6474,7 +6474,7 @@ impl NoteArchive {
                     continue;
                   },
                   Ok(num) => {
-                    let num_sections = self.current_note_template().get_typed_content_indices().len();
+                    let num_sections = self.current_note_template().get_num_content_sections();
                     if num as usize > num_sections || num == 0 {
                       println!("Please choose from among the content IDs shown above.");
                       thread::sleep(time::Duration::from_secs(2));
@@ -7104,6 +7104,7 @@ impl NoteArchive {
               .any(|&nt| nt.id == num) {
                 println!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
                 thread::sleep(time::Duration::from_secs(2));
+                continue;
             }
             match self.load_note_template(num) {
               Ok(_) => self.choose_note_template(),
@@ -10468,6 +10469,37 @@ mod tests {
     let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, Some(1));
 
     assert_eq!(formatting3, formatting_vector3);
+
+    let nt4 = NoteTemplate::new(
+      4,
+      Sncd,
+      true,
+      format!(
+        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
+        ExternalDocument,
+      ),
+      None
+    );
+    
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, Some(1));
+
+    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
+    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
+    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
+    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
+    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
+    let s1f = String::from("[5]:  Lame, right?").chars().count() + s1e;
+
+    let formatting4: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
+    ];
+
+    assert_eq!(formatting4, formatting_vector4);
   }
   #[test]
   fn note_template_accurate_formatting_vector_without_focus() {
@@ -10621,5 +10653,26 @@ mod tests {
     let sentence_indices_2: Vec<(usize, usize)> = vec![(0, 31), (32, 57), (58, 80), (81, 99)];
     let nt_indices_2 = NoteTemplate::get_sentence_end_indices(0, some_sentences_2);
     assert_eq!(sentence_indices_2, nt_indices_2);
+  }
+  #[test]
+  fn note_template_gets_correct_sentence_indices() {
+    let nt2 = NoteTemplate::new(
+      2,
+      Sncd,
+      true,
+      format!(
+        "ICC called a bunch of people. They didn't answer. ICC then decided to {}.",
+        Action,
+      ),
+      None
+    );
+
+    let sentence_indices = vec![
+      (0, 70),
+      (70+format!("{}", Action).len(), 71+format!("{}", Action).len()),
+    ];
+    let sentence_indices_test = nt2.get_typed_content_indices();
+    assert_eq!(sentence_indices, sentence_indices_test);
+    
   }
 }

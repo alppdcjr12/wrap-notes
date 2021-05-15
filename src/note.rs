@@ -153,7 +153,7 @@ impl NoteTemplate {
     }
     
     let mut typed_content_indices: Vec<(usize, usize)> = vec![];
-    let mut prev_end_idx: usize = 0;
+    let mut prev_end_idx = 0;
     
     let mut i = 1;
     loop {
@@ -166,7 +166,10 @@ impl NoteTemplate {
 
       let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
 
-      let display_blank = String::from("X");
+      let mut display_blank = String::new();
+      for i in m.start()..m.end() {
+        display_blank.push_str("X");
+      }
 
       content_string = format!(
         "{}{}{}",
@@ -175,15 +178,12 @@ impl NoteTemplate {
         &content_string[m.end()..]
       );
 
-      if i == 1 {
-        typed_content_indices.push((0, m.start()));
-      } else {
-        typed_content_indices.push((prev_end_idx, m.start()));
-      }
-
+      typed_content_indices.push((prev_end_idx, m.start()));
       prev_end_idx = m.end();
-
       i += 1;
+    }
+    if prev_end_idx < content_string.len() {
+      typed_content_indices.push((prev_end_idx, content_string.len()))
     }
     typed_content_indices
   }
@@ -241,6 +241,36 @@ impl NoteTemplate {
       }
     }
     blanks
+  }
+  pub fn get_num_content_sections(&self) -> usize {
+    let mut num_contents = 0;
+    let typed_content_indices = self.get_typed_content_indices();
+    for (i1, i2) in typed_content_indices {
+      let sentence_indices = if i2 == self.content.len() {
+        NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2]))
+      } else {
+        NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2+1]))
+      };
+      for idcs in sentence_indices {
+        num_contents += 1;
+      }
+    }
+    num_contents
+  }
+  pub fn get_content_section_indices(&self) -> Vec<(usize, usize)> {
+    let mut num_contents: Vec<(usize, usize)> = vec![];
+    let typed_content_indices = self.get_typed_content_indices();
+    for (i1, i2) in typed_content_indices {
+      let sentence_indices = if i2 == self.content.len() {
+        NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2]))
+      } else {
+        NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2+1]))
+      };
+      for idcs in sentence_indices {
+        num_contents.push(idcs);
+      }
+    }
+    num_contents
   }
   pub fn get_sentence_end_indices(current_idx: usize, content: String) -> Vec<(usize, usize)> {
     let mut output_vec: Vec<(usize, usize)> = vec![];
@@ -333,19 +363,22 @@ impl NoteTemplate {
                   for (idx1, idx2) in sentence_indices.clone() {
                     let num_to_add = if idx1 == idx2 && idx1 == 0 {
                       0
-                    } else if idx1 == last_tuple.0 && idx2 == last_tuple.1 {
+                    } else {
+                      1
+                    };
+                    let adjust_last_index = if idx1 == last_tuple.0 && idx2 == last_tuple.1 && String::from(&content_string[idx2..]) != String::from(".") {
                       1
                     } else {
-                      2
+                      0
                     };
-                    let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
+                    let display_content = format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add]);
                     let cidx1 = content.chars().count();
                     content.push_str(&display_content);
                     let cidx2 = content.chars().count();
                     if focus_id == cont_i {
-                      format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2));
+                      format_vec.push((String::from("HIGHLIGHTED CONTENT"), cidx1, cidx2+adjust_last_index));
                     } else {
-                      format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
+                      format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2+adjust_last_index));
                     }
                     cont_i += 1;
                   }
@@ -695,10 +728,8 @@ impl NoteTemplate {
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
-    println!("{}", display_content_string);
     let mut prev_i = 100; // 0 is the actual index
     for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
-      println!("{}, {}, {:?}", i, cont, f);
       // f is Option<Vec<(String, usize, usize)>>
       let display_i = if i == prev_i {
         String::from("   ")
