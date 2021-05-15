@@ -10224,6 +10224,38 @@ mod tests {
       ),
       display_content_string4,
     );
+
+    let nt2 = NoteTemplate::new(
+      2,
+      Sncd,
+      true,
+      format!(
+        "Here is a sentence. Here is another one with a blank ({}) in it. Here is another sentence that has a {}, {}, and {}.",
+        CurrentUser,
+        Pronoun1ForUser,
+        Pronoun2ForUser,
+        AllCollaterals,
+      ),
+      None
+    );
+    
+    let s1a = String::from("[1]: Here is a sentence. ");
+    let s1b = String::from("[2]: Here is another one with a blank (");
+    let s1c = format!("{}", &CurrentUser.display_to_user());
+    let s1d = String::from("[3]: ) in it. ");
+    let s1e = String::from("[4]: Here is another sentence that has a ");
+    let s1f = format!("{}", &Pronoun1ForUser.display_to_user());
+    let s1g = String::from("[5]: , ");
+    let s1h = format!("{}", &Pronoun2ForUser.display_to_user());
+    let s1i = String::from("[6]: , and ");
+    let s1j = format!("{}", &AllCollaterals.display_to_user());
+    let s1k = String::from("[7]: .");
+
+    let check_display_string_with_content_focus = format!("{}{}{}{}{}{}{}{}{}{}{}", s1a, s1b, s1c, s1d, s1e, s1f, s1g, s1h, s1i, s1j, s1k);
+
+    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, Some(1));
+
+    assert_eq!(check_display_string_with_content_focus, display_string_with_content_focus);
   }
   #[test]
   fn note_template_accurate_formatting_vector() {
@@ -10344,21 +10376,23 @@ mod tests {
       ),
       None
     );
-
-    let s1a = format!("{}", &CurrentUser.display_to_user()).chars().count();
-    let s1b = String::from("[1]:  is a user with ").chars().count() + s1a;
-    let s1c = format!("{}", &Pronoun1ForUser.display_to_user()).chars().count() + s1b;
-    let s1d = String::from("[2]: /").chars().count() + s1c;
-    let s1e = format!("{}", &Pronoun2ForUser.display_to_user()).chars().count() + s1d;
-    let s1f = String::from("[3]:  for pronouns.").chars().count() + s1e;
+    
+    let s1a = String::from("[1]: ").chars().count();
+    let s1b = format!("{}", &CurrentUser.display_to_user()).chars().count() + s1a;
+    let s1c = String::from("[1]:  is a user with ").chars().count() + s1b;
+    let s1d = format!("{}", &Pronoun1ForUser.display_to_user()).chars().count() + s1c;
+    let s1e = String::from("[2]: /").chars().count() + s1d;
+    let s1f = format!("{}", &Pronoun2ForUser.display_to_user()).chars().count() + s1e;
+    let s1g = String::from("[3]:  for pronouns.").chars().count() + s1f;
 
     let formatting1: Vec<(String, usize, usize)> = vec![
-      (String::from("BLANK"), 0, s1a),
-      (String::from("HIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("BLANK"), s1b, s1c),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1c, s1d),
-      (String::from("BLANK"), s1d, s1e),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("BLANK"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+      (String::from("BLANK"), s1e, s1f),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
     ];
 
     let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, Some(1));

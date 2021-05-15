@@ -256,8 +256,11 @@ impl NoteTemplate {
       content_string = content_string.split(". ").collect::<Vec<&str>>()[1..].join(". ");
     }
     let num_chars = content_string.chars().count();
-    if num_chars > 0 && content_string != String::from(". ") {
+    if num_chars > 0 {
       output_vec.push((current_idx + offset, (current_idx + offset + num_chars) - 1 ));
+    } else if output_vec.len() == 0 {
+      // the only content would be the empty content at the beginning of the empty string, since no other indices
+      output_vec.push((current_idx, current_idx));
     }
     output_vec
   }
@@ -328,7 +331,13 @@ impl NoteTemplate {
                   );
                   let last_tuple = sentence_indices[sentence_indices.len()-1];
                   for (idx1, idx2) in sentence_indices.clone() {
-                    let num_to_add = if idx1 == last_tuple.0 && idx2 == last_tuple.1 { 1 } else { 2 };
+                    let num_to_add = if idx1 == idx2 && idx1 == 0 {
+                      0
+                    } else if idx1 == last_tuple.0 && idx2 == last_tuple.1 {
+                      1
+                    } else {
+                      2
+                    };
                     let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
                     let cidx1 = content.chars().count();
                     content.push_str(&display_content);
@@ -408,7 +417,11 @@ impl NoteTemplate {
             (0, 0)
           };
           for (idx1, idx2) in sentence_indices.clone() {
-            let num_to_add = if idx1 == last_tuple.0 && idx2 == last_tuple.1 { 1 } else { 2 };
+            let num_to_add = if idx1 == idx2 && idx1 == 0 {
+              0
+            } else {
+              1
+            };
             let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
             let cidx1 = content.chars().count();
             content.push_str(&display_content);
@@ -418,6 +431,7 @@ impl NoteTemplate {
             } else {
               format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), cidx1, cidx2));
             }
+            // format_vec.push((String::from(&content_string[last_tuple.0..last_tuple.1]), last_tuple.0, last_tuple.1));
             cont_i += 1;
           }
         }
