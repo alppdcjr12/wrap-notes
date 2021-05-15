@@ -257,7 +257,7 @@ impl NoteTemplate {
     }
     let num_chars = content_string.chars().count();
     if num_chars > 0 && content_string != String::from(". ") {
-      output_vec.push((current_idx + offset, (current_idx + offset + num_chars)-1));
+      output_vec.push((current_idx + offset, (current_idx + offset + num_chars) - 1 ));
     }
     output_vec
   }
@@ -291,19 +291,29 @@ impl NoteTemplate {
             match content_focus_id {
               Some(id) => {
                 let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
+                let last_tuple = sentence_indices[sentence_indices.len()-1].clone();
                 for (idx1, idx2) in sentence_indices {
+                  let mut idx2_updated = idx2+1;
+                  if idx1 == last_tuple.0 && idx2 == last_tuple.1 {
+                    idx2_updated += 1;
+                  }
                   if cont_i == id {
-                    format_vec.push((String::from("HIGHLIGHTED CONTENT"), idx1, idx2+1));
+                    format_vec.push((String::from("HIGHLIGHTED CONTENT"), idx1, idx2_updated));
                   } else {
-                    format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), idx1, idx2+1));
+                    format_vec.push((String::from("UNHIGHLIGHTED CONTENT"), idx1, idx2_updated));
                   }
                   cont_i += 1;
                 }
               },
               None => {
                 let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
+                let last_tuple = sentence_indices[sentence_indices.len()-1];
                 for (idx1, idx2) in sentence_indices {
-                  format_vec.push((String::from("CONTENT"), idx1, idx2+1));
+                  let mut idx2_updated = idx2+1;
+                  if idx1 == last_tuple.0 && idx2 == last_tuple.1 {
+                    idx2_updated += 1;
+                  }
+                  format_vec.push((String::from("CONTENT"), idx1, idx2_updated));
                 }
               },
             }
@@ -316,8 +326,10 @@ impl NoteTemplate {
                     prev_end_idx,
                     format!("{}", &content_string[prev_end_idx..]),
                   );
+                  let last_tuple = sentence_indices[sentence_indices.len()-1];
                   for (idx1, idx2) in sentence_indices.clone() {
-                    let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2]));
+                    let num_to_add = if idx1 == last_tuple.0 && idx2 == last_tuple.1 { 1 } else { 2 };
+                    let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
                     let cidx1 = content.chars().count();
                     content.push_str(&display_content);
                     let cidx2 = content.chars().count();
@@ -339,7 +351,7 @@ impl NoteTemplate {
                   );
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
-                    format_vec.push((String::from("CONTENT"), idx1, idx2));
+                    format_vec.push((String::from("CONTENT"), idx1, idx2+1));
                   }
                 }
               }
@@ -390,8 +402,14 @@ impl NoteTemplate {
             prev_end_idx,
             format!("{}", &content_string[prev_end_idx..m.start()]),
           );
+          let last_tuple = if sentence_indices.len() > 0 {
+            sentence_indices[sentence_indices.len()-1]
+          } else {
+            (0, 0)
+          };
           for (idx1, idx2) in sentence_indices.clone() {
-            let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2]));
+            let num_to_add = if idx1 == last_tuple.0 && idx2 == last_tuple.1 { 1 } else { 2 };
+            let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
             let cidx1 = content.chars().count();
             content.push_str(&display_content);
             let cidx2 = content.chars().count();
