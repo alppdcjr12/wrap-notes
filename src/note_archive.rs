@@ -10500,6 +10500,68 @@ mod tests {
     ];
 
     assert_eq!(formatting4, formatting_vector4);
+
+    let nt6 = NoteTemplate::new(
+      6,
+      Sncd,
+      true,
+      format!(
+        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, rightt",
+        ExternalDocument,
+      ),
+      None
+    );
+    
+    let (nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, Some(1));
+
+    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
+    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
+    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
+    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
+    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
+    let s1f = String::from("[5]:  Lame, rightt").chars().count() + s1e;
+
+    let formatting6: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
+    ];
+
+    assert_eq!(formatting6, formatting_vector6);
+
+    let nt5 = NoteTemplate::new(
+      5,
+      Sncd,
+      true,
+      format!(
+        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right.",
+        ExternalDocument,
+      ),
+      None
+    );
+    
+    let (nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, Some(1));
+
+    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
+    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
+    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
+    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
+    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
+    let s1f = String::from("[5]:  Lame, right.").chars().count() + s1e;
+
+    let formatting5: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
+    ];
+
+    assert_eq!(formatting5, formatting_vector5);
   }
   #[test]
   fn note_template_accurate_formatting_vector_without_focus() {
@@ -10636,6 +10698,74 @@ mod tests {
         Some(vec![
           (String::from("UNHIGHLIGHTED BLANK"), 0, 43),
           (String::from("CONTENT"), 43, 44),
+        ])
+      ),
+    ];
+
+    assert_eq!(display_vecs, nt_output_vecs);
+
+    let nt4 = NoteTemplate::new(
+      4,
+      Sncd,
+      true,
+      format!(
+        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
+        ExternalDocument,
+      ),
+      None
+    );
+    
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, Some(1));
+
+    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
+    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
+    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
+    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
+    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
+    let s1f = String::from("[5]:  Lame, right?").chars().count() + s1e;
+    
+    let formatting4: Vec<(String, usize, usize)> = vec![
+      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
+      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
+    ];
+
+    assert_eq!(formatting4, formatting_vector4);
+    
+    let nt_output_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = NoteTemplate::get_display_content_vec_from_string(nt_display_string, Some(formatting_vector4));
+    
+    let display_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
+      (
+        0,
+        String::from("[1]: A bunch of stuff happened today. "),
+        Some(vec![
+          (String::from("HIGHLIGHTED CONTENT"), 0, 38),
+        ])
+      ),
+      (
+        1,
+        String::from("[2]: Some good, some not so good. "),
+        Some(vec![
+          (String::from("UNHIGHLIGHTED CONTENT"), 0, 34),
+        ])
+      ),
+      (
+        2,
+        String::from(&format!("[3]: For example, here is some this that {}[4]:  I have to write some stuff about. ", &ExternalDocument.display_to_user())),
+        Some(vec![
+          (String::from("UNHIGHLIGHTED CONTENT"), 0, 41),
+          (String::from("BLANK"), 41, 58),
+          (String::from("UNHIGHLIGHTED CONTENT"), 58, 98),
+        ])
+      ),
+      (
+        3,
+        String::from("[5]: Lame, right?"),
+        Some(vec![
+          (String::from("UNHIGHLIGHTED CONTENT"), 0, 17),
         ])
       ),
     ];

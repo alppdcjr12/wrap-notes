@@ -327,7 +327,7 @@ impl NoteTemplate {
                 let last_tuple = sentence_indices[sentence_indices.len()-1].clone();
                 for (idx1, idx2) in sentence_indices {
                   let mut idx2_updated = idx2+1;
-                  if idx1 == last_tuple.0 && idx2 == last_tuple.1 {
+                  if idx1 == last_tuple.0 && idx2 == last_tuple.1  {
                     idx2_updated += 1;
                   }
                   if cont_i == id {
@@ -352,7 +352,7 @@ impl NoteTemplate {
             }
             break;
           } else {
-            if prev_end_idx <= find_match_string.chars().count()-1 {
+            if prev_end_idx < find_match_string.chars().count() {
               match content_focus_id {
                 Some(focus_id) => {
                   let sentence_indices = NoteTemplate::get_sentence_end_indices(
@@ -366,11 +366,15 @@ impl NoteTemplate {
                     } else {
                       1
                     };
-                    let adjust_last_index = if idx1 == last_tuple.0 && idx2 == last_tuple.1 && String::from(&content_string[idx2..]) != String::from(".") {
-                      1
-                    } else {
-                      0
-                    };
+                    let mut adjust_last_index = 0;
+                    if (idx1, idx2) == last_tuple {
+                      match &content_string[idx2..] {
+                        "." => if sentence_indices.len() > 1 {
+                          adjust_last_index += 1;
+                        }
+                        _ => adjust_last_index += 1,
+                      }
+                    }
                     let display_content = format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add]);
                     let cidx1 = content.chars().count();
                     content.push_str(&display_content);
@@ -508,18 +512,24 @@ impl NoteTemplate {
     for (i, sent) in display_content_vec.iter().enumerate() {
       if sent.chars().count() > 0 {
         let mut sentence = sent.clone();
-        if i != display_content_vec.len() - 1 && sentence != String::from("") && sentence != String::from(" ") {
+        if i != display_content_vec.len() - 1 && sentence != String::from("") {
           sentence.push_str(". ");
         }
         if sentence.chars().count() < 140 {
           match color_formatting.clone() {
             None => length_adjusted_vec.push((i, sentence.clone(), None)),
             Some(f) => {
-              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx) )
-                .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
-                .collect();
-              
+              let sentence_formatting: Vec<(String, usize, usize)> = if i == display_content_vec.len() - 1 {
+                f.iter()
+                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx + 1) )
+                  .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx-1) )
+                  .collect()
+                } else {
+                f.iter()
+                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx) )
+                  .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
+                  .collect()
+              };
               length_adjusted_vec.push((i, sentence.clone(), Some(sentence_formatting)));
             },
           }
