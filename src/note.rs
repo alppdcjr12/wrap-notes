@@ -488,7 +488,10 @@ impl NoteTemplate {
             }
           },
           None => {
-            format_vec.push((String::from("BLANK"), bidx1, bidx2));
+            match content_focus_id {
+              Some(_) => format_vec.push((String::from("UNFOCUSED BLANK"), bidx1, bidx2)),
+              None => format_vec.push((String::from("BLANK"), bidx1, bidx2)),
+            }
           }
         }
       }
@@ -751,7 +754,7 @@ impl NoteTemplate {
       match f {
         None => println!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
         Some(f_vec) => {
-          print!("{:-^20} | ", display_i);
+          print!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
             print!("{}", Style::new().paint(&cont));
           } else {
@@ -759,19 +762,22 @@ impl NoteTemplate {
               let to_format = &cont[idx1..idx2];
               match &s[..] {
                 "HIGHLIGHTED CONTENT" => {
-                  print!("{: <140}", Black.on(Cyan).italic().paint(to_format));
+                  print!("{: <140}", Black.on(RGB(25, 225, 225)).italic().paint(to_format));
                 },
                 "UNHIGHLIGHTED CONTENT" => {
-                  print!("{: <140}", Cyan.on(Blue).paint(to_format));
+                  print!("{: <140}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(to_format));
                 },
                 "CONTENT" => {
-                  print!("{: <140}", Style::new().paint(to_format));
+                  print!("{: <140}", Style::new().on(Black).paint(to_format));
                 },
                 "HIGHLIGHTED BLANK" => {
                   print!("{: <140}", Black.on(Yellow).bold().paint(to_format));
                 },
                 "UNHIGHLIGHTED BLANK" => {
                   print!("{: <140}", Black.on(White).paint(to_format));
+                },
+                "UNFOCUSED BLANK" => {
+                  print!("{: <140}", Black.on(RGB(160, 160, 160)).paint(to_format));
                 },
                 "BLANK" => {
                   print!("{}", Black.on(White).paint(to_format));

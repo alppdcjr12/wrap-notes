@@ -10388,11 +10388,11 @@ mod tests {
 
     let formatting1: Vec<(String, usize, usize)> = vec![
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("BLANK"), s1a, s1b),
+      (String::from("UNFOCUSED BLANK"), s1a, s1b),
       (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNFOCUSED BLANK"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("BLANK"), s1e, s1f),
+      (String::from("UNFOCUSED BLANK"), s1e, s1f),
       (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
     ];
 
@@ -10429,14 +10429,14 @@ mod tests {
     let formatting2: Vec<(String, usize, usize)> = vec![
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
       (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("BLANK"), s1b, s1c),
+      (String::from("UNFOCUSED BLANK"), s1b, s1c),
       (String::from("UNHIGHLIGHTED CONTENT"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("BLANK"), s1e, s1f),
+      (String::from("UNFOCUSED BLANK"), s1e, s1f),
       (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
-      (String::from("BLANK"), s1g, s1h),
+      (String::from("UNFOCUSED BLANK"), s1g, s1h),
       (String::from("UNHIGHLIGHTED CONTENT"), s1h, s1i),
-      (String::from("BLANK"), s1i, s1j),
+      (String::from("UNFOCUSED BLANK"), s1i, s1j),
       (String::from("UNHIGHLIGHTED CONTENT"), s1j, s1k),
     ];
 
@@ -10462,7 +10462,7 @@ mod tests {
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
       (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
       (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNFOCUSED BLANK"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
     ];
 
@@ -10494,7 +10494,7 @@ mod tests {
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
       (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
       (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNFOCUSED BLANK"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
       (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
     ];
@@ -10525,7 +10525,7 @@ mod tests {
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
       (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
       (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNFOCUSED BLANK"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
       (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
     ];
@@ -10556,7 +10556,7 @@ mod tests {
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
       (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
       (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNFOCUSED BLANK"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
       (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
     ];
@@ -10728,7 +10728,7 @@ mod tests {
       (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
       (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
       (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("BLANK"), s1c, s1d),
+      (String::from("UNFOCUSED BLANK"), s1c, s1d),
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
       (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
     ];
@@ -10757,7 +10757,7 @@ mod tests {
         String::from(&format!("[3]: For example, here is some this that {}[4]:  I have to write some stuff about. ", &ExternalDocument.display_to_user())),
         Some(vec![
           (String::from("UNHIGHLIGHTED CONTENT"), 0, 41),
-          (String::from("BLANK"), 41, 58),
+          (String::from("UNFOCUSED BLANK"), 41, 58),
           (String::from("UNHIGHLIGHTED CONTENT"), 58, 98),
         ])
       ),

@@ -1,4 +1,4 @@
 ##### note_templates #####
-1 | SNCD | Here is some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
+1 | SNCD | , and also some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
 2 | Phone Call | A bunch of stuff happened today. Some good, some not so good. For example, here is some this that (---ed---) I have to write some stuff about. Lame, right? | 1 | 
 ##### note_templates #####
