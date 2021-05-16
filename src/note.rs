@@ -10,7 +10,7 @@ use std::fmt;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White, RGB};
-use ansi_term::{Style, ANSIStrings, ANSIString};
+use ansi_term::{Style, ANSIString};
 
 use std::{thread, time};
 
@@ -395,9 +395,21 @@ impl NoteTemplate {
                     content.chars().count(),
                     format!("{}", &find_match_string[prev_end_idx..]),
                   );
+                  let last_tuple = sentence_indices[sentence_indices.len()-1].clone();
+                  let num_sentences = sentence_indices.len();
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
-                    format_vec.push((String::from("CONTENT"), idx1, idx2+1));
+                    let num_to_add = match &end_string[end_string.len()-1..] {
+                      "." => 1,
+                      _ => {
+                        if (idx1, idx2) == last_tuple {
+                          2
+                        } else {
+                          1
+                        }
+                      },
+                    };
+                    format_vec.push((String::from("CONTENT"), idx1, idx2+num_to_add));
                   }
                 }
               }
@@ -705,11 +717,10 @@ impl NoteTemplate {
       .map(|(u, s, o)| (*u, s.to_string()) )
       .collect::<Vec<(usize, String)>>()
   }
-  pub fn display_content(&self) {
+  pub fn display_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println!("{:-^163}", "-");
     let display_custom = if self.custom { "Custom" } else { "Default" };
-
     let heading = if self.structure == CustomStructure {
       String::from(" Custom template ")
     } else {
@@ -719,16 +730,55 @@ impl NoteTemplate {
     println!("{:-^163}", "-");
     println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println!("{:-^163}", "-");
-    let mut prev_i = 100;
-    for (i, cont) in self.get_display_content_vec() {
+    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
+    let mut prev_i = 100; // 0 is the actual index
+    for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+      // f is Option<Vec<(String, usize, usize)>>
       let display_i = if i == prev_i {
         String::from("   ")
       } else {
-        let d_i = i + 1;
-        format!(" {} ", d_i)
+        let display_i = i + 1;
+        format!(" {} ", display_i)
       };
-      println!("{:-^20} | {: <140}", display_i, &format!(" {} ", cont));
       prev_i = i;
+      match f {
+        None => println!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
+        Some(f_vec) => {
+          print!("{:-^20} |  ", display_i);
+          if f_vec.len() == 0 {
+            print!("{}", Style::new().paint(&cont));
+          } else {
+            for (s, idx1, idx2) in f_vec {
+              let to_format = &cont[idx1..idx2];
+              match &s[..] {
+                "HIGHLIGHTED CONTENT" => {
+                  print!("{: <140}", Black.on(RGB(25, 225, 225)).italic().paint(to_format));
+                },
+                "UNHIGHLIGHTED CONTENT" => {
+                  print!("{: <140}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(to_format));
+                },
+                "CONTENT" => {
+                  print!("{: <140}", Style::new().on(Black).paint(to_format));
+                },
+                "HIGHLIGHTED BLANK" => {
+                  print!("{: <140}", Black.on(Yellow).bold().paint(to_format));
+                },
+                "UNHIGHLIGHTED BLANK" => {
+                  print!("{: <140}", Black.on(White).paint(to_format));
+                },
+                "UNFOCUSED BLANK" => {
+                  print!("{: <140}", Black.on(RGB(160, 160, 160)).paint(to_format));
+                },
+                "BLANK" => {
+                  print!("{}", Black.on(White).paint(to_format));
+                },
+                _ => (),
+              }
+            }
+          }
+        }
+      }
+      print!("\n");
     }
     println!("{:-^163}", "-");
   }
@@ -1399,62 +1449,25 @@ impl Blank {
   }
   pub fn display_to_user(&self) -> String {
     match self {
-      CurrentUser => String::from("Current user"),
-      CurrentClientName => String::from("Name of client"),
-      Collaterals => String::from("One or more collaterals"),
-      AllCollaterals => String::from("All collaterals for the current client"),
-      Pronoun1ForBlank(b_id_option) => {
-        let b_id = b_id_option.unwrap();
-        format!("Subject pronouns of the person in blank #{} (he, she, they)", b_id)
-      },
-      Pronoun2ForBlank(b_id_option) => {
-        let b_id = b_id_option.unwrap();
-        format!("Object pronouns of the person in blank #{} (him, her, them)", b_id)
-      },
-      Pronoun3ForBlank(b_id_option) => {
-        let b_id = b_id_option.unwrap();
-        format!("Possessive determiner pronouns of the person in blank #{} (his, her, their)", b_id)
-      },
-      Pronoun4ForBlank(b_id_option) => {
-        let b_id = b_id_option.unwrap();
-        format!("Possessive pronouns of the person in blank #{} (his, hers, theirs)", b_id)
-      },
-      Pronoun1ForUser => String::from("Subject pronoun of the current user"),
-      Pronoun2ForUser => String::from("Object pronoun of the current user"),
-      Pronoun3ForUser => String::from("Possessive determiner of the current user"),
-      Pronoun4ForUser => String::from("Possessive pronoun of the current user"),
-      Pronoun1ForClient => String::from("Subject pronoun of the current client"),
-      Pronoun2ForClient => String::from("Object pronoun of the current client"),
-      Pronoun3ForClient => String::from("Possessive determiner of the current client"),
-      Pronoun4ForClient => String::from("Possessive pronoun of the current client"),
-      TodayDate => String::from("Today's date"),
-      NoteDayDate => String::from("The date of the current note"),
-      InternalDocument => String::from("Internal document"),
-      ExternalDocument => String::from("External document"),
-      InternalMeeting => String::from("Wraparound meeting title"),
-      ExternalMeeting => String::from("External meeting title"),
-      Action => String::from("General action"),
-      Phrase => String::from("Other phrase"),
-      CustomBlank => String::from("Custom input"),
-    }
-  }
-  pub fn display_to_user_empty(&self) -> String {
-    match self {
       CurrentUser => String::from("[ Current user ]"),
       CurrentClientName => String::from("[ Name of client ]"),
       Collaterals => String::from("[ One or more collaterals ]"),
       AllCollaterals => String::from("[ All collaterals for the current client ]"),
-      Pronoun1ForBlank(_) => {
-        format!("[ Subject pronoun of the person in another blank (he, she, they) ]")
+      Pronoun1ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        format!("[ Subject pronouns of the person in blank #{} (he, she, they) ]", b_id)
       },
-      Pronoun2ForBlank(_) => {
-        format!("[ Object pronoun of the person in another blank (him, her, them) ]")
+      Pronoun2ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        format!("[ Object pronouns of the person in blank #{} (him, her, them) ]", b_id)
       },
-      Pronoun3ForBlank(_) => {
-        format!("[ Possessive determiner of the person in another blank (his, her, their) ]")
+      Pronoun3ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        format!("[ Possessive determiner pronouns of the person in blank #{} (his, her, their) ]", b_id)
       },
-      Pronoun4ForBlank(_) => {
-        format!("[ Possessive pronoun of the person in another blank (his, hers, theirs) ]")
+      Pronoun4ForBlank(b_id_option) => {
+        let b_id = b_id_option.unwrap();
+        format!("[ Possessive pronouns of the person in blank #{} (his, hers, theirs) ]", b_id)
       },
       Pronoun1ForUser => String::from("[ Subject pronoun of the current user ]"),
       Pronoun2ForUser => String::from("[ Object pronoun of the current user ]"),
@@ -1473,6 +1486,43 @@ impl Blank {
       Action => String::from("[ General action ]"),
       Phrase => String::from("[ Other phrase ]"),
       CustomBlank => String::from("[ Custom input ]"),
+    }
+  }
+  pub fn display_to_user_empty(&self) -> String {
+    match self {
+      CurrentUser => String::from("Current user"),
+      CurrentClientName => String::from("Name of client"),
+      Collaterals => String::from("One or more collaterals"),
+      AllCollaterals => String::from("All collaterals for the current client"),
+      Pronoun1ForBlank(_) => {
+        format!("Subject pronoun of the person in another blank (he, she, they)")
+      },
+      Pronoun2ForBlank(_) => {
+        format!("Object pronoun of the person in another blank (him, her, them)")
+      },
+      Pronoun3ForBlank(_) => {
+        format!("Possessive determiner of the person in another blank (his, her, their)")
+      },
+      Pronoun4ForBlank(_) => {
+        format!("Possessive pronoun of the person in another blank (his, hers, theirs)")
+      },
+      Pronoun1ForUser => String::from("Subject pronoun of the current user"),
+      Pronoun2ForUser => String::from("Object pronoun of the current user"),
+      Pronoun3ForUser => String::from("Possessive determiner of the current user"),
+      Pronoun4ForUser => String::from("Possessive pronoun of the current user"),
+      Pronoun1ForClient => String::from("Subject pronoun of the current client"),
+      Pronoun2ForClient => String::from("Object pronoun of the current client"),
+      Pronoun3ForClient => String::from("Possessive determiner of the current client"),
+      Pronoun4ForClient => String::from("Possessive pronoun of the current client"),
+      TodayDate => String::from("Today's date"),
+      NoteDayDate => String::from("The date of the current note"),
+      InternalDocument => String::from("Internal document"),
+      ExternalDocument => String::from("External document"),
+      InternalMeeting => String::from("Wraparound meeting title"),
+      ExternalMeeting => String::from("External meeting title"),
+      Action => String::from("General action"),
+      Phrase => String::from("Other phrase"),
+      CustomBlank => String::from("Custom input"),
     }
   }
 }

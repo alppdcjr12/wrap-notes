@@ -10,6 +10,9 @@
 use regex::Regex;
 use regex::Match;
 
+use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White, RGB};
+use ansi_term::Style;
+
 use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc, Weekday};
 use std::fmt;
 use std::fs;
@@ -120,7 +123,8 @@ fn display_blanks_empty() {
   println!("{:-^10} | {:-^60}", " ID ", " Type ");
   println!("{:-^73}", "-");
   for (i, b) in Blank::iterator().enumerate() {
-    println!("{:-^10} | {:-<60}", i + 1, b.display_to_user_empty());
+    let display = format!("{:-^10} | {:-<60}", &format!(" {} ", i), b.display_to_user_empty());
+    println!("{}", BG.paint(display));
   }
   println!("Choose blank type by ID.");
 }
@@ -7181,7 +7185,7 @@ impl NoteArchive {
     }
   }
   fn display_note_template(&self) {
-    self.current_note_template().display_content();
+    self.current_note_template().display_content(None, None);
   }
   fn choose_note_template(&mut self) {
     loop {
@@ -7829,7 +7833,7 @@ impl NoteArchive {
     println!("{:-^146}", heading);
     println!("{:-^146}", "-");
 
-    self.current_note_template().display_content();
+    self.current_note_template().display_content(None, None);
 
     println!("{:-^146}", "-");
   }
@@ -10650,6 +10654,10 @@ mod tests {
 
     let nt_output_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = NoteTemplate::get_display_content_vec_from_string(nt_display_string, Some(formatting_vector2));
 
+    let n1 = Pronoun1ForUser.display_to_user().len();
+    let n2 = Pronoun2ForUser.display_to_user().len();
+    let n3 = AllCollaterals.display_to_user().len();
+
     let display_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
       (
         0,
@@ -10663,8 +10671,8 @@ mod tests {
         format!("Here is another one with a blank ([1]: {}) in it. ", CurrentUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 34),
-          (String::from("HIGHLIGHTED BLANK"), 34, 51),
-          (String::from("CONTENT"), 51, 60),
+          (String::from("HIGHLIGHTED BLANK"), 34, CurrentUser.display_to_user().len() + 5 + 34),
+          (String::from("CONTENT"), CurrentUser.display_to_user().len() + 5 + 34, CurrentUser.display_to_user().len() + 5 + 34 + 9),
         ])
       ),
       // Here is another sentence that has a [2]: Subject pronoun of the current user, [3]: Object pronoun of the current user, and [4]: All collaterals for the current client.
@@ -10686,18 +10694,18 @@ mod tests {
         format!("Here is another sentence that has a [2]: {}, [3]: {}, and ", Pronoun1ForUser.display_to_user(), Pronoun2ForUser.display_to_user()),
         Some(vec![
           (String::from("CONTENT"), 0, 36),
-          (String::from("UNHIGHLIGHTED BLANK"), 36, 76),
-          (String::from("CONTENT"), 76, 78),
-          (String::from("UNHIGHLIGHTED BLANK"), 78, 117),
-          (String::from("CONTENT"), 117, 123),
+          (String::from("UNHIGHLIGHTED BLANK"), 36, 36+n1+5),
+          (String::from("CONTENT"), 36+n1+5, 36+n1+7),
+          (String::from("UNHIGHLIGHTED BLANK"), 36+n1+7, 36+n1+n2+12),
+          (String::from("CONTENT"), 36+n1+n2+12, 36+n1+n2+18),
         ])
       ),
       (
         2,
         format!("[4]: {}.", AllCollaterals.display_to_user()),
         Some(vec![
-          (String::from("UNHIGHLIGHTED BLANK"), 0, 43),
-          (String::from("CONTENT"), 43, 44),
+          (String::from("UNHIGHLIGHTED BLANK"), 0, n3+5),
+          (String::from("CONTENT"), n3+5, n3+6),
         ])
       ),
     ];
@@ -10757,8 +10765,8 @@ mod tests {
         String::from(&format!("[3]: For example, here is some this that {}[4]:  I have to write some stuff about. ", &ExternalDocument.display_to_user())),
         Some(vec![
           (String::from("UNHIGHLIGHTED CONTENT"), 0, 41),
-          (String::from("UNFOCUSED BLANK"), 41, 58),
-          (String::from("UNHIGHLIGHTED CONTENT"), 58, 98),
+          (String::from("UNFOCUSED BLANK"), 41, 62),
+          (String::from("UNHIGHLIGHTED CONTENT"), 62, 102),
         ])
       ),
       (
@@ -10804,5 +10812,75 @@ mod tests {
     let sentence_indices_test = nt2.get_typed_content_indices();
     assert_eq!(sentence_indices, sentence_indices_test);
     
+  }
+  #[test]
+  fn note_template_displays_properly_with_no_focus_id() {
+        let nt4 = NoteTemplate::new(
+      4,
+      Sncd,
+      true,
+      format!(
+        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
+        ExternalDocument,
+      ),
+      None
+    );
+    
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None);
+
+    let s1a = String::from("A bunch of stuff happened today. ").chars().count();
+    let s1b = String::from("Some good, some not so good. ").chars().count() + s1a;
+    let s1c = String::from("For example, here is some this that ").chars().count() + s1b;
+    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
+    let s1e = String::from(" I have to write some stuff about. ").chars().count() + s1d;
+    let s1f = String::from(" Lame, right?").chars().count() + s1e;
+    
+    let formatting4: Vec<(String, usize, usize)> = vec![
+      (String::from("CONTENT"), 0, s1a),
+      (String::from("CONTENT"), s1a, s1b),
+      (String::from("CONTENT"), s1b, s1c),
+      (String::from("BLANK"), s1c, s1d),
+      (String::from("CONTENT"), s1d, s1e),
+      (String::from("CONTENT"), s1e, s1f),
+    ];
+
+    assert_eq!(formatting4, formatting_vector4);
+    
+    let nt_output_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = NoteTemplate::get_display_content_vec_from_string(nt_display_string, Some(formatting_vector4));
+    
+    let display_vecs: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
+      (
+        0,
+        String::from("A bunch of stuff happened today. "),
+        Some(vec![
+          (String::from("CONTENT"), 0, 33),
+        ])
+      ),
+      (
+        1,
+        String::from("Some good, some not so good. "),
+        Some(vec![
+          (String::from("CONTENT"), 0, 29),
+        ])
+      ),
+      (
+        2,
+        String::from(&format!("For example, here is some this that {} I have to write some stuff about. ", &ExternalDocument.display_to_user())),
+        Some(vec![
+          (String::from("CONTENT"), 0, 36),
+          (String::from("BLANK"), 36, ExternalDocument.display_to_user().len() + 36),
+          (String::from("CONTENT"), ExternalDocument.display_to_user().len() + 36, ExternalDocument.display_to_user().len() + 36 + 35),
+        ])
+      ),
+      (
+        3,
+        String::from("Lame, right?"),
+        Some(vec![
+          (String::from("CONTENT"), 0, 12),
+        ])
+      ),
+    ];
+
+    assert_eq!(display_vecs, nt_output_vecs);
   }
 }
