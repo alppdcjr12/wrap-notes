@@ -113,20 +113,85 @@ pub struct NoteArchive {
   pub filepaths: HashMap<String, String>,
 }
 
+
 // general functions
 
+#[macro_use] use std::format_args;
+
+// macros for printing formatted stuff - print_on_bg duplicated in note.rs
+
+// print on default background
+pub fn print_on_bg(s: String) {
+  print!("{}", Style::new().on(BG).paint(s));
+}
+macro_rules! print_on_bg {
+    ($($arg:tt)*) => (print_on_bg(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_on_bg {
+    () => (print_on_bg("\n"));
+    ($fmt:expr) => (print_on_bg(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_on_bg!(concat!($fmt, "\n"), $($arg)*));
+}
+// print errors
+pub fn print_err(s: String) {
+  print!("{}", Black.on(Red).paint(s));
+}
+macro_rules! print_err {
+    ($($arg:tt)*) => (print_err(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_err {
+    () => (print_err("\n"));
+    ($fmt:expr) => (print_err(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_err!(concat!($fmt, "\n"), $($arg)*));
+}
+// print instructions
+pub fn print_inst(s: String) {
+  print!("{}", Black.on(Blue).paint(s));
+}
+macro_rules! print_inst {
+    ($($arg:tt)*) => (print_inst(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_inst {
+    () => (print_inst("\n"));
+    ($fmt:expr) => (print_inst(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_inst!(concat!($fmt, "\n"), $($arg)*));
+}
+// print yellow
+pub fn print_yel(s: String) {
+  print!("{}", Yellow.on(Black).paint(s));
+}
+macro_rules! print_yel {
+    ($($arg:tt)*) => (print_yel(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_yel {
+    () => (print_yel("\n"));
+    ($fmt:expr) => (print_yel(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_yel!(concat!($fmt, "\n"), $($arg)*));
+}
+// print on green for success
+pub fn print_suc(s: String) {
+  print!("{}", Black.on(Green).paint(s));
+}
+macro_rules! print_suc {
+    ($($arg:tt)*) => (print_suc(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_suc {
+    () => (print_suc("\n"));
+    ($fmt:expr) => (print_suc(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_suc!(concat!($fmt, "\n"), $($arg)*));
+}
 fn display_blanks_empty() {
   print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-  println!("{:-^73}", "-");
-  println!("{:-^73}", " Blanks ");
-  println!("{:-^73}", "-");
-  println!("{:-^10} | {:-^60}", " ID ", " Type ");
-  println!("{:-^73}", "-");
+  println_on_bg!("{:-^83}", "-");
+  println_on_bg!("{:-^83}", " Blanks ");
+  println_on_bg!("{:-^83}", "-");
+  println_on_bg!("{:-^10} | {:-^70}", " ID ", " Type ");
+  println_on_bg!("{:-^83}", "-");
   for (i, b) in Blank::iterator().enumerate() {
-    let display = format!("{:-^10} | {:-<60}", &format!(" {} ", i), b.display_to_user_empty());
-    println!("{}", BG.paint(display));
+    let display = format!("{:-^10} | {: <70}", &format!(" {} ", i), b.display_to_user_empty());
+    println_on_bg!("{}", display);
   }
-  println!("Choose blank type by ID.");
+  println_on_bg!("{: <83}", "Choose blank type by ID.");
 }
 fn choose_blanks() -> usize {
   loop {
@@ -136,7 +201,7 @@ fn choose_blanks() -> usize {
     match input_attempt {
       Ok(_) => (),
       Err(e) => {
-        println!("Failed to read input. Try again.");
+        println_err!("Failed to read input. Try again.");
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -146,13 +211,13 @@ fn choose_blanks() -> usize {
         if num > 0 && num <= Blank::vector_of_variants().len() {
           break num-1;
         } else {
-          println!("Invalid ID.");
+          println_err!("Invalid ID.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
       },
       Err(e) => {
-        println!("Failed to read input as a number. Try again.");
+        println_err!("Failed to read input as a number. Try again.");
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -162,13 +227,13 @@ fn choose_blanks() -> usize {
 fn choose_blanks_option() -> Option<usize> {
   loop {
     display_blanks_empty();
-    println!("Enter 'QUIT / Q' at any time to cancel.");
+    println_inst!("Enter 'QUIT / Q' at any time to cancel.");
     let mut input = String::new();
     let input_attempt = io::stdin().read_line(&mut input);
     match input_attempt {
       Ok(_) => (),
       Err(e) => {
-        println!("Failed to read input. Try again.");
+        println_err!("Failed to read input. Try again.");
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -182,13 +247,13 @@ fn choose_blanks_option() -> Option<usize> {
         if num > 0 && num <= Blank::vector_of_variants().len() {
           break Some(num-1);
         } else {
-          println!("Invalid ID.");
+          println_err!("Invalid ID.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
       },
       Err(e) => {
-        println!("Failed to read input as a number. Try again.");
+        println_err!("Failed to read input as a number. Try again.");
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -239,26 +304,26 @@ impl NoteArchive {
   }
   fn display_decrypt_files() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^58}", "-");
-    println!("{:-^58}", " Files not readable ");
-    println!("{:-^58}", "-");
-    println!("{:-^15} | {:-^40}", " Command ", " Function ");
-    println!("{:-^58}", "-");
+    println_yel!("{:-^58}", "-");
+    println_yel!("{:-^58}", " Files not readable ");
+    println_yel!("{:-^58}", "-");
+    println_yel!("{:-^15} | {:-^40}", " Command ", " Function ");
+    println_yel!("{:-^58}", "-");
     
-    println!("{:-^58}", "-");
-    println!(
+    println_yel!("{:-^58}", "-");
+    println_yel!(
       "{: >15} | {: <40}",
       " DECRPYT / D ", " Attempt to decrypt files with a password "
     );
-    println!(
+    println_yel!(
       "{: >15} | {: <40}",
       " DELETE ", " Delete all data and start over "
     );
-    println!(
+    println_yel!(
       "{: >15} | {: <40}",
       " QUIT / Q ", " Close program "
     );
-    println!("{:-^58}", "-");
+    println_yel!("{:-^58}", "-");
 
   }
   fn choose_decrypt_files(
@@ -276,19 +341,19 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
         }
       }
       choice = choice.to_ascii_lowercase().trim().to_string();
       match &choice[..] {
         "decrypt" | "d" => {
-          println!("Enter password to attempt decryption.");
+          println_inst!("Enter password to attempt decryption.");
           let mut pw = String::new();
           let pw_attempt = io::stdin().read_line(&mut pw);
           match pw_attempt {
             Ok(_) => (),
             Err(e) => {
-              println!("Failed to read input. Please try again.");
+              println_err!("Failed to read input. Please try again.");
             }
           }
           pw = pw.trim().to_string();
@@ -304,7 +369,7 @@ impl NoteArchive {
           ) {
             Ok(_) => true,
             Err(_) => {
-              println!("Incorrect password. Option to try again in 10 seconds.");
+              println_err!("Incorrect password. Option to try again in 10 seconds.");
               thread::sleep(time::Duration::from_secs(10));
               continue;
             }
@@ -324,7 +389,7 @@ impl NoteArchive {
           break false;
         },
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -591,45 +656,45 @@ impl NoteArchive {
   }
   fn display_actions(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", "-");
     let heading_with_spaces = format!(" {} ", self.current_user().name_and_title()); 
-    println!("{:-^58}", heading_with_spaces);
-    println!("{:-^58}", " Mission control ");
-    println!("{:-^58}", "-");
-    println!("{:-^15} | {:-^40}", " Command ", " Function ");
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", heading_with_spaces);
+    println_on_bg!("{:-^58}", " Mission control ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^15} | {:-^40}", " Command ", " Function ");
+    println_on_bg!("{:-^58}", "-");
     
     // once for each command
     
-    println!(
+    println_on_bg!(
       "{: >15} | {: <40}",
       " NOTE / N ", " Write, view, and edit note records "
     );
 
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", "-");
     
-    println!(
+    println_on_bg!(
       "{: >15} | {: <40}",
       " CLIENT / C ", " View/edit client records "
     );
-    println!(
+    println_on_bg!(
       "{: >15} | {: <40}",
       " COL / CO ", " View/edit collateral records "
     );
-    println!(
+    println_on_bg!(
       "{: >15} | {: <40}",
       " EDIT / E ", " Edit current user info "
     );
     
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", "-");
     
-    println!("{: >15} | {: <40}", " USER / U ", " Switch user ");
-    println!("{: >15} | {: <40}", " PRNS / P ", " View/edit pronoun records ");
-    println!("{: >15} | {: <40}", " DELETE / D ", " Delete current user ");
-    println!("{: >15} | {: <40}", " SECURITY / S ", " Security options ");
-    println!("{: >15} | {: <40}", " QUIT / Q ", " End program ");
+    println_on_bg!("{: >15} | {: <40}", " USER / U ", " Switch user ");
+    println_on_bg!("{: >15} | {: <40}", " PRNS / P ", " View/edit pronoun records ");
+    println_on_bg!("{: >15} | {: <40}", " DELETE / D ", " Delete current user ");
+    println_on_bg!("{: >15} | {: <40}", " SECURITY / S ", " Security options ");
+    println_on_bg!("{: >15} | {: <40}", " QUIT / Q ", " End program ");
 
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", "-");
   }
   fn logged_in_action(&mut self) {
     loop {
@@ -640,7 +705,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
         }
       }
       choice = choice.to_ascii_lowercase().trim().to_string();
@@ -683,7 +748,7 @@ impl NoteArchive {
           break ();
         },
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           thread::sleep(time::Duration::from_secs(1));
         },
       }
@@ -698,7 +763,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -712,7 +777,7 @@ impl NoteArchive {
           break ();
         },
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -722,31 +787,31 @@ impl NoteArchive {
   }
   fn display_security_options(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^58}", "-");
-    println!("{:-^58}", " Security ");
-    println!("{:-^58}", "-");
-    println!("{:-^15} | {:-^40}", " Command ", " Function ");
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", " Security ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^15} | {:-^40}", " Command ", " Function ");
+    println_on_bg!("{:-^58}", "-");
     
-    println!(
+    println_on_bg!(
       "{: >15} | {: <40}",
       " ENCRYPT ", " Encrypt all files and protect with a password | WARNING: cannot be reversed if password is lost. "
     );
-    println!(
+    println_on_bg!(
       "{: >15} | {: <40}",
       " QUIT / Q ", " Cancel "
     );
     
-    println!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", "-");
   }
   fn choose_encrypt_all_files(&mut self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("If you forget your password, accessing this program's data will be impossible.");
-    println!("This applies to all data for all users and clients associated with this program on your computer.");
-    println!("Encryption is not and is not intended to be HIPPA compliant.");
-    println!("By continuing, you agree that the responsibility to store and transfer data privately and securely is entirely your own.");
-    println!("To cancel and return to the program, enter QUIT / Q.");
-    println!("To continue with secure encryption, enter YES / Y.");
+    println_yel!("If you forget your password, accessing this program's data will be impossible.");
+    println_yel!("This applies to all data for all users and clients associated with this program on your computer.");
+    println_yel!("Encryption is not and is not intended to be HIPPA compliant.");
+    println_yel!("By continuing, you agree that the responsibility to store and transfer data privately and securely is entirely your own.");
+    println_yel!("To cancel and return to the program, enter QUIT / Q.");
+    println_yel!("To continue with secure encryption, enter YES / Y.");
 
     loop {
       let mut choice = String::new();
@@ -754,7 +819,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -762,29 +827,29 @@ impl NoteArchive {
       match &choice[..] {
         "yes" | "y" => {
           let new_password = loop {
-            println!("Enter new password for encryption (minimum 8 characters):");
+            println_inst!("Enter new password for encryption (minimum 8 characters):");
             let mut choice = String::new();
             let choice_attempt = io::stdin().read_line(&mut choice);
             match choice_attempt {
               Ok(_) => {
                 if choice.trim().len() < 8 {
-                  println!("Password not long enough.");
+                  println_err!("Password not long enough.");
                   continue;
                 } else {
-                  println!("Confirm password:");
+                  println_inst!("Confirm password:");
                   let mut confirm = String::new();
                   let confirm_attempt = io::stdin().read_line(&mut confirm);
                   match confirm_attempt {
                     Ok(_) => {
                       if confirm.trim() != choice.trim() {
-                        println!("Passwords do not match.");
+                        println_err!("Passwords do not match.");
                         continue;
                       } else {
                         break confirm.trim().to_string()
                       }
                     },
                     Err(e) => {
-                      println!("Passwords do not match (error: {})", e);
+                      println_err!("Passwords do not match (error: {})", e);
                       continue;
                     }
                   }
@@ -792,7 +857,7 @@ impl NoteArchive {
                 }
               },
               Err(e) => {
-                println!("Failed to read input. Please try again.");
+                println_err!("Failed to read input. Please try again.");
                 continue;
               }
             }
@@ -800,13 +865,13 @@ impl NoteArchive {
           match self.encrypt_all_files(&new_password) {
             Ok(_) => (),
             Err(e) => {
-              println!("Failed to encrypt files: {}", e);
+              println_err!("Failed to encrypt files: {}", e);
               continue;
             },
           }
           self.encrypted = true;
           print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-          println!("Files encrypted successfully.");
+          println_suc!("Files encrypted successfully.");
           thread::sleep(time::Duration::from_secs(2));
           break;
         },
@@ -814,7 +879,7 @@ impl NoteArchive {
           break ();
         },
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -848,19 +913,19 @@ impl NoteArchive {
   }
   fn display_users(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^66}", "-");
-    println!("{:-^66}", " Users ");
-    println!("{:-^66}", "-");
-    println!("{:-^10} | {:-^10} | {:-^40}", " ID ", " Role ", " Name ");
+    println_on_bg!("{:-^66}", "-");
+    println_on_bg!("{:-^66}", " Users ");
+    println_on_bg!("{:-^66}", "-");
+    println_on_bg!("{:-^10} | {:-^10} | {:-^40}", " ID ", " Role ", " Name ");
     for u in &self.users {
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^10} | {: ^40}",
         u.id,
         u.role.to_string(),
         u.full_name()
       );
     }
-    println!("{:-^66}", "-");
+    println_on_bg!("{:-^66}", "-");
   }
   fn display_edit_user(&self) {
     let pronouns_option = self.get_pronouns_by_id(self.current_user().pronouns);
@@ -869,23 +934,23 @@ impl NoteArchive {
       None => String::from("-----"),
     };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^90}", "-");
-    println!("{:-^90}", " Edit user ");
-    println!("{:-^90}", "-");
-    println!(
+    println_on_bg!("{:-^90}", "-");
+    println_on_bg!("{:-^90}", " Edit user ");
+    println_on_bg!("{:-^90}", "-");
+    println_on_bg!(
       "{:-^10} | {:-^20} | {:-^20} | {:-^30}",
       "Role", "First name", "Last name", "Pronouns"
     );
-    println!(
+    println_on_bg!(
       "{: ^10} | {: ^20} | {: ^20} | {: ^30}",
       self.current_user().role.to_string(),
       self.current_user().first_name,
       self.current_user().last_name,
       display_pronouns,
     );
-    println!("{:-^90}", "-");
-    println!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
-    println!("'Q'/'QUIT' to return to previous menu.");
+    println_on_bg!("{:-^90}", "-");
+    println_on_bg!("Choose field to edit (FIRST, LAST, ROLE, PRNS).");
+    println_on_bg!("'Q'/'QUIT' to return to previous menu.");
   }
   fn load_user(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&User> = self.users.iter().find(|u| u.id == id);
@@ -898,7 +963,7 @@ impl NoteArchive {
           Ok(_) => (),
           Err(e) => {
             print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-            println!("Error: {} Pronoun record not found. Please select pronouns again.", e);
+            println_err!("Error: {} Pronoun record not found. Please select pronouns again.", e);
             thread::sleep(time::Duration::from_secs(2));
             self.current_user_mut().pronouns = self.choose_pronouns();
           }
@@ -917,12 +982,12 @@ impl NoteArchive {
       let chosen_id = loop {
         let input = loop {
           let mut choice = String::new();
-          println!("| {} | {}", "Enter ID to choose user.", "NEW / N: new user");
+          println_inst!("| {} | {}", "Enter ID to choose user.", "NEW / N: new user");
           let read_attempt = io::stdin().read_line(&mut choice);
           match read_attempt {
             Ok(_) => break choice.to_ascii_lowercase(),
             Err(e) => {
-              println!("Could not read input; try again ({}).", e);
+              println_err!("Could not read input; try again ({}).", e);
               continue;
             }
           }
@@ -939,7 +1004,7 @@ impl NoteArchive {
           _ => match input.parse() {
             Ok(num) => break num,
             Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
+              println_err!("Could not read input as a number; try again ({}).", e);
               continue;
             }
           },
@@ -948,7 +1013,7 @@ impl NoteArchive {
       match self.load_user(chosen_id) {
         Ok(_) => break chosen_id,
         Err(e) => {
-          println!("Unable to load user with id {}: {}", chosen_id, e);
+          println_err!("Unable to load user with id {}: {}", chosen_id, e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -960,13 +1025,13 @@ impl NoteArchive {
     let user = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println!("Enter 'CANCEL' at any time to cancel.");
-        println!("First name:");
+        println_inst!("Enter 'CANCEL' at any time to cancel.");
+        println_inst!("First name:");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
           Err(e) => {
-            println!("Invalid first name: {}", e);
+            println_err!("Invalid first name: {}", e);
             continue;
           }
         };
@@ -976,12 +1041,12 @@ impl NoteArchive {
       }
       let last_name = loop {
         let mut last_name_choice = String::new();
-        println!("Last name:");
+        println_inst!("Last name:");
         let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
         match last_name_attempt {
           Ok(_) => break String::from(last_name_choice.trim()),
           Err(e) => {
-            println!("Invalid last name: {}", e);
+            println_err!("Invalid last name: {}", e);
             continue;
           }
         };
@@ -991,7 +1056,7 @@ impl NoteArchive {
       }
       let role: EmployeeRole = loop {
         let mut role_choice = String::new();
-        println!("Role ('ICC' or 'FP'):");
+        println_inst!("Role ('ICC' or 'FP'):");
         let role_attempt = io::stdin().read_line(&mut role_choice);
         match role_attempt {
           Ok(_) => match &role_choice.trim().to_ascii_lowercase()[..] {
@@ -999,12 +1064,12 @@ impl NoteArchive {
             "fp" => break FP,
             "cancel" => return None,
             _ => {
-              println!("Please choose role 'FP' or 'ICC.'");
+              println_err!("Please choose role 'FP' or 'ICC.'");
               continue;
             }
           },
           Err(e) => {
-            println!("Unreadable entry: {}", e);
+            println_err!("Unreadable entry: {}", e);
             continue;
           }
         };
@@ -1014,7 +1079,7 @@ impl NoteArchive {
           Some(p) => break p,
           None => {
             loop {
-              println!("Cancel? (Y/N)");
+              println_inst!("Cancel? (Y/N)");
               let mut cancel = String::new();
               let cancel_attempt = io::stdin().read_line(&mut cancel);
               match cancel_attempt {
@@ -1022,12 +1087,12 @@ impl NoteArchive {
                   "yes" | "y"  => return None,
                   "no" | "n" | "cancel" => continue 'pronouns,
                   _ => {
-                    println!("Please choose either 'yes/y' or 'no/n'.");
+                    println_err!("Please choose either 'yes/y' or 'no/n'.");
                     continue;
                   }
                 },
                 Err(e) => {
-                  println!("Failed to read input.");
+                  println_err!("Failed to read input.");
                   continue;
                 }
               }
@@ -1040,7 +1105,7 @@ impl NoteArchive {
       match user_attempt {
         Ok(user) => break user,
         Err(e) => {
-          println!("User could not be generated: {}.", e);
+          println_err!("User could not be generated: {}.", e);
           continue;
         }
       }
@@ -1249,7 +1314,7 @@ impl NoteArchive {
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -1262,35 +1327,35 @@ impl NoteArchive {
       }
       match &field_to_edit[..] {
         "first" | "fst" | "f" | "1st" | "first name" => {
-          println!("Enter new first name:");
+          println_inst!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
             Ok(_) => match self.change_user_first_name(name_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               continue;
             }
           }
         }
         "last" | "lst" | "l" | "last name" => {
-          println!("Enter new last name:");
+          println_inst!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
             Ok(_) => match self.change_user_last_name(name_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               continue;
             }
           }
@@ -1310,21 +1375,21 @@ impl NoteArchive {
             None => (),
           }
         }
-        _ => println!("Invalid entry."),
+        _ => println_err!("Invalid entry."),
       }
     }
   }
   fn choose_delete_user(&mut self) {
     loop {
       self.display_delete_user();
-      println!("Are you sure you want to delete this user?");
-      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      println_yel!("Are you sure you want to delete this user?");
+      println_yel!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut choice = String::new();
       let input_attempt = io::stdin().read_line(&mut choice);
       match input_attempt {
         Ok(_) => choice = choice.trim().to_string(),
         Err(e) => {
-          println!("Failed to read input: {}", e);
+          println_err!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -1342,21 +1407,21 @@ impl NoteArchive {
   }
   fn display_delete_user(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^79}", "-");
-    println!("{:-^79}", " Delete user ");
-    println!("{:-^79}", "-");
-    println!(
+    println_on_bg!("{:-^79}", "-");
+    println_on_bg!("{:-^79}", " Delete user ");
+    println_on_bg!("{:-^79}", "-");
+    println_on_bg!(
       "{:-^10} | {:-^20} | {:-^20} | {:-^20}",
       "Role", "First name", "Last name", "Client records",
     );
-    println!(
+    println_on_bg!(
       "{: ^10} | {: ^20} | {: ^20} | {: ^20}",
       self.current_user().role.to_string(),
       self.current_user().first_name,
       self.current_user().last_name,
       self.current_user().foreign_keys["client_ids"].len(),
     );
-    println!("{:-^79}", "-");
+    println_on_bg!("{:-^79}", "-");
   }
   fn delete_current_user(&mut self) {
     let id = self.foreign_key.get("current_user_id").unwrap();
@@ -1410,14 +1475,14 @@ impl NoteArchive {
     heading.push_str(&self.current_user().full_name()[..]);
     heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^96}", heading);
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", heading);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
     match self.foreign_key.get("current_user_id") {
       Some(_) => {
         for c in self.get_current_clients() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: ^40} | {: <12} {: >26}",
             c.id,
             c.full_name(),
@@ -1428,22 +1493,22 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^96}", "-");
-    println!("| {} | {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("| {} | {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records", "QUIT / Q: quit menu");
   }
   fn display_edit_clients(&self) {
     let mut heading = String::from(" Edit ");
     heading.push_str(&self.current_user().full_name()[..]);
     heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^96}", heading);
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", heading);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
     match self.foreign_key.get("current_user_id") {
       Some(_) => {
         for c in self.get_current_clients() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: ^40} | {: <12} {: >26}",
             c.id,
             c.full_name(),
@@ -1454,8 +1519,8 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^96}", "-");
-    println!("| {} | {}", "Choose client by ID.", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("| {} | {}", "Choose client by ID.", "QUIT / Q: quit menu");
   }
   fn get_noncurrent_clients(&self) -> Vec<&Client> {
     self.clients.iter().filter(|client| !self.current_user().foreign_keys["client_ids"]
@@ -1466,14 +1531,14 @@ impl NoteArchive {
   }
   fn display_add_client(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^96}", " Clients ");
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", " Clients ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
     match &self.foreign_key.get("current_user_id") {
       Some(c_ids) => {
         for c in self.get_noncurrent_clients() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: ^40} | {: <12} {: >26}",
             c.id,
             c.full_name(),
@@ -1484,7 +1549,7 @@ impl NoteArchive {
       },
       None => {
         for c in self.clients.iter() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: ^40} | {: <12} {: >26}",
             c.id,
             c.full_name(),
@@ -1494,8 +1559,8 @@ impl NoteArchive {
         }
       },
     }
-    println!("{:-^96}", "-");
-    println!("| {} | {} | {}", "Enter ID to add client.", "NEW / N: create new", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^96}", "-");
+    println_inst!("| {} | {} | {}", "Enter ID to add client.", "NEW / N: create new", "QUIT / Q: quit menu");
   }
   fn display_client(&self) {
     let pronouns_option = self.get_pronouns_by_id(self.current_client().pronouns);
@@ -1504,14 +1569,14 @@ impl NoteArchive {
       None => String::from("-----"),
     };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^119}", "-");
-    println!("{:-^119}", " View client record ");
-    println!("{:-^119}", "-");
-    println!(
+    println_on_bg!("{:-^119}", "-");
+    println_on_bg!("{:-^119}", " View client record ");
+    println_on_bg!("{:-^119}", "-");
+    println_on_bg!(
       "{:-^20} | {:-^20} | {:-^30} | {:-^40}",
       "First name", "Last name", "Pronouns", "DOB"
     );
-    println!(
+    println_on_bg!(
       "{: ^20} | {: ^20} | {: ^30} | {: <12} {: >26}",
       self.current_client().first_name,
       self.current_client().last_name,
@@ -1519,7 +1584,7 @@ impl NoteArchive {
       self.current_client().fmt_dob(),
       self.current_client().fmt_date_of_birth(),
     );
-    println!("{:-^119}", "-");
+    println_on_bg!("{:-^119}", "-");
   }
   fn load_client(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Client> = self.clients.iter().find(|c| c.id == id);
@@ -1543,7 +1608,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -1567,7 +1632,7 @@ impl NoteArchive {
               .iter()
               .map(|c| c.id )
               .any(|id| id == num) {
-              println!("Please select from the available choices.");
+              println_err!("Please select from the available choices.");
               thread::sleep(time::Duration::from_secs(1));
               continue;
             } else {
@@ -1578,14 +1643,14 @@ impl NoteArchive {
                   break;
                 }
                 Err(e) => {
-                  println!("Unable to load client with id {}: {}", num, e);
+                  println_err!("Unable to load client with id {}: {}", num, e);
                   continue;
                 }
               }
             }
           },
           Err(e) => {
-            println!("Failed to read input as a number.");
+            println_err!("Failed to read input as a number.");
             continue;
           }
         }
@@ -1601,7 +1666,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -1632,21 +1697,21 @@ impl NoteArchive {
             if !self.get_current_clients()
               .iter()
               .any(|&c| c.id == num) {
-                println!("Please choose from among the listed clients, or add a client from another user.");
+                println_err!("Please choose from among the listed clients, or add a client from another user.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
             }
             match self.load_client(num) {
               Ok(_) => self.choose_client(),
               Err(e) => {
-                println!("Unable to load client with id {}: {}", num, e);
+                println_err!("Unable to load client with id {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -1663,7 +1728,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -1677,21 +1742,21 @@ impl NoteArchive {
           match input.parse() {
             Ok(num) => {
               if !self.get_current_clients().iter().any(|c| c.id == num) {
-                println!("Please choose from among the listed IDs.");
+                println_err!("Please choose from among the listed IDs.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               }
               match self.load_client(num) {
                 Ok(_) => self.choose_client(),
                 Err(e) => {
-                  println!("Failed to load client with ID {}: {}", num, e);
+                  println_err!("Failed to load client with ID {}: {}", num, e);
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
                 }
               }
             },
             Err(e) => {
-              println!("Failed to read input '{}' as a number: {}", input, e);
+              println_err!("Failed to read input '{}' as a number: {}", input, e);
               thread::sleep(time::Duration::from_secs(1));
               continue;
             }
@@ -1703,14 +1768,14 @@ impl NoteArchive {
   fn display_specify_clients(&self, purpose: String) {
     let heading = format!(" Choose client for {} ", purpose);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^96}", heading);
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " NAME ", " DOB ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", heading);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " NAME ", " DOB ");
     match self.foreign_key.get("current_user_id") {
       Some(_) => {
         for c in self.get_current_clients() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: ^40} | {: <12} {: >26}",
             c.id,
             c.full_name(),
@@ -1721,8 +1786,8 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^96}", "-");
-    println!("| {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^96}", "-");
+    println_inst!("| {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "QUIT / Q: quit menu");
   }
   fn specify_client(&mut self, purpose: String) -> u32 {
     let id: u32 = loop {
@@ -1733,7 +1798,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -1757,7 +1822,7 @@ impl NoteArchive {
             if !self.get_current_clients()
               .iter()
               .any(|c| c.id == num) {
-                println!("Please choose from among the listed clients.");
+                println_err!("Please choose from among the listed clients.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               } else {
@@ -1767,7 +1832,7 @@ impl NoteArchive {
                     break num
                   }
                   Err(e) => {
-                    println!("Unable to load client with id {}: {}", num, e);
+                    println_err!("Unable to load client with id {}: {}", num, e);
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
@@ -1775,7 +1840,7 @@ impl NoteArchive {
               }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -1787,13 +1852,13 @@ impl NoteArchive {
   fn choose_client(&mut self) {
     loop {
       self.display_client();
-      println!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / COL: view/edit client collaterals", "QUIT / Q: quit menu");
+      println_inst!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / COL: view/edit client collaterals", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
         Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
-          println!("Could not read input; try again ({}).", e);
+          println_err!("Could not read input; try again ({}).", e);
           continue;
         }
       };
@@ -1812,7 +1877,7 @@ impl NoteArchive {
         "collateral" | "collat" | "col" => {
           self.choose_client_collaterals();
         }
-        _ => println!("Invalid command."),
+        _ => println_err!("Invalid command."),
       }
     }
   }
@@ -1820,13 +1885,13 @@ impl NoteArchive {
     let client = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println!("Enter 'CANCEL' at any time to cancel.");
-        println!("Enter client's first name.");
+        println_inst!("Enter 'CANCEL' at any time to cancel.");
+        println_inst!("Enter client's first name.");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
           Err(e) => {
-            println!("Invalid first name: {}", e);
+            println_err!("Invalid first name: {}", e);
             continue;
           }
         };
@@ -1836,12 +1901,12 @@ impl NoteArchive {
       }
       let last_name = loop {
         let mut last_name_choice = String::new();
-        println!("Enter client's last name.");
+        println_inst!("Enter client's last name.");
         let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
         match last_name_attempt {
           Ok(_) => break String::from(last_name_choice.trim()),
           Err(e) => {
-            println!("Invalid last name: {}", e);
+            println_err!("Invalid last name: {}", e);
             continue;
           }
         };
@@ -1852,7 +1917,7 @@ impl NoteArchive {
       let dob: NaiveDate = loop {
         let birth_year = loop {
           let mut birth_year_choice = String::new();
-          println!("Enter client's birth year.");
+          println_inst!("Enter client's birth year.");
           let birth_year_attempt = io::stdin().read_line(&mut birth_year_choice);
           let birth_year_attempt = match birth_year_attempt {
             Ok(_) => {
@@ -1862,26 +1927,26 @@ impl NoteArchive {
               birth_year_choice.trim().parse()
             },
             Err(e) => {
-              println!("Invalid birth year: {}", e);
+              println_err!("Invalid birth year: {}", e);
               continue;
             }
           };
           let birth_year_input = match birth_year_attempt {
             Ok(val) => val,
             Err(e) => {
-              println!("Invalid birth year: {}", e);
+              println_err!("Invalid birth year: {}", e);
               continue;
             }
           };
           if birth_year_input > 9999 || birth_year_input < 1000 {
-            println!("Please enter a valid year.");
+            println_err!("Please enter a valid year.");
             continue;
           }
           break birth_year_input;
         };
         let birth_month = loop {
           let mut birth_month_choice = String::new();
-          println!("Enter client's birth month as a decimal number (1-12).");
+          println_inst!("Enter client's birth month as a decimal number (1-12).");
           let birth_month_attempt = io::stdin().read_line(&mut birth_month_choice);
           let birth_month_attempt = match birth_month_attempt {
             Ok(_) => {
@@ -1891,26 +1956,26 @@ impl NoteArchive {
               birth_month_choice.trim().parse()
             },
             Err(e) => {
-              println!("Invalid birth month: {}", e);
+              println_err!("Invalid birth month: {}", e);
               continue;
             }
           };
           let birth_month_input = match birth_month_attempt {
             Ok(val) => val,
             Err(e) => {
-              println!("Invalid birth month: {}", e);
+              println_err!("Invalid birth month: {}", e);
               continue;
             }
           };
           if birth_month_input > 12 || birth_month_input < 1 {
-            println!("Please enter a valid month using decimal numbers 1-12.");
+            println_err!("Please enter a valid month using decimal numbers 1-12.");
             continue;
           }
           break birth_month_input;
         };
         let birth_day = loop {
           let mut birth_day_choice = String::new();
-          println!("Enter client's birth day as a decimal number (1-31).");
+          println_inst!("Enter client's birth day as a decimal number (1-31).");
           let birth_day_attempt = io::stdin().read_line(&mut birth_day_choice);
           let birth_day_attempt = match birth_day_attempt {
             Ok(_) => {
@@ -1920,19 +1985,19 @@ impl NoteArchive {
               birth_day_choice.trim().parse()
             },
             Err(e) => {
-              println!("Invalid birth day: {}", e);
+              println_err!("Invalid birth day: {}", e);
               continue;
             }
           };
           let birth_day_input = match birth_day_attempt {
             Ok(val) => val,
             Err(e) => {
-              println!("Invalid birth day: {}", e);
+              println_err!("Invalid birth day: {}", e);
               continue;
             }
           };
           if birth_day_input > 31 || birth_day_input < 1 {
-            println!("Please enter a valid day using decimal numbers 1-12.");
+            println_err!("Please enter a valid day using decimal numbers 1-12.");
             continue;
           }
           break birth_day_input;
@@ -1941,7 +2006,7 @@ impl NoteArchive {
         match NaiveDate::from_ymd_opt(birth_year, birth_month, birth_day) {
           Some(date) => break date,
           None => {
-            println!(
+            println_err!(
               "{}-{}-{} does not appear to be a valid date. Please try again.",
               birth_year, birth_month, birth_day
             );
@@ -1955,7 +2020,7 @@ impl NoteArchive {
           Some(p) => break p,
           None => {
             loop {
-              println!("Cancel? (Y/N)");
+              println_yel!("Cancel? (Y/N)");
               let mut cancel = String::new();
               let cancel_attempt = io::stdin().read_line(&mut cancel);
               match cancel_attempt {
@@ -1963,12 +2028,12 @@ impl NoteArchive {
                   "yes" | "y"  => return None,
                   "no" | "n" | "cancel" => continue 'pronouns,
                   _ => {
-                    println!("Please choose either 'yes/y' or 'no/n'.");
+                    println_err!("Please choose either 'yes/y' or 'no/n'.");
                     continue;
                   }
                 },
                 Err(e) => {
-                  println!("Failed to read line.");
+                  println_err!("Failed to read line.");
                   continue;
                 }
               }
@@ -1982,7 +2047,7 @@ impl NoteArchive {
       match client_attempt {
         Ok(client) => break client,
         Err(error_hash) => {
-          println!(
+          println_err!(
             "Client could not be generated. Errors: '{}'.",
             error_hash.keys().cloned().collect::<Vec<String>>().join(", "),
           );
@@ -1998,12 +2063,12 @@ impl NoteArchive {
                   if !current_clients.iter().any(|c_id| c_id == id_ref ) {
                     let mut conf = String::new();
                     let choice = loop {
-                      println!("Would you like to use the existing record? (Y/N)");
+                      println_inst!("Would you like to use the existing record? (Y/N)");
                       let conf_attempt = io::stdin().read_line(&mut conf);
                       match conf_attempt {
                         Ok(_) => break String::from(conf.trim()),
                         Err(_) => {
-                          println!("Failed to read input.");
+                          println_err!("Failed to read input.");
                           continue;
                         }
                       }
@@ -2011,7 +2076,7 @@ impl NoteArchive {
                     match &choice.to_ascii_lowercase()[..] {
                       "yes" | "y" => break client.clone(),
                       "no" | "n" => continue,
-                      _ => println!("Invalid command.")
+                      _ => println_err!("Invalid command.")
                     }
                   }
                 },
@@ -2144,13 +2209,13 @@ impl NoteArchive {
   fn choose_edit_client(&mut self) {
     loop {
       self.display_client();
-      println!("| {} | {} | {} | {}", "FIRST / F: edit first name", "LAST / L: edit surname", "PRNS / P: edit pronouns", "QUIT / Q: quit menu");
+      println_inst!("| {} | {} | {} | {}", "FIRST / F: edit first name", "LAST / L: edit surname", "PRNS / P: edit pronouns", "QUIT / Q: quit menu");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -2163,36 +2228,36 @@ impl NoteArchive {
       }
       match &field_to_edit[..] {
         "first" | "fst" | "f" | "1st" | "first name" => {
-          println!("Enter new first name:");
+          println_inst!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
             Ok(_) => match self.change_client_first_name(name_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               continue;
             }
           }
         }
         "last" | "lst" | "l" | "last name" => {
-          println!("Enter new last name:");
+          println_inst!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
             Ok(_) => match self.change_client_last_name(name_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
                 thread::sleep(time::Duration::from_secs(1));
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               thread::sleep(time::Duration::from_secs(1));
             }
           }
@@ -2205,7 +2270,7 @@ impl NoteArchive {
           }
         }
         _ => {
-          println!("Invalid entry.");
+          println_err!("Invalid entry.");
           thread::sleep(time::Duration::from_secs(1));
         }
       }
@@ -2268,14 +2333,14 @@ impl NoteArchive {
   fn choose_delete_client(&mut self) {
     loop {
       self.display_delete_client();
-      println!("Are you sure you want to delete this client?");
-      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      println_yel!("Are you sure you want to delete this client?");
+      println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
         Ok(_) => confirm.trim().to_string(),
         Err(e) => {
-          println!("Failed to read input: {}", e);
+          println_err!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -2293,14 +2358,14 @@ impl NoteArchive {
   }
   fn display_delete_client(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^114}", "-");
-    println!("{:-^114}", " DELETE CLIENT ");
-    println!("{:-^114}", "-");
-    println!(
+    println_on_bg!("{:-^114}", "-");
+    println_on_bg!("{:-^114}", " DELETE CLIENT ");
+    println_on_bg!("{:-^114}", "-");
+    println_on_bg!(
       "{:-^20} | {:-^20} | {:-^40} | {:-^25}",
       "First name", "Last name", "DOB", "Collateral records",
     );
-    println!(
+    println_on_bg!(
       "{: ^20} | {: ^20} | {: <12} {: >26} | {: ^25}",
       self.current_client().first_name,
       self.current_client().last_name,
@@ -2308,7 +2373,7 @@ impl NoteArchive {
       self.current_client().fmt_date_of_birth(),
       self.get_current_collaterals().len(),
     );
-    println!("{:-^114}", "-");
+    println_on_bg!("{:-^114}", "-");
   }
   fn delete_current_client(&mut self) {
     let id = self.foreign_key.get("current_client_id").unwrap();
@@ -2416,14 +2481,14 @@ impl NoteArchive {
     heading.push_str("'s Collaterals ");
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^113}", "-");
-    println!("{:-^113}", heading);
-    println!("{:-^113}", "-");
-    println!("{:-^10} | {:-<100}", " ID ", "Info ");
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^113}", heading);
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^10} | {:-<100}", " ID ", "Info ");
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
         for c in self.get_current_collaterals() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: <100}",
             c.id,
             c.full_name_and_title(),
@@ -2432,8 +2497,8 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^113}", "-");
-    println!("| {} | {} | {} | {} | {}",
+    println_on_bg!("{:-^113}", "-");
+    println_inst!("| {} | {} | {} | {} | {}",
       "Enter ID to choose collateral.",
       "NEW / N: new collateral",
       "ADD / A: add from other client/user",
@@ -2464,14 +2529,14 @@ impl NoteArchive {
     heading.push_str("'s Collateral records");
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^113}", "-");
-    println!("{:-^113}", heading);
-    println!("{:-^113}", "-");
-    println!("{:-^10} | {:-<100}", " ID ", " Info ");
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^113}", heading);
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^10} | {:-<100}", " ID ", " Info ");
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
         for c in self.get_current_collaterals() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: <100}",
             c.id,
             c.full_name_and_title(),
@@ -2480,8 +2545,8 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^113}", "-");
-    println!("| {} | {}", "Enter ID of collateral record to edit.", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^113}", "-");
+    println_inst!("| {} | {}", "Enter ID of collateral record to edit.", "QUIT / Q: quit menu");
   }
   fn display_user_collaterals(&self) {
     let current = self.current_user();
@@ -2493,22 +2558,22 @@ impl NoteArchive {
     );
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^146}", "-");
-    println!("{:-^146}", heading);
-    println!("{:-^146}", "-");
-    println!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", "Youth(s) ");
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", heading);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
-      println!(
+      println_on_bg!(
         "{: ^10} | {: <100} | {: <30}",
         co.id,
         co.full_name_and_title(),
         self.collateral_clients_string(co.id),
       );
     }
-    println!("{:-^146}", "-");
-    println!("| {} | {} | {} | {} | {}",
+    println_on_bg!("{:-^146}", "-");
+    println_inst!("| {} | {} | {} | {} | {}",
       "Enter ID to choose collateral.",
       "EDIT / E: edit", "NEW / N: new collateral",
       "ADD / A: Add from other user/client",
@@ -2525,22 +2590,22 @@ impl NoteArchive {
     );
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^146}", "-");
-    println!("{:-^146}", heading);
-    println!("{:-^146}", "-");
-    println!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", "Youths ");
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", heading);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", "Youths ");
 
     for co in self.current_user_collaterals() {
 
-      println!(
+      println_on_bg!(
         "{: ^10} | {: <100} | {: <30}",
         co.id,
         co.full_name_and_title(),
         self.collateral_clients_string(co.id),
       );
     }
-    println!("{:-^146}", "-");
-    println!("| {} | {}", "Enter ID of collateral to edit.", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^146}", "-");
+    println_inst!("| {} | {}", "Enter ID of collateral to edit.", "QUIT / Q: quit menu");
   }
   fn display_collateral(&self) {
     let current = self.current_collateral();
@@ -2568,18 +2633,18 @@ impl NoteArchive {
     };
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^178}", "-");
-    println!("{:-^178}", " View collateral record ");
-    println!("{:-^178}", "-");
-    println!(
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", " View collateral record ");
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!(
       "{:-^162} | {:-^13}",
       "-", "Support type",
     );
-    println!(
+    println_on_bg!(
       "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
       " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
     );
-    println!(
+    println_on_bg!(
       "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
       current.first_name,
       current.last_name,
@@ -2589,9 +2654,8 @@ impl NoteArchive {
       display_type,
       display_indirect,
     );
-    println!("{:-^178}", "-");
-    println!("| {} | {} | {} | {}", "EDIT / E: edit collateral", "CLIENT / C: add client ", "DELETE: delete collateral", "QUIT / Q: quit menu");
-    println!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", "-");
+    println_inst!("| {} | {} | {} | {}", "EDIT / E: edit collateral", "CLIENT / C: add client ", "DELETE: delete collateral", "QUIT / Q: quit menu");
   }
   fn display_edit_collateral(&self) {
     let current = self.current_collateral();
@@ -2618,18 +2682,18 @@ impl NoteArchive {
       false => ("Y", "INDIRECT: Change to indirect support (e.g., not 'for youth')"),
     };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^178}", "-");
-    println!("{:-^178}", " Edit collateral record ");
-    println!("{:-^178}", "-");
-    println!(
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", " Edit collateral record ");
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!(
       "{:-^162} | {:-^13}",
       "-", "Support type",
     );
-    println!(
+    println_on_bg!(
       "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
       " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
     );
-    println!(
+    println_on_bg!(
       "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
       current.first_name,
       current.last_name,
@@ -2639,8 +2703,8 @@ impl NoteArchive {
       display_type,
       display_indirect,
     );
-    println!("{:-^178}", "-");
-    println!(
+    println_on_bg!("{:-^178}", "-");
+    println_inst!(
       "| {} | {} | {} | {} | {} | {}",
       "FIRST / F: edit first name",
       "LAST / L: edit surname",
@@ -2648,23 +2712,23 @@ impl NoteArchive {
       "INST / I: edit institution",
       "PRNS / P: edit pronouns",
       "QUIT / Q: quit menu");
-    println!(
+    println_inst!(
       "| {} | {}",
       opposite_type_command,
       opposite_indirect_command,
     );
-    println!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", "-");
   }
   fn display_add_collateral(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^113}", "-");
-    println!("{:-^113}", " Other collateral records ");
-    println!("{:-^113}", "-");
-    println!("{:-^10} | {:-<100}", " ID ", "Info ");
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^113}", " Other collateral records ");
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^10} | {:-<100}", " ID ", "Info ");
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
         for c in self.get_noncurrent_collaterals() {
-          println!(
+          println_on_bg!(
             "{: ^10} | {: <100}",
             c.id,
             c.full_name_and_title(),
@@ -2673,8 +2737,8 @@ impl NoteArchive {
       }
       None => (),
     }
-    println!("{:-^113}", "-");
-    println!("| {} | {} | {}", "Enter ID to add collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
+    println_on_bg!("{:-^113}", "-");
+    println_inst!("| {} | {} | {}", "Enter ID to add collateral.", "NEW / N: new collateral", "QUIT / Q: quit menu");
   }
   fn load_collateral(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Collateral> = self.collaterals.iter().find(|c| c.id == id);
@@ -2698,7 +2762,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -2727,20 +2791,20 @@ impl NoteArchive {
         _ => match input.parse() {
           Ok(num) => {
             if !self.get_current_collaterals().iter().any(|co| co.id == num) {
-              println!("Please select one of the listed IDs.");
+              println_err!("Please select one of the listed IDs.");
               thread::sleep(time::Duration::from_secs(1));
               continue;
             }
             match self.load_collateral(num) {
               Ok(_) => self.choose_collateral(),
               Err(e) => {
-                println!("Unable to load collateral with id {}: {}", num, e);
+                println_err!("Unable to load collateral with id {}: {}", num, e);
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -2755,7 +2819,7 @@ impl NoteArchive {
           break Some(collat);
         },
         None => {
-          println!("Please select one of the listed IDs.");
+          println_err!("Please select one of the listed IDs.");
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -2771,7 +2835,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice,
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -2784,20 +2848,20 @@ impl NoteArchive {
         _ => match input.parse() {
           Ok(num) => {
             if !self.get_current_collaterals().iter().any(|co| co.id == num) {
-              println!("Please select one of the listed IDs.");
+              println_err!("Please select one of the listed IDs.");
               thread::sleep(time::Duration::from_secs(1));
               continue;
             }
             match self.load_collateral(num) {
               Ok(_) => self.choose_edit_collateral(),
               Err(e) => {
-                println!("Unable to load collateral with id {}: {}", num, e);
+                println_err!("Unable to load collateral with id {}: {}", num, e);
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -2814,7 +2878,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -2839,20 +2903,20 @@ impl NoteArchive {
         _ => match input.parse() {
           Ok(num) => {
             if !self.current_user().foreign_keys["collateral_ids"].iter().any(|n| n == &num) {
-            println!("Please select one of the listed IDs.");
+            println_err!("Please select one of the listed IDs.");
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
             match self.load_collateral(num) {
               Ok(_) => self.choose_collateral(),
               Err(e) => {
-                println!("Unable to load collateral with id {}: {}", num, e);
+                println_err!("Unable to load collateral with id {}: {}", num, e);
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -2869,7 +2933,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice,
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -2882,20 +2946,20 @@ impl NoteArchive {
         _ => match input.parse() {
           Ok(num) => {
             if !self.current_user().foreign_keys["collateral_ids"].iter().any(|n| n == &num) {
-            println!("Please select one of the listed IDs.");
+            println_err!("Please select one of the listed IDs.");
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
             match self.load_collateral(num) {
               Ok(_) => self.choose_edit_collateral(),
               Err(e) => {
-                println!("Unable to load collateral with id {}: {}", num, e);
+                println_err!("Unable to load collateral with id {}: {}", num, e);
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -2911,7 +2975,7 @@ impl NoteArchive {
       let input = match read_attempt {
         Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
-          println!("Could not read input; try again ({}).", e);
+          println_err!("Could not read input; try again ({}).", e);
           continue;
         }
       };
@@ -2945,7 +3009,7 @@ impl NoteArchive {
           self.choose_edit_collateral();
         }
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           thread::sleep(time::Duration::from_secs(1));
         }
       }
@@ -2955,13 +3019,13 @@ impl NoteArchive {
     let collateral = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println!("Enter 'CANCEL' at any time to cancel.");
-        println!("Collateral's first name:");
+        println_inst!("Enter 'CANCEL' at any time to cancel.");
+        println_inst!("Collateral's first name:");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
           Err(e) => {
-            println!("Invalid first name: {}", e);
+            println_err!("Invalid first name: {}", e);
             continue;
           }
         };
@@ -2971,12 +3035,12 @@ impl NoteArchive {
       }
       let last_name = loop {
         let mut last_name_choice = String::new();
-        println!("Collateral's last name:");
+        println_inst!("Collateral's last name:");
         let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
         match last_name_attempt {
           Ok(_) => break String::from(last_name_choice.trim()),
           Err(e) => {
-            println!("Invalid last name: {}", e);
+            println_err!("Invalid last name: {}", e);
             continue;
           }
         };
@@ -2986,12 +3050,12 @@ impl NoteArchive {
       }
       let title = loop {
         let mut title_choice = String::new();
-        println!("Enter collateral's role/title.");
+        println_inst!("Enter collateral's role/title.");
         let title_attempt = io::stdin().read_line(&mut title_choice);
         match title_attempt {
           Ok(_) => break String::from(title_choice.trim()),
           Err(e) => {
-            println!("Invalid title: {}", e);
+            println_err!("Invalid title: {}", e);
             continue;
           }
         };
@@ -3005,7 +3069,7 @@ impl NoteArchive {
           Some(p) => break p,
           None => {
             loop {
-              println!("Cancel? (Y/N)");
+              println_yel!("Cancel? (Y/N)");
               let mut cancel = String::new();
               let cancel_attempt = io::stdin().read_line(&mut cancel);
               match cancel_attempt {
@@ -3013,12 +3077,12 @@ impl NoteArchive {
                   "yes" | "y" => return None,
                   "no" | "n" | "cancel" => continue 'pronouns,
                   _ => {
-                    println!("Please choose either 'yes/y' or 'no/n'.");
+                    println_err!("Please choose either 'yes/y' or 'no/n'.");
                     continue;
                   }
                 },
                 Err(e) => {
-                  println!("Failed to read input.");
+                  println_err!("Failed to read input.");
                   continue;
                 }
               }
@@ -3033,12 +3097,12 @@ impl NoteArchive {
       } else if FORMAL_ROLES.iter().any(|role| role == &title ) {
         let institution = loop {
           let mut institution_choice = String::new();
-          println!("Enter collateral's institution.");
+          println_inst!("Enter collateral's institution.");
           let institution_attempt = io::stdin().read_line(&mut institution_choice);
           match institution_attempt {
             Ok(_) => break String::from(institution_choice.trim()),
             Err(e) => {
-              println!("Invalid institution: {}", e);
+              println_err!("Invalid institution: {}", e);
               continue;
             }
           }
@@ -3047,12 +3111,12 @@ impl NoteArchive {
       } else if INDIRECT_ROLES.iter().any(|role| role == &title ) {
         let institution = loop {
           let mut institution_choice = String::new();
-          println!("Enter collateral's institution.");
+          println_inst!("Enter collateral's institution.");
           let institution_attempt = io::stdin().read_line(&mut institution_choice);
           match institution_attempt {
             Ok(_) => break String::from(institution_choice.trim()),
             Err(e) => {
-              println!("Invalid institution: {}", e);
+              println_err!("Invalid institution: {}", e);
               continue;
             }
           }
@@ -3062,8 +3126,8 @@ impl NoteArchive {
         loop {
           print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
           let mut support_type_choice = String::new();
-          println!("Natural or Formal support?");
-          println!("NATURAL / N | FORMAL / F");
+          println_inst!("Natural or Formal support?");
+          println_inst!("NATURAL / N | FORMAL / F");
           let support_type_attempt = io::stdin().read_line(&mut support_type_choice);
           let s = match support_type_attempt {
             Ok(_) => match support_type_choice.to_ascii_lowercase().trim() {
@@ -3071,13 +3135,13 @@ impl NoteArchive {
               "formal" | "form" | "f" => Formal,
               "cancel" => return None,
               _ => {
-                println!("Please choose NATURAL or FORMAL.");
+                println_err!("Please choose NATURAL or FORMAL.");
                 thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
             Err(e) => {
-              println!("Failed to read input.");
+              println_err!("Failed to read input.");
               continue;
             }
           };
@@ -3087,8 +3151,8 @@ impl NoteArchive {
             Formal => {
               print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
               let mut indirect_choice = String::new();
-              println!("Is this collateral a provider for the selected client?");
-              println!("YES / Y | NO / N");
+              println_inst!("Is this collateral a provider for the selected client?");
+              println_inst!("YES / Y | NO / N");
               let indirect_attempt = io::stdin().read_line(&mut indirect_choice);
               i = match indirect_attempt {
                 Ok(_) => match indirect_choice.to_ascii_lowercase().trim() {
@@ -3096,13 +3160,13 @@ impl NoteArchive {
                   "no" | "n" => true,
                   "cancel" => return None,
                   _ => {
-                    println!("Please choose YES or NO.");
+                    println_err!("Please choose YES or NO.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
                 }
                 Err(e) => {
-                  println!("Failed to read input.");
+                  println_err!("Failed to read input.");
                   continue;
                 }
               };
@@ -3111,7 +3175,7 @@ impl NoteArchive {
           let institution = loop {
             if s == Formal {
               let mut institution_choice = String::new();
-              println!("Enter collateral's institution.");
+              println_inst!("Enter collateral's institution.");
               let institution_attempt = io::stdin().read_line(&mut institution_choice);
               match institution_attempt {
                 Ok(_) => {
@@ -3122,7 +3186,7 @@ impl NoteArchive {
                   }
                 }
                 Err(e) => {
-                  println!("Invalid institution: {}", e);
+                  println_err!("Invalid institution: {}", e);
                   continue;
                 }
               }
@@ -3146,7 +3210,7 @@ impl NoteArchive {
       match collateral_attempt {
         Ok(collateral) => break collateral,
         Err(error_hash) => {
-          println!(
+          println_err!(
             "Collateral could not be generated. Errors: '{}'.",
             error_hash.keys().cloned().collect::<Vec<String>>().join(", "),
           );
@@ -3162,12 +3226,12 @@ impl NoteArchive {
                   if !self.current_user_collaterals().iter().any(|co| co.id == *id_ref ) || !current_collats.iter().any(|co_id| co_id == id_ref ) {
                     let mut conf = String::new();
                     let choice = loop {
-                      println!("Would you like to use the existing record? (Y/N)");
+                      println_inst!("Would you like to use the existing record? (Y/N)");
                       let conf_attempt = io::stdin().read_line(&mut conf);
                       match conf_attempt {
                         Ok(_) => break String::from(conf.trim()),
                         Err(_) => {
-                          println!("Failed to read input.");
+                          println_err!("Failed to read input.");
                           continue;
                         }
                       }
@@ -3176,7 +3240,7 @@ impl NoteArchive {
                       "YES" | "yes" | "Y" | "y" => break collat.clone(),
                       "NO" | "no" | "N" | "n" => continue,
                       "CANCEL" | "Cancel" | "cancel" => return None,
-                      _ => println!("Invalid command."),
+                      _ => println_err!("Invalid command."),
                     }
                   }
                 },
@@ -3416,7 +3480,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -3431,7 +3495,7 @@ impl NoteArchive {
           match maybe_new_id {
             Some(new_id) => {
               self.update_current_collaterals(new_id);
-              println!("Collateral added to client '{}'.", self.current_client().full_name());
+              println_suc!("Collateral added to client '{}'.", self.current_client().full_name());
               thread::sleep(time::Duration::from_secs(2));
               break;
             },
@@ -3443,7 +3507,7 @@ impl NoteArchive {
             if !self.get_noncurrent_collaterals()
               .iter()
               .any(|co| co.id == num) {
-              println!("Please select from the available choices.");
+              println_err!("Please select from the available choices.");
               thread::sleep(time::Duration::from_secs(1));
               continue;
             } else {
@@ -3454,14 +3518,14 @@ impl NoteArchive {
                   break;
                 }
                 Err(e) => {
-                  println!("Unable to load collateral with id {}: {}", num, e);
+                  println_err!("Unable to load collateral with id {}: {}", num, e);
                   continue;
                 }
               }
             }
           },
           Err(e) => {
-            println!("Failed to read input as a number.");
+            println_err!("Failed to read input as a number.");
             continue;
           }
         }
@@ -3476,7 +3540,7 @@ impl NoteArchive {
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -3489,71 +3553,71 @@ impl NoteArchive {
       }
       match &field_to_edit[..] {
         "first" | "fst" | "f" | "1st" | "first name" => {
-          println!("Enter new first name:");
+          println_inst!("Enter new first name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
             Ok(_) => match self.change_collateral_first_name(name_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               continue;
             }
           }
         },
         "last" | "lst" | "l" | "last name" => {
-          println!("Enter new last name:");
+          println_inst!("Enter new last name:");
           let mut name_choice = String::new();
           let name_attempt = io::stdin().read_line(&mut name_choice);
           match name_attempt {
             Ok(_) => match self.change_collateral_last_name(name_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
                 thread::sleep(time::Duration::from_secs(1));
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               thread::sleep(time::Duration::from_secs(1));
             }
           }
         },
         "title" | "t" => {
-          println!("Enter new title:");
+          println_inst!("Enter new title:");
           let mut title_choice = String::new();
           let title_attempt = io::stdin().read_line(&mut title_choice);
           match title_attempt {
             Ok(_) => match self.change_collateral_title(title_choice.trim()) {
               Ok(_) => (),
               Err(e) => {
-                println!("Error: {}", e);
+                println_err!("Error: {}", e);
                 thread::sleep(time::Duration::from_secs(1));
               }
             },
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               thread::sleep(time::Duration::from_secs(1));
             }
           }
         },
         "institution" | "inst" | "i" => {
           if self.current_collateral().support_type == Natural {
-            println!("Unable to add institution for a natural support.");
+            println_err!("Unable to add institution for a natural support.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
-          println!("Enter new institution or NONE to remove:");
+          println_inst!("Enter new institution or NONE to remove:");
           let mut inst_choice = String::new();
           let inst_attempt = io::stdin().read_line(&mut inst_choice);
           match inst_attempt {
             Ok(_) => match (self.current_collateral().institution.as_ref(), &inst_choice.trim()[..]) {
               (None, "NONE") => {
-                println!("Collateral currently has no institution.");
+                println_err!("Collateral currently has no institution.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               },
@@ -3561,21 +3625,21 @@ impl NoteArchive {
                 match self.change_collateral_institution(None) {
                   Ok(_) => (),
                   Err(e) => {
-                    println!("Error: {}", e);
+                    println_err!("Error: {}", e);
                     thread::sleep(time::Duration::from_secs(1));
                   }
                 }
               },
               (Some(i), inst_choice_slice) => {
                 if &i[..] == inst_choice_slice {
-                  println!("Collateral institution already matches.");
+                  println_err!("Collateral institution already matches.");
                   thread::sleep(time::Duration::from_secs(2));
                 } else {
                   let new_inst = String::from(inst_choice.trim());
                   match self.change_collateral_institution(Some(new_inst)) {
                     Ok(_) => (),
                     Err(e) => {
-                      println!("Error: {}", e);
+                      println_err!("Error: {}", e);
                       thread::sleep(time::Duration::from_secs(1));
                     }
                   }
@@ -3586,14 +3650,14 @@ impl NoteArchive {
                 match self.change_collateral_institution(Some(new_inst)) {
                   Ok(_) => (),
                   Err(e) => {
-                    println!("Error: {}", e);
+                    println_err!("Error: {}", e);
                     thread::sleep(time::Duration::from_secs(1));
                   }
                 }
               }
             }
             Err(e) => {
-              println!("Error: {}", e);
+              println_err!("Error: {}", e);
               thread::sleep(time::Duration::from_secs(1));
             }
           }
@@ -3607,12 +3671,12 @@ impl NoteArchive {
         },
         "formal" => {
           if self.current_collateral().support_type == Formal {
-            println!("Collateral is already a formal support.");
+            println_err!("Collateral is already a formal support.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           } else {
             loop {
-              println!("Institution required for formal support. Enter institution below, or 'NONE' to cancel:");
+              println_inst!("Institution required for formal support. Enter institution below, or 'NONE' to cancel:");
               let mut inst_choice = String::new();
               let inst_attempt = io::stdin().read_line(&mut inst_choice);
               match inst_attempt {
@@ -3627,7 +3691,7 @@ impl NoteArchive {
                       &Some(String::from(inst_choice.trim()))
                     ) {
                       Some(_) => {
-                        println!("A collateral already exists with that information. Consider selecting ADD from the collateral menu.");
+                        println_err!("A collateral already exists with that information. Consider selecting ADD from the collateral menu.");
                         thread::sleep(time::Duration::from_secs(3));
                         break;
                       },
@@ -3636,7 +3700,7 @@ impl NoteArchive {
                   }
                 },
                 Err(_) => {
-                  println!("Failed to read line.");
+                  println_err!("Failed to read line.");
                   thread::sleep(time::Duration::from_secs(1));
                   continue;
                 },
@@ -3648,7 +3712,7 @@ impl NoteArchive {
         },
         "natural" => {
           if self.current_collateral().support_type == Natural {
-            println!("Collateral is already a natural support.");
+            println_err!("Collateral is already a natural support.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           } else {
@@ -3661,26 +3725,26 @@ impl NoteArchive {
                 &None
               ) {
                 Some(_) => {
-                  println!("Creates duplicate record because another natural support has the same name and no institution.");
+                  println_err!("That action would create a duplicate record because another natural support has the same name and no institution.");
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
                 },
                 None => {
-                  println!("Setting collateral as a natural support will remove the name of any associated institution.");
-                  println!("Proceed? (Y/N)");
+                  println_yel!("Setting collateral as a natural support will remove the name of any associated institution.");
+                  println_yel!("Proceed? (Y/N)");
                   let mut proceed_choice = String::new();
                   let proceed_attempt = io::stdin().read_line(&mut proceed_choice);
                   match proceed_attempt {
                     Ok(_) => match &proceed_choice.trim()[..] {
                       "Y" | "y" | "YES" | "Yes" | "yes" => (),
                       _ => {
-                        println!("Canceled.");
+                        println_yel!("Canceled.");
                         thread::sleep(time::Duration::from_secs(1));
                         continue;
                       }
                     }
                     Err(e) => {
-                      println!("Failed to read input.");
+                      println_err!("Failed to read input.");
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
                     }
@@ -3695,7 +3759,7 @@ impl NoteArchive {
         },
         "indirect" => {
           if self.current_collateral().indirect_support == true {
-            println!("Collateral is already an indirect support.");
+            println_err!("Collateral is already an indirect support.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           } else {
@@ -3704,7 +3768,7 @@ impl NoteArchive {
         },
         "direct" => {
           if self.current_collateral().indirect_support == false {
-            println!("Collateral is already a direct support.");
+            println_err!("Collateral is already a direct support.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           } else {
@@ -3712,7 +3776,7 @@ impl NoteArchive {
           }
         },
         _ => {
-          println!("Invalid entry.");
+          println_err!("Invalid entry.");
           thread::sleep(time::Duration::from_secs(1));
         }
       }
@@ -3878,14 +3942,14 @@ impl NoteArchive {
   fn choose_delete_collateral(&mut self) {
     loop {
       self.display_delete_collateral();
-      println!("Are you sure you want to delete this collateral?");
-      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      println_yel!("Are you sure you want to delete this collateral?");
+      println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
         Ok(_) => confirm.trim().to_string(),
         Err(e) => {
-          println!("Failed to read input: {}", e);
+          println_err!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -3927,21 +3991,21 @@ impl NoteArchive {
     };
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^162}", "-");
-    println!("{:-^162}", " DELETE COLLATERAL ");
-    println!("{:-^162}", "-");
-    println!(
+    println_on_bg!("{:-^162}", "-");
+    println_on_bg!("{:-^162}", " DELETE COLLATERAL ");
+    println_on_bg!("{:-^162}", "-");
+    println_on_bg!(
       "{:-^30} | | {:-^30} | {:-^30} | {:-^40}",
       "Name", "Role/Title", "Institution", "Client(s)"
     );
-    println!(
+    println_on_bg!(
       "{: ^30} | {: ^30} | {: ^30} | {: ^40}",
       current.full_name(),
       current.title,
       display_inst,
       all_client_names,
     );
-    println!("{:-^162}", "-");
+    println_on_bg!("{:-^162}", "-");
   }
   fn delete_current_collateral(&mut self) {
     let id = self.foreign_key.get("current_collateral_id").unwrap();
@@ -4147,7 +4211,7 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!(
+        println_inst!(
           "| {} | {} | {}",
           "Enter ID to choose pronouns.",
           "EDIT / E: edit pronouns",
@@ -4157,7 +4221,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             thread::sleep(time::Duration::from_millis(10000));
             continue;
           }
@@ -4188,7 +4252,7 @@ impl NoteArchive {
           let id = match input.trim().parse::<u32>() {
             Ok(num) => num,
             Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
+              println_err!("Could not read input as a number; try again ({}).", e);
               thread::sleep(time::Duration::from_secs(1));
               continue;
             }
@@ -4196,7 +4260,7 @@ impl NoteArchive {
           match self.load_pronouns(id) {
             Ok(_) => break id,
             Err(e) => {
-              println!("Unable to load pronouns with id {}: {}", input, e);
+              println_err!("Unable to load pronouns with id {}: {}", input, e);
               thread::sleep(time::Duration::from_secs(1));
               continue;
             }
@@ -4211,12 +4275,12 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu/cancel ");
+        println_inst!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu/cancel ");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             thread::sleep(time::Duration::from_millis(10000));
             continue;
           }
@@ -4250,14 +4314,14 @@ impl NoteArchive {
           let id = match input.trim().parse::<u32>() {
             Ok(num) => num,
             Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
+              println_err!("Could not read input as a number; try again ({}).", e);
               continue;
             }
           };
           match self.load_pronouns(id) {
             Ok(_) => break Some(id),
             Err(e) => {
-              println!("Unable to load pronouns with id {}: {}", input, e);
+              println_err!("Unable to load pronouns with id {}: {}", input, e);
               continue;
             }
           }
@@ -4268,14 +4332,14 @@ impl NoteArchive {
   }
   fn display_pronouns(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^44}", "-");
-    println!("{:-^44}", " Pronouns ");
-    println!("{:-^44}", "-");
-    println!("{:-^10} | {:-^31}", " ID ", " Pronouns ");
+    println_on_bg!("{:-^44}", "-");
+    println_on_bg!("{:-^44}", " Pronouns ");
+    println_on_bg!("{:-^44}", "-");
+    println_on_bg!("{:-^10} | {:-^31}", " ID ", " Pronouns ");
     for p in &self.pronouns {
-      println!("{: ^10} | {: ^31}", p.id, p.short_string());
+      println_on_bg!("{: ^10} | {: ^31}", p.id, p.short_string());
     }
-    println!("{:-^44}", "-");
+    println_on_bg!("{:-^44}", "-");
   }
   fn display_view_pronoun(&self, prns_id: u32) {
     let prns = self.get_pronouns_by_id(prns_id).unwrap();
@@ -4283,30 +4347,30 @@ impl NoteArchive {
     title.push_str(&prns.short_string()[..]);
     title.push_str(" ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^69}", "-");
-    println!("{:-^69}", " Edit pronouns ");
-    println!("{:-^69}", title);
-    println!("{:-^69}", "-");
-    println!("{:-^15} | {:-^15} | {:-^15} | {:-^15}", "Subject", "Object", "Pos. Det.", "Pos.");
-    println!("{: ^15} | {: ^15} | {: ^15} | {: ^15}", prns.subject, prns.object, prns.possessive_determiner, prns.possessive);
-    println!("{:-^69}", "-");
+    println_on_bg!("{:-^69}", "-");
+    println_on_bg!("{:-^69}", " Edit pronouns ");
+    println_on_bg!("{:-^69}", title);
+    println_on_bg!("{:-^69}", "-");
+    println_on_bg!("{:-^15} | {:-^15} | {:-^15} | {:-^15}", "Subject", "Object", "Pos. Det.", "Pos.");
+    println_on_bg!("{: ^15} | {: ^15} | {: ^15} | {: ^15}", prns.subject, prns.object, prns.possessive_determiner, prns.possessive);
+    println_on_bg!("{:-^69}", "-");
   }
   fn display_pronoun_examples(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^109}", "-");
-    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "Subject pronoun", "Object pronoun", "Possessive determiner", "Possessive pronoun");
-    println!("{:-^109}", "-");
-    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "he", "him", "his", "his");
-    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "she", "her", "her", "hers");
-    println!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "they", "them", "their", "theirs");
-    println!("{:-^109}", "-");
+    println_on_bg!("{:-^109}", "-");
+    println_on_bg!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "Subject pronoun", "Object pronoun", "Possessive determiner", "Possessive pronoun");
+    println_on_bg!("{:-^109}", "-");
+    println_on_bg!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "he", "him", "his", "his");
+    println_on_bg!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "she", "her", "her", "hers");
+    println_on_bg!("{: ^25} | {: ^25} | {: ^25} | {: ^25}", "they", "them", "their", "theirs");
+    println_on_bg!("{:-^109}", "-");
   }
   fn create_get_pronouns(&mut self) -> Option<Pronouns> {
     let pronouns_option = 'pronouns: loop {
       self.display_pronoun_examples();
       let subject = loop {
         let mut subject_choice = String::new();
-        println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
+        println_inst!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
         let subject_attempt = io::stdin().read_line(&mut subject_choice);
         match subject_attempt {
           Ok(_) => match subject_choice.to_ascii_lowercase().trim() {
@@ -4314,14 +4378,14 @@ impl NoteArchive {
             _ => break String::from(subject_choice.trim()),
           }
           Err(e) => {
-            println!("Failed to read line: {}", e);
+            println_err!("Failed to read line: {}", e);
             continue;
           }
         };
       };
       let object = loop {
         let mut object_choice = String::new();
-        println!(
+        println_inst!(
           "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
         );
         let object_attempt = io::stdin().read_line(&mut object_choice);
@@ -4331,14 +4395,14 @@ impl NoteArchive {
             _ => break String::from(object_choice.trim()),
           }
           Err(e) => {
-            println!("Failed to read line: {}", e);
+            println_err!("Failed to read line: {}", e);
             continue;
           }
         };
       };
       let possessive_determiner = loop {
         let mut possessive_determiner_choice = String::new();
-        println!(
+        println_inst!(
           "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
         );
         let possessive_determiner_attempt =
@@ -4349,14 +4413,14 @@ impl NoteArchive {
             _ => break String::from(possessive_determiner_choice.trim()),
           }
           Err(e) => {
-            println!("Failed to read line: {}", e);
+            println_err!("Failed to read line: {}", e);
             continue;
           }
         };
       };
       let possessive = loop {
         let mut possessive_choice = String::new();
-        println!(
+        println_inst!(
           "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
         );
         let possessive_attempt = io::stdin().read_line(&mut possessive_choice);
@@ -4366,7 +4430,7 @@ impl NoteArchive {
             _ => break String::from(possessive_choice.trim()),
           },
           Err(e) => {
-            println!("Failed to read line: {}", e);
+            println_err!("Failed to read line: {}", e);
             continue;
           }
         };
@@ -4376,7 +4440,7 @@ impl NoteArchive {
       match pronouns_attempt {
         Ok(pronouns) => break Some(pronouns),
         Err(e) => {
-          println!("Pronouns could not be generated: {}.", e);
+          println_err!("Pronouns could not be generated: {}.", e);
           thread::sleep(time::Duration::from_secs(1));
           break None;
         }
@@ -4387,7 +4451,7 @@ impl NoteArchive {
         let new_pronouns = p.clone();
         self.save_pronouns(p);
         self.display_pronouns();
-        println!("Pronouns records updated.");
+        println_suc!("Pronouns records updated.");
         thread::sleep(time::Duration::from_secs(1));
         Some(new_pronouns)
       }
@@ -4544,7 +4608,7 @@ impl NoteArchive {
       },
     }
     if self.get_duplicate_pronoun_ids().len() > 0 {
-      println!("Warning: Duplicate pronouns will be deleted on program load.");
+      println_yel!("Warning: Duplicate pronouns will be deleted automatically.");
     }
   }
   fn choose_edit_pronouns(&mut self) {
@@ -4557,12 +4621,12 @@ impl NoteArchive {
         let pronouns = loop {
           let input = loop {
             let mut choice = String::new();
-            println!("Enter ID to edit.");
+            println_inst!("Enter ID to edit.");
             let read_attempt = io::stdin().read_line(&mut choice);
             match read_attempt {
               Ok(_) => break choice,
               Err(e) => {
-                println!("Could not read input; try again ({}).", e);
+                println_err!("Could not read input; try again ({}).", e);
                 continue;
               }
             }
@@ -4573,14 +4637,14 @@ impl NoteArchive {
               let id = match input.trim().parse::<u32>() {
                 Ok(num) => num,
                 Err(e) => {
-                  println!("Could not read input as a number; try again ({}).", e);
+                  println_err!("Could not read input as a number; try again ({}).", e);
                   continue;
                 }
               };
               match self.get_pronouns_by_id(id) {
                 Some(p) => break p,
                 None => {
-                  println!("Unable to load pronouns with ID {}.", id);
+                  println_err!("Unable to load pronouns with ID {}.", id);
                   continue;
                 }
               }
@@ -4588,14 +4652,14 @@ impl NoteArchive {
           }
         };
         final_pronouns_id = pronouns.id;
-        println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
-        println!("'Q'/'QUIT' to quit menu.");
+        println_inst!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
+        println_inst!("'Q'/'QUIT' to quit menu.");
         let mut pronoun_to_edit = String::new();
         let input_attempt = io::stdin().read_line(&mut pronoun_to_edit);
         match input_attempt {
           Ok(_) => (),
           Err(e) => {
-            println!("Failed to read input. Please try again.");
+            println_err!("Failed to read input. Please try again.");
             continue;
           }
         }
@@ -4609,20 +4673,20 @@ impl NoteArchive {
         final_pronoun_to_edit = pronoun_to_edit.clone();
         let new_pronoun = match &pronoun_to_edit[..] {
           "subj" | "SUBJ" | "subject" | "SUBJECT" | "Subject" => {
-            println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
+            println_inst!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
             let mut subject_choice = String::new();
             let subject_attempt = io::stdin().read_line(&mut subject_choice);
             let p = match subject_attempt {
               Ok(_) => String::from(subject_choice.trim()),
               Err(e) => {
-                println!("Failed to read line: {}", e);
+                println_err!("Failed to read line: {}", e);
                 continue;
               }
             };
             p
           },
           "obj" | "OBJ" | "object" | "OBJECT" | "Object" => {
-            println!(
+            println_inst!(
               "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
             );
             let mut object_choice = String::new();
@@ -4630,7 +4694,7 @@ impl NoteArchive {
             let p = match object_attempt {
               Ok(_) => String::from(object_choice.trim()),
               Err(e) => {
-                println!("Failed to read line: {}", e);
+                println_err!("Failed to read line: {}", e);
                 continue;
               }
             };
@@ -4643,7 +4707,7 @@ impl NoteArchive {
           | "Possessive Determiner"
           | "PosDet"
           | "Possessive determiner" => {
-            println!(
+            println_inst!(
               "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
             );
             let mut posdet_choice = String::new();
@@ -4651,7 +4715,7 @@ impl NoteArchive {
             let p = match posdet_attempt {
               Ok(_) => String::from(posdet_choice.trim()),
               Err(e) => {
-                println!("Failed to read line: {}", e);
+                println_err!("Failed to read line: {}", e);
                 continue;
               }
             };
@@ -4659,7 +4723,7 @@ impl NoteArchive {
           },
           "possessive" | "POSSESSIVE" | "Possessive" | "pos" | "POS" | "possess" | "Possess"
           | "POSSESS" => {
-            println!(
+            println_inst!(
               "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
             );
             let mut possessive_choice = String::new();
@@ -4667,14 +4731,14 @@ impl NoteArchive {
             let p = match possessive_attempt {
               Ok(_) => String::from(possessive_choice.trim()),
               Err(e) => {
-                println!("Failed to read line: {}", e);
+                println_err!("Failed to read line: {}", e);
                 continue;
               }
             };
             p
           },
           _ => {
-            println!("Invalid entry.");
+            println_err!("Invalid entry.");
             continue;
           }
         };
@@ -4688,12 +4752,12 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println!("| {} | {}", "Enter ID to delete.", "QUIT / Q: cancel");
+        println_inst!("| {} | {}", "Enter ID to delete.", "QUIT / Q: cancel");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             thread::sleep(time::Duration::from_millis(10000));
             continue;
           }
@@ -4709,21 +4773,21 @@ impl NoteArchive {
           let id = match input.trim().parse::<u32>() {
             Ok(num) => num,
             Err(e) => {
-              println!("Could not read input as a number; try again ({}).", e);
+              println_err!("Could not read input as a number; try again ({}).", e);
               continue;
             }
           };
           match self.load_pronouns(id) {
             Ok(_) => {
               self.display_view_pronoun(id);
-              println!("Are you sure you want to delete this set of pronouns?");
-              println!("'YES'/'Y' to confirm.");
+              println_yel!("Are you sure you want to delete this set of pronouns?");
+              println_inst!("'YES'/'Y' to confirm.");
               let mut confirm = String::new();
               let input_attempt = io::stdin().read_line(&mut confirm);
               let command = match input_attempt {
                 Ok(_) => confirm.trim().to_string(),
                 Err(e) => {
-                  println!("Failed to read input: {}", e);
+                  println_err!("Failed to read input: {}", e);
                   thread::sleep(time::Duration::from_secs(1));
                   continue;
                 }
@@ -4739,7 +4803,7 @@ impl NoteArchive {
               }
             },
             Err(e) => {
-              println!("Unable to load pronouns with id {}: {}", input, e);
+              println_err!("Unable to load pronouns with id {}: {}", input, e);
               continue;
             },
           }
@@ -4750,13 +4814,13 @@ impl NoteArchive {
   fn view_pronoun(&mut self, prns_id: u32) {
     loop {
       self.display_view_pronoun(prns_id);
-      println!("| {} | {} | {}", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
+      println_inst!("| {} | {} | {}", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
       let mut decision = String::new();
       let input_attempt = io::stdin().read_line(&mut decision);
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -4770,14 +4834,14 @@ impl NoteArchive {
           continue;
         },
         "edit" | "e" => {
-          println!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
-          println!("'Q'/'QUIT' to quit menu.");
+          println_inst!("Choose the pronoun to edit (SUBJ, OBJ, POSDET, POS).");
+          println_inst!("'Q'/'QUIT' to quit menu.");
           let mut pronoun_to_edit = String::new();
           let field_input = io::stdin().read_line(&mut pronoun_to_edit);
           match field_input {
             Ok(_) => (),
             Err(e) => {
-              println!("Failed to read input. Please try again.");
+              println_err!("Failed to read input. Please try again.");
               continue;
             }
           }
@@ -4787,25 +4851,25 @@ impl NoteArchive {
               continue;
             },
             "subj" | "subject" => {
-              println!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
+              println_inst!("Enter your subject pronoun (e.g., he, she, they). Example: [pronoun] attended a Care Plan Meeting.");
             },
             "obj" | "object" => {
-              println!(
+              println_inst!(
                 "Enter your object pronoun (e.g., him, her, them). Example: Guidance counselor called ICC and left a message for [pronoun]."
               );
             },
             "posdet" | "possessive determiner" => {
-              println!(
+              println_inst!(
                 "Enter your possessive determiner (e.g., his, her, their). Example: ICC used [pronoun] personal vehicle to transport youth home."
               );
             },
             "possessive" | "pos" | "possess" => {
-              println!(
+              println_inst!(
                 "Enter your possessive pronoun (e.g., his, hers, theirs). Example: OPT for youth provided her contact information, and ICC provider [pronoun]."
               );
             },
             _ => {
-              println!("Invalid command.");
+              println_err!("Invalid command.");
               thread::sleep(time::Duration::from_secs(1));
               continue;
             }
@@ -4815,7 +4879,7 @@ impl NoteArchive {
           let new_prn = match attempt {
             Ok(_) => String::from(choice.trim()),
             Err(e) => {
-              println!("Failed to read line: {}", e);
+              println_err!("Failed to read line: {}", e);
               continue;
             }
           };
@@ -4824,7 +4888,7 @@ impl NoteArchive {
           thread::sleep(time::Duration::from_secs(1));
         },
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           thread::sleep(time::Duration::from_secs(1));
           continue;
         },
@@ -4837,7 +4901,7 @@ impl NoteArchive {
       Some(id) => {
         if self.current_user().pronouns == prns_id {
           print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-          println!("Please select new pronouns before continuing.");
+          println_yel!("Please select new pronouns before continuing.");
           thread::sleep(time::Duration::from_secs(1));
           self.current_user_mut().pronouns = self.choose_pronouns();
           self.write_to_files();
@@ -4891,12 +4955,12 @@ impl NoteArchive {
     heading.push_str(&self.current_user().full_name()[..]);
     heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^96}", heading);
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Client ", " Date of note ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", heading);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Client ", " Date of note ");
     for nd in self.current_user_note_days() {
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^40} | {: <12} {: >26}",
         nd.id,
         self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name(),
@@ -4904,19 +4968,19 @@ impl NoteArchive {
         nd.fmt_date_long()
       );
     }
-    println!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", "-");
   }
   fn display_user_recent_note_days(&self) {
     let mut heading = String::from(" Recent notes for ");
     heading.push_str(&self.current_user().full_name()[..]);
     heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^96}", heading);
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Client ", " Date of note ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", heading);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Client ", " Date of note ");
     for nd in self.current_user_recent_10_note_days() {
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^40} | {: <12} {: >26}",
         nd.id,
         self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name(),
@@ -4924,7 +4988,7 @@ impl NoteArchive {
         nd.fmt_date_long()
       );
     }
-    println!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", "-");
   }
   fn load_note_day(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&NoteDay> = self.note_days.iter().find(|nd| nd.id == id);
@@ -4950,13 +5014,13 @@ impl NoteArchive {
         } else {
           self.display_user_recent_note_days();
         }
-        println!("| {} | {} | {}", "Choose note by ID.", "ALL / A: View all notes", "QUIT / Q: quit menu");
+        println_inst!("| {} | {} | {}", "Choose note by ID.", "ALL / A: View all notes", "QUIT / Q: quit menu");
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -4975,21 +5039,21 @@ impl NoteArchive {
             if !self.current_user_note_days()
               .iter()
               .any(|&nd| nd.id == num) {
-                println!("Please choose from among the listed dates, or 'NEW / N' to begin a new record.");
+                println_err!("Please choose from among the listed dates, or 'NEW / N' to begin a new record.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
             }
             match self.load_note_day(num) {
               Ok(_) => self.edit_note_day(),
               Err(e) => {
-                println!("Unable to load records with ID {}: {}", num, e);
+                println_err!("Unable to load records with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -5002,17 +5066,17 @@ impl NoteArchive {
     let new_date = 'main: loop {
       let current_nd = self.current_note_day();
       self.display_note_day();
-      println!("Enter 'CANCEL' at any time to cancel.");
+      println_inst!("Enter 'CANCEL' at any time to cancel.");
       let mut today_choice = String::new();
       if today != current_nd.date {
         'today: loop {
 
-          println!("Change date to today? (Y/N)");
+          println_inst!("Change date to today? (Y/N)");
           let today_attempt = io::stdin().read_line(&mut today_choice);
           match today_attempt {
             Ok(_) => (),
             Err(e) => {
-              println!("Invalid repsonse: {}", e);
+              println_err!("Invalid repsonse: {}", e);
               continue;
             }
           }
@@ -5025,7 +5089,7 @@ impl NoteArchive {
             },
             "Cancel" | "CANCEL" | "cancel" => return (),
             _ => {
-              println!("Please choose 'yes', 'no', or 'cancel'.");
+              println_err!("Please choose 'yes', 'no', or 'cancel'.");
               continue;
             }
           };
@@ -5034,7 +5098,7 @@ impl NoteArchive {
         let mut same_year = false;
         let year = loop {
           let mut this_year_choice = String::new();
-          println!("This year ({})? (Y/N)", today.year());
+          println_inst!("This year ({})? (Y/N)", today.year());
           let this_year_attempt = io::stdin().read_line(&mut this_year_choice);
           match this_year_attempt {
             Ok(_) => match &this_year_choice.trim()[..] {
@@ -5044,7 +5108,7 @@ impl NoteArchive {
               }
               "NO" | "no" | "No" | "N" | "n" => {
                 let mut year_choice = String::new();
-                println!("What year?");
+                println_inst!("What year?");
                 let year_attempt = io::stdin().read_line(&mut year_choice);
                 match year_attempt {
                   Ok(_) => {
@@ -5054,33 +5118,33 @@ impl NoteArchive {
                     match year_choice.trim().parse() {
                       Ok(val) => {
                         if val > 9999 || val < 1000 {
-                          println!("Please enter a valid year.");
+                          println_err!("Please enter a valid year.");
                           continue;
                         } else {
                           break val;
                         }
                       }
                       Err(e) => {
-                        println!("Invalid repsonse: {}", e);
+                        println_err!("Invalid repsonse: {}", e);
                         continue;
                       }
                     }
                   }
                   Err(e) => {
-                    println!("Invalid repsonse: {}", e);
+                    println_err!("Invalid repsonse: {}", e);
                     continue;
                   }
                 }
               },
               "Cancel" | "CANCEL" | "cancel" => return (),
               _ => {
-                println!("Please choose 'yes' or 'no.'");
+                println_err!("Please choose 'yes' or 'no.'");
                 continue;
               }
 
             },
             Err(e) => {
-              println!("Invalid repsonse: {}", e);
+              println_err!("Invalid repsonse: {}", e);
               continue;
             }
           }
@@ -5089,7 +5153,7 @@ impl NoteArchive {
           if same_year {
             loop {
               let mut this_month_choice = String::new();
-              println!("This month ({})? (Y/N)", today.month());
+              println_inst!("This month ({})? (Y/N)", today.month());
               let this_month_attempt = io::stdin().read_line(&mut this_month_choice);
               match this_month_attempt {
                 Ok(_) => match &this_month_choice.trim()[..] {
@@ -5100,19 +5164,19 @@ impl NoteArchive {
                   },
                   "CANCEL" | "cancel" | "Cancel" => return (),
                   _ => {
-                    println!("Please choose 'yes' or 'no.'");
+                    println_err!("Please choose 'yes' or 'no.'");
                     continue;
                   }
                 },
                 Err(e) => {
-                  println!("Invalid repsonse: {}", e);
+                  println_err!("Invalid repsonse: {}", e);
                   continue;
                 }
               }
             }
           }
           let mut month_choice = String::new();
-          println!("What month?");
+          println_inst!("What month?");
           let month_attempt = io::stdin().read_line(&mut month_choice);
           match month_attempt {
             Ok(_) => {
@@ -5122,27 +5186,27 @@ impl NoteArchive {
               match month_choice.trim().parse() {
                 Ok(val) => {
                   if val > 12 || val < 1 {
-                    println!("Please enter a valid month.");
+                    println_err!("Please enter a valid month.");
                     continue;
                   } else {
                     break val;
                   }
                 }
                 Err(e) => {
-                  println!("Invalid repsonse: {}", e);
+                  println_err!("Invalid repsonse: {}", e);
                   continue;
                 }
               }
             }
             Err(e) => {
-              println!("Invalid repsonse: {}", e);
+              println_err!("Invalid repsonse: {}", e);
               continue;
             }
           }
         };
         let day = loop {
           let mut day_choice = String::new();
-          println!("What day?");
+          println_inst!("What day?");
           let day_attempt = io::stdin().read_line(&mut day_choice);
           match day_attempt {
             Ok(_) => {
@@ -5152,20 +5216,20 @@ impl NoteArchive {
               match day_choice.trim().parse() {
                 Ok(val) => {
                   if val > 31 || val < 1 {
-                    println!("Please enter a valid day.");
+                    println_err!("Please enter a valid day.");
                     continue;
                   } else {
                     break val;
                   }
                 }
                 Err(e) => {
-                  println!("Invalid repsonse: {}", e);
+                  println_err!("Invalid repsonse: {}", e);
                   continue;
                 }
               }
             }
             Err(e) => {
-              println!("Invalid repsonse: {}", e);
+              println_err!("Invalid repsonse: {}", e);
               continue;
             }
           }
@@ -5173,7 +5237,7 @@ impl NoteArchive {
         match NaiveDate::from_ymd_opt(year, month, day) {
           Some(date) => break date,
           None => {
-            println!(
+            println_err!(
               "{}-{}-{} does not appear to be a valid date. Please try again.",
               year, month, day
             );
@@ -5196,7 +5260,7 @@ impl NoteArchive {
         } else {
           self.display_user_recent_note_days();
         }
-        println!(
+        println_inst!(
           "| {} | {} | {} | {} | {} | {}",
           "Choose note by ID.",
           "NEW / N: New note day",
@@ -5210,7 +5274,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -5242,21 +5306,21 @@ impl NoteArchive {
             if !self.current_user_note_days()
               .iter()
               .any(|&nd| nd.id == num) {
-                println!("Please choose from among the listed dates, or 'NEW / N' to begin a new record.");
+                println_err!("Please choose from among the listed dates, or 'NEW / N' to begin a new record.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
             }
             match self.load_note_day(num) {
               Ok(_) => self.choose_note_day(),
               Err(e) => {
-                println!("Unable to load records with ID {}: {}", num, e);
+                println_err!("Unable to load records with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -5266,17 +5330,17 @@ impl NoteArchive {
   }
   fn display_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", "-");
     
     let notes = self.current_note_day_notes();
     
     let nd = self.current_note_day();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     let heading = format!(" Notes for {} for {} ", c.full_name(), nd.fmt_date());
-    println!("{:-^178}", heading);
-    println!("{:-^178}", "-");
-    println!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
-    println!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", heading);
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println_on_bg!("{:-^178}", "-");
     for n in notes {
       let nt_opt = self.get_note_template_by_note_id(n.id);
       let nt_display = match nt_opt {
@@ -5297,23 +5361,23 @@ impl NoteArchive {
       };
       let n_structure = n.structure.to_string();
       
-      println!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
+      println_on_bg!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
     }
-    println!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", "-");
   }
   fn choose_delete_notes(&mut self) {
     loop {
 
       self.display_note_day();
-      println!("Select note ID to delete.");
-      println!("CANCEL / C: Cancel");
+      println_inst!("Select note ID to delete.");
+      println_inst!("CANCEL / C: Cancel");
 
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
         Ok(_) => choice,
         Err(e) => {
-          println!("Could not read input; try again ({}).", e);
+          println_err!("Could not read input; try again ({}).", e);
           continue;
         }
       };
@@ -5328,7 +5392,7 @@ impl NoteArchive {
             if !self.current_user_notes()
               .iter()
               .any(|&nd| nd.id == num) {
-                println!("Please choose from among the listed note IDs.");
+                println_err!("Please choose from among the listed note IDs.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
             }
@@ -5338,14 +5402,14 @@ impl NoteArchive {
                 break;
               }
               Err(e) => {
-                println!("Unable to load records with ID {}: {}", num, e);
+                println_err!("Unable to load records with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -5358,13 +5422,13 @@ impl NoteArchive {
 
       self.display_note_day();
 
-      println!("| {} | {} | {}", "NEW / N: new note", "DELETE: delete note", "QUIT / Q: quit menu");
+      println_inst!("| {} | {} | {}", "NEW / N: new note", "DELETE: delete note", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
         Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
-          println!("Could not read input; try again ({}).", e);
+          println_err!("Could not read input; try again ({}).", e);
           continue;
         }
       };
@@ -5377,7 +5441,7 @@ impl NoteArchive {
           self.choose_delete_notes();
         }
         "edit" | "e" => {
-          println!("Choose note by ID to edit its content.");
+          println_inst!("Choose note by ID to edit its content.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -5388,13 +5452,13 @@ impl NoteArchive {
           match input.to_string().parse() {
             Ok(num) => {
               if !self.current_user_notes().iter().any(|n| n.id == num ) {
-                println!("Please choose from among the listed note IDs.");
+                println_err!("Please choose from among the listed note IDs.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               } else {
                 match self.get_note_option_by_id(num) {
                   None => {
-                    println!("Invalid note ID.");
+                    println_err!("Invalid note ID.");
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   },
@@ -5402,7 +5466,7 @@ impl NoteArchive {
                     match self.load_note(num) {
                       Ok(_) => self.choose_note(),
                       Err(e) => {
-                        println!("Unable to load template with ID {}: {}", num, e);
+                        println_err!("Unable to load template with ID {}: {}", num, e);
                         thread::sleep(time::Duration::from_secs(1));
                         continue;
                       }
@@ -5412,7 +5476,7 @@ impl NoteArchive {
               }
             },
             Err(e) => {
-              println!("Invalid command.");
+              println_err!("Invalid command.");
               thread::sleep(time::Duration::from_secs(2));
               continue;
             },
@@ -5424,13 +5488,13 @@ impl NoteArchive {
   fn create_note_day_get_id(&mut self) -> Option<u32> {
     let note_day = loop {
       let mut today_choice = String::new();
-      println!("Enter 'CANCEL' at any time to cancel.");
-      println!("Note for today? (Y/N)");
+      println_inst!("Enter 'CANCEL' at any time to cancel.");
+      println_inst!("Note for today? (Y/N)");
       let today_attempt = io::stdin().read_line(&mut today_choice);
       match today_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Invalid repsonse: {}", e);
+          println_err!("Invalid repsonse: {}", e);
           continue;
         }
       }
@@ -5442,14 +5506,14 @@ impl NoteArchive {
         "NO" | "no" | "No" | "N" | "n" => {
           let year = loop {
             let mut this_year_choice = String::new();
-            println!("This year ({})? (Y/N)", today.year());
+            println_inst!("This year ({})? (Y/N)", today.year());
             let this_year_attempt = io::stdin().read_line(&mut this_year_choice);
             match this_year_attempt {
               Ok(_) => match &this_year_choice.trim()[..] {
                 "YES" | "yes" | "Yes" | "Y" | "y" => break today.year(),
                 "NO" | "no" | "No" | "N" | "n" => {
                   let mut year_choice = String::new();
-                  println!("What year?");
+                  println_inst!("What year?");
                   let year_attempt = io::stdin().read_line(&mut year_choice);
                   match year_attempt {
                     Ok(_) => {
@@ -5459,46 +5523,46 @@ impl NoteArchive {
                       match year_choice.trim().parse() {
                         Ok(val) => {
                           if val > 9999 || val < 1000 {
-                            println!("Please enter a valid year.");
+                            println_err!("Please enter a valid year.");
                             continue;
                           } else {
                             break val;
                           }
                         }
                         Err(e) => {
-                          println!("Invalid repsonse: {}", e);
+                          println_err!("Invalid repsonse: {}", e);
                           continue;
                         }
                       }
                     }
                     Err(e) => {
-                      println!("Invalid repsonse: {}", e);
+                      println_err!("Invalid repsonse: {}", e);
                       continue;
                     }
                   }
                 },
                 "Cancel" | "CANCEL" | "cancel" => return None,
                 _ => {
-                  println!("Please choose 'yes' or 'no.'");
+                  println_err!("Please choose 'yes' or 'no.'");
                   continue;
                 }
               },
               Err(e) => {
-                println!("Invalid repsonse: {}", e);
+                println_err!("Invalid repsonse: {}", e);
                 continue;
               }
             }
           };
           let month = loop {
             let mut this_month_choice = String::new();
-            println!("This month ({})? (Y/N)", today.month());
+            println_inst!("This month ({})? (Y/N)", today.month());
             let this_month_attempt = io::stdin().read_line(&mut this_month_choice);
             match this_month_attempt {
               Ok(_) => match &this_month_choice.trim()[..] {
                 "YES" | "yes" | "Yes" | "Y" | "y" => break today.month(),
                 "NO" | "no" | "No" | "N" | "n" => {
                   let mut month_choice = String::new();
-                  println!("What month?");
+                  println_inst!("What month?");
                   let month_attempt = io::stdin().read_line(&mut month_choice);
                   match month_attempt {
                     Ok(_) => {
@@ -5508,39 +5572,39 @@ impl NoteArchive {
                       match month_choice.trim().parse() {
                         Ok(val) => {
                           if val > 12 || val < 1 {
-                            println!("Please enter a valid month.");
+                            println_err!("Please enter a valid month.");
                             continue;
                           } else {
                             break val;
                           }
                         }
                         Err(e) => {
-                          println!("Invalid repsonse: {}", e);
+                          println_err!("Invalid repsonse: {}", e);
                           continue;
                         }
                       }
                     }
                     Err(e) => {
-                      println!("Invalid repsonse: {}", e);
+                      println_err!("Invalid repsonse: {}", e);
                       continue;
                     }
                   }
                 },
                 "CANCEL" | "cancel" | "Cancel" => return None,
                 _ => {
-                  println!("Please choose 'yes' or 'no.'");
+                  println_err!("Please choose 'yes' or 'no.'");
                   continue;
                 }
               },
               Err(e) => {
-                println!("Invalid repsonse: {}", e);
+                println_err!("Invalid repsonse: {}", e);
                 continue;
               }
             }
           };
           let day = loop {
             let mut day_choice = String::new();
-            println!("What day?");
+            println_inst!("What day?");
             let day_attempt = io::stdin().read_line(&mut day_choice);
             match day_attempt {
               Ok(_) => {
@@ -5550,20 +5614,20 @@ impl NoteArchive {
                 match day_choice.trim().parse() {
                   Ok(val) => {
                     if val > 31 || val < 1 {
-                      println!("Please enter a valid day.");
+                      println_err!("Please enter a valid day.");
                       continue;
                     } else {
                       break val;
                     }
                   }
                   Err(e) => {
-                    println!("Invalid repsonse: {}", e);
+                    println_err!("Invalid repsonse: {}", e);
                     continue;
                   }
                 }
               }
               Err(e) => {
-                println!("Invalid repsonse: {}", e);
+                println_err!("Invalid repsonse: {}", e);
                 continue;
               }
             }
@@ -5571,7 +5635,7 @@ impl NoteArchive {
           match NaiveDate::from_ymd_opt(year, month, day) {
             Some(date) => date,
             None => {
-              println!(
+              println_err!(
                 "{}-{}-{} does not appear to be a valid date. Please try again.",
                 year, month, day
               );
@@ -5581,7 +5645,7 @@ impl NoteArchive {
         },
         "CANCEL" | "cancel" | "Cancel" => return None,
         _ => {
-          println!("Invalid command.");
+          println_err!("Invalid command.");
           continue;
         }
       };
@@ -5596,7 +5660,7 @@ impl NoteArchive {
       match self.generate_unique_new_note_day(date, user_id, client_id) {
         Ok(note_day) => break note_day,
         Err(e) => {
-          println!("Failed to generate record for notes: {}", e);
+          println_err!("Failed to generate record for notes: {}", e);
           continue;
         }
       }
@@ -5718,14 +5782,14 @@ impl NoteArchive {
   fn choose_delete_note_day(&mut self) {
     loop {
       self.display_delete_note_day();
-      println!("Are you sure you want to delete all records for {} from {}?", self.current_client().full_name(), self.current_note_day().fmt_date_long());
-      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      println_yel!("Are you sure you want to delete all records for {} from {}?", self.current_client().full_name(), self.current_note_day().fmt_date_long());
+      println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
         Ok(_) => confirm.trim().to_string(),
         Err(e) => {
-          println!("Failed to read input: {}", e);
+          println_err!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -5748,17 +5812,17 @@ impl NoteArchive {
     heading.push_str(date_string);
     heading.push_str(client_string);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^146}", "-");
-    println!("{:-^146}", heading);
-    println!("{:-^146}", "-");
-    println!(
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", heading);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!(
       "{:-^20} | {:-^50} | {:-<70}",
       " Category ", " Collaterals ", " First sentence ",
     );
 
-    println!("ITERATE OVER ALL NOTES IN THIS NOTEDAY");
+    println_on_bg!("ITERATE OVER ALL NOTES IN THIS NOTEDAY");
 
-    println!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", "-");
   }
   fn delete_current_note_day(&mut self) {
     let id = self.foreign_key.get("current_note_day_id").unwrap();
@@ -5840,109 +5904,109 @@ impl NoteArchive {
   fn display_user_note_templates(&self) {
     let heading = format!(" All note templates for {} ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^156}", "-");
-    println!("{:-^156}", heading);
-    println!("{:-^156}", "-");
-    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^156}", heading);
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
     for nt in self.current_user_note_templates() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
       }
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^40} | {: ^100}",
         nt.id,
         type_string,
         &nt.preview(),
       );
     }
-    println!("{:-^156}", "-");
+    println_on_bg!("{:-^156}", "-");
     if self.current_user_personal_note_templates().len() > 0 {
-      println!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
+      println_inst!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
     } else {
-      println!("{} | {}", "Choose template by ID.", "NEW / N: New template");
+      println_inst!("{} | {}", "Choose template by ID.", "NEW / N: New template");
     }
   }
   fn display_all_note_templates(&self) {
     let heading = format!(" All note templates for all users ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^156}", "-");
-    println!("{:-^156}", heading);
-    println!("{:-^156}", "-");
-    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^156}", heading);
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
     for nt in self.note_templates.clone() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
       }
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^40} | {: ^100}",
         nt.id,
         type_string,
         &nt.preview(),
       );
     }
-    println!("{:-^156}", "-");
+    println_on_bg!("{:-^156}", "-");
     if self.current_user_personal_note_templates().len() > 0 {
-      println!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
+      println_inst!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
     } else {
-      println!("{} | {}", "Choose template by ID.", "NEW / N: New template");
+      println_inst!("{} | {}", "Choose template by ID.", "NEW / N: New template");
     }
   }
   fn display_copy_user_note_templates(&self) {
     let heading = format!(" Copy note template to generate a new template ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^156}", "-");
-    println!("{:-^156}", heading);
-    println!("{:-^156}", "-");
-    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^156}", heading);
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
     for nt in self.current_user_note_templates() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
       }
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^40} | {: ^100}",
         nt.id,
         type_string,
         &nt.preview(),
       );
     }
-    println!("{:-^156}", "-");
-    println!("{} | {}", "Choose template to copy by ID.", "CANCEL / C: Cancel copying a template");
+    println_on_bg!("{:-^156}", "-");
+    println_inst!("{} | {}", "Choose template to copy by ID.", "CANCEL / C: Cancel copying a template");
   }
   fn display_edit_note_templates(&self) {
     let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^156}", "-");
-    println!("{:-^156}", heading);
-    println!("{:-^156}", "-");
-    println!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^156}", heading);
+    println_on_bg!("{:-^156}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
     for nt in self.current_user_personal_note_templates() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
       }
-      println!(
+      println_on_bg!(
         "{: ^10} | {: ^40} | {: ^100}",
         nt.id,
         type_string,
         &nt.preview(),
       );
     }
-    println!("{:-^156}", "-");
-    println!("Choose template to edit by ID.");
+    println_on_bg!("{:-^156}", "-");
+    println_inst!("Choose template to edit by ID.");
   }
   fn choose_edit_note_templates(&mut self) {
     loop {
       self.display_edit_note_templates();
-      println!("QUIT / Q: Cancel editing");
+      println_inst!("QUIT / Q: Cancel editing");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -5960,19 +6024,19 @@ impl NoteArchive {
                   Err(e) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
                 }
               } else {
-                println!("Please choose from among the listed note templates.");
+                println_err!("Please choose from among the listed note templates.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               }
             },
             None => {
-              println!("No note template for id '{}'", field_to_edit);
+              println_err!("No note template for id '{}'", field_to_edit);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
           },
           Err(e) => {
-            println!("Unable to parse {} to int: {}", field_to_edit, e);
+            println_err!("Unable to parse {} to int: {}", field_to_edit, e);
             thread::sleep(time::Duration::from_secs(2));
             continue;
           },
@@ -5987,20 +6051,20 @@ impl NoteArchive {
     loop {
       let num_blanks = self.current_note_template().get_ordered_blanks().len() as u32;
       self.display_edit_note_template();
-      println!(
+      println_inst!(
         "{} | {} | {} | {}",
         "STRUCTURE / S: Edit structure type",
         "BLANKS / B: Edit blanks",
         "CONTENT / C: Edit default content",
         "QUIT / Q: Quit menu",
       );
-      println!("Choose blank by ID to delete or change it to a different type of blank.");
+      println_inst!("Choose blank by ID to delete or change it to a different type of blank.");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println!("Failed to read input. Please try again.");
+          println_err!("Failed to read input. Please try again.");
           continue;
         }
       }
@@ -6019,7 +6083,7 @@ impl NoteArchive {
               }
               self.write_note_templates().unwrap();
               print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-              println!("Copies discarded: {}", num_dups);
+              println_yel!("Copies discarded: {}", num_dups);
               thread::sleep(time::Duration::from_secs(1));
             },
             None => (),
@@ -6029,14 +6093,14 @@ impl NoteArchive {
         "structure" | "s" => {
           let structure = loop {
             self.display_structure_types();
-            println!("Choose a new structure for the selected note template from the menu.");
-            println!("Enter 'CANCEL' at any time to cancel.");
+            println_inst!("Choose a new structure for the selected note template from the menu.");
+            println_inst!("Enter 'CANCEL' at any time to cancel.");
             let mut structure_choice = String::new();
             let structure_attempt = io::stdin().read_line(&mut structure_choice);
             match structure_attempt {
               Ok(_) => (),
               Err(e) => {
-                println!("Invalid repsonse: {}", e);
+                println_err!("Invalid repsonse: {}", e);
                 continue;
               }
             }
@@ -6057,7 +6121,7 @@ impl NoteArchive {
               "13" | "custom" | "c" => Some(CustomStructure),
               "cancel" => None,
               _ => {
-                println!("Invalid choice.");
+                println_err!("Invalid choice.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               },
@@ -6073,21 +6137,21 @@ impl NoteArchive {
           let blank_focus_id: Option<u32> = None;
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-            println!(
+            println_inst!(
               "{} | {} | {} | {}",
               "EDIT / E: Edit selected content",
               "ADD / A: Add content to end of template",
               "INSERT / I: Insert additional content",
               "DELETE / D: Delete content",
             );
-            println!("Choose content section by ID.");
-            println!("Enter 'QUIT / Q' at any time to return to the editing menu.");
+            println_inst!("Choose content section by ID.");
+            println_inst!("Enter 'QUIT / Q' at any time to return to the editing menu.");
             let mut content_choice = String::new();
             let content_attempt = io::stdin().read_line(&mut content_choice);
             match content_attempt {
               Ok(_) => (),
               Err(e) => {
-                println!("Invalid repsonse: {}", e);
+                println_err!("Invalid repsonse: {}", e);
                 continue;
               }
             }
@@ -6101,14 +6165,14 @@ impl NoteArchive {
               }
               "edit" | "e" => {
                 self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-                println!("Enter new content to replace the selected text, including spaces.");
+                println_inst!("Enter new content to replace the selected text, including spaces.");
                 let mut new_section = String::new();
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
                   break match section_result {
                     Ok(_) => new_section.trim().to_string(),
                     Err(e) => {
-                      println!("Failed to read line: {}", e);
+                      println_err!("Failed to read line: {}", e);
                       thread::sleep(time::Duration::from_secs(2));
                       continue;
                     }
@@ -6130,13 +6194,13 @@ impl NoteArchive {
               },
               "delete" | "d" => {
                 loop {
-                  println!("Are you sure you want to delete the currently selected section of content? (Y/N)");
+                  println_yel!("Are you sure you want to delete the currently selected section of content? (Y/N)");
                   let mut delete_choice = String::new();
                   let delete_attempt = io::stdin().read_line(&mut delete_choice);
                   match delete_attempt {
                     Ok(_) => (),
                     Err(e) => {
-                      println!("Invalid repsonse: {}", e);
+                      println_err!("Invalid repsonse: {}", e);
                       continue;
                     }
                   }
@@ -6159,7 +6223,7 @@ impl NoteArchive {
                       break;
                     },
                     _ => {
-                      println!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      println_err!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
                       thread::sleep(time::Duration::from_secs(2));
                       continue;
                     }
@@ -6172,28 +6236,28 @@ impl NoteArchive {
                 loop {
 
                   self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-                  println!("Enter new content to insert.");
+                  println_inst!("Enter new content to insert.");
                   let mut entered_content = String::new();
                   let enter_result = io::stdin().read_line(&mut entered_content);
                   let chosen_text = match enter_result {
                     Ok(_) => entered_content,
                     Err(e) => {
-                      println!("Failed to read string: {}", e);
+                      println_err!("Failed to read string: {}", e);
                       thread::sleep(time::Duration::from_secs(2));
                       continue;
                     }
                   };
 
                   let typed_content_indices = self.current_note_template().get_typed_content_indices();
-                  println!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
-                  println!("Enter CANCEL at any time to cancel.");
+                  println_inst!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
+                  println_inst!("Enter CANCEL at any time to cancel.");
 
                   let mut insert_choice = String::new();
                   let insert_attempt = io::stdin().read_line(&mut insert_choice);
                   match insert_attempt {
                     Ok(_) => (),
                     Err(e) => {
-                      println!("Invalid input: {}", e);
+                      println_err!("Invalid input: {}", e);
                       continue;
                     }
                   }
@@ -6212,13 +6276,13 @@ impl NoteArchive {
                         let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
                         let num_chars = display_string.chars().count();
                         if num_chars <= 163 {
-                          println!("{}", &display_string);
+                          println_on_bg!("{}", &display_string);
                           let mut pointer_string = String::new();
                           for _ in 0..current_location {
                             pointer_string.push_str("-");
                           }
                           pointer_string.push_str("^");
-                          println!("{}", &pointer_string);
+                          println_on_bg!("{}", &pointer_string);
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
                           let num_vecs = if num_chars % 163 == 0 {
@@ -6248,14 +6312,14 @@ impl NoteArchive {
                             outer_vec.push((format!("{}", display_content), pointer_string));
                           }
                           for row_and_pointer in outer_vec {
-                            println!("{}", row_and_pointer.0);
-                            println!("{}", row_and_pointer.1);
+                            println_on_bg!("{}", row_and_pointer.0);
+                            println_on_bg!("{}", row_and_pointer.1);
                           }
                         }
-                        println!("New content: {}", &chosen_text);
-                        println!("Enter an integer to navigate to a point at which to insert the new content.");
-                        println!("Press ENTER to insert new_content in the current location.");
-                        println!(
+                        println_inst!("New content: {}", &chosen_text);
+                        println_inst!("Enter an integer to navigate to a point at which to insert the new content.");
+                        println_inst!("Press ENTER to insert new_content in the current location.");
+                        println_inst!(
                           "{} | {} | {}",
                           "BEFORE / B: Insert at start of section",
                           "AFTER / A: Insert at end of section",
@@ -6267,7 +6331,7 @@ impl NoteArchive {
                         match insert_attempt {
                           Ok(_) => (),
                           Err(e) => {
-                            println!("Invalid input: {}", e);
+                            println_err!("Invalid input: {}", e);
                             thread::sleep(time::Duration::from_secs(2));
                             continue;
                           },
@@ -6293,15 +6357,15 @@ impl NoteArchive {
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
                               let new_content = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println!("Failed to read input.");
+                                  println_err!("Failed to read input.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6319,7 +6383,7 @@ impl NoteArchive {
                                   continue 'insert_location_content;
                                 },
                                 _ => {
-                                  println!("Invalid command.");
+                                  println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6341,15 +6405,15 @@ impl NoteArchive {
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
                               let new_content = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println!("Failed to read input.");
+                                  println_err!("Failed to read input.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6367,7 +6431,7 @@ impl NoteArchive {
                                   continue 'insert_location_content;
                                 },
                                 _ => {
-                                  println!("Invalid command.");
+                                  println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6396,15 +6460,15 @@ impl NoteArchive {
                                 &bfrs.1,
                                 &display_string[current_location..]
                               );
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println!("Failed to read input.");
+                                  println_err!("Failed to read input.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6427,7 +6491,7 @@ impl NoteArchive {
                                   continue 'insert_location_content;
                                 },
                                 _ => {
-                                  println!("Invalid command.");
+                                  println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6441,7 +6505,7 @@ impl NoteArchive {
                                 continue;
                               },
                               Err(e) => {
-                                println!("Invalid command.");
+                                println_err!("Invalid command.");
                                 thread::sleep(time::Duration::from_secs(2));
                                 continue;
                               }
@@ -6455,7 +6519,7 @@ impl NoteArchive {
                     _ => {
                       match insert.parse::<u32>() {
                         Err(_) => {
-                          println!("Invalid command.");
+                          println_err!("Invalid command.");
                           thread::sleep(time::Duration::from_secs(2));
                           continue;
                         },
@@ -6473,14 +6537,14 @@ impl NoteArchive {
               _ => {
                 match content.parse::<u32>() {
                   Err(_) => {
-                    println!("Invalid command.");
+                    println_err!("Invalid command.");
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   },
                   Ok(num) => {
                     let num_sections = self.current_note_template().get_num_content_sections();
                     if num as usize > num_sections || num == 0 {
-                      println!("Please choose from among the content IDs shown above.");
+                      println_err!("Please choose from among the content IDs shown above.");
                       thread::sleep(time::Duration::from_secs(2));
                       continue;
                     } else {
@@ -6508,12 +6572,12 @@ impl NoteArchive {
                   blank_focus_id = Some(num);
                   content_focus_id = None;
                 } else {
-                  println!("Please choose from among the blank IDs shown above.");
+                  println_err!("Please choose from among the blank IDs shown above.");
                   thread::sleep(time::Duration::from_secs(2));
                 }
               },
               Err(_) => {
-                println!("Invalid command.");
+                println_err!("Invalid command.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               }
@@ -6521,20 +6585,20 @@ impl NoteArchive {
           }
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-            println!(
+            println_inst!(
               "{} | {} | {}",
               "EDIT / E: Edit selected blank type",
               "INSERT / I: Insert new blank",
               "DELETE / D: Delete blank",
             );
-            println!("Choose blank by blank ID.");
-            println!("Enter 'QUIT / Q' at any time to return to the editing menu.");
+            println_inst!("Choose blank by blank ID.");
+            println_inst!("Enter 'QUIT / Q' at any time to return to the editing menu.");
             let mut blank_choice = String::new();
             let blank_attempt = io::stdin().read_line(&mut blank_choice);
             match blank_attempt {
               Ok(_) => (),
               Err(e) => {
-                println!("Invalid repsonse: {}", e);
+                println_err!("Invalid repsonse: {}", e);
                 continue;
               }
             }
@@ -6554,13 +6618,13 @@ impl NoteArchive {
                     let connected_blank_id: Option<u32> = match new_b {
                       Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
                         loop {
-                          println!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
+                          println_inst!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
                           let mut input_string = String::new();
                           let input_result = io::stdin().read_line(&mut input_string);
                           let input = match input_result {
                             Ok(_) => input_string.trim(),
                             Err(e) => {
-                              println!("Failed to read input.");
+                              println_err!("Failed to read input.");
                               thread::sleep(time::Duration::from_secs(1));
                               continue;
                             }
@@ -6571,7 +6635,7 @@ impl NoteArchive {
                           match input.parse() {
                             Ok(num) => {
                               if num > num_blanks {
-                                println!("Please choose an integer in the range of the number of current blanks already added to this template.");
+                                println_err!("Please choose an integer in the range of the number of current blanks already added to this template.");
                                 thread::sleep(time::Duration::from_secs(1));
                                 continue;
                               } else {
@@ -6579,7 +6643,7 @@ impl NoteArchive {
                               }
                             },
                             Err(e) => {
-                              println!("Invalid command.");
+                              println_err!("Invalid command.");
                               thread::sleep(time::Duration::from_secs(1));
                               continue;
                             }
@@ -6591,7 +6655,7 @@ impl NoteArchive {
                     match new_b {
                       Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
                         if let None = connected_blank_id {
-                          println!("Blank discarded.");
+                          println_yel!("Blank discarded.");
                           thread::sleep(time::Duration::from_secs(1));
                           continue;
                         }
@@ -6634,13 +6698,13 @@ impl NoteArchive {
               },
               "delete" | "d" => {
                 loop {
-                  println!("Are you sure you want to delete the currently selected blank? (Y/N)");
+                  println_yel!("Are you sure you want to delete the currently selected blank? (Y/N)");
                   let mut delete_choice = String::new();
                   let delete_attempt = io::stdin().read_line(&mut delete_choice);
                   match delete_attempt {
                     Ok(_) => (),
                     Err(e) => {
-                      println!("Invalid repsonse: {}", e);
+                      println_err!("Invalid repsonse: {}", e);
                       continue;
                     }
                   }
@@ -6667,7 +6731,7 @@ impl NoteArchive {
                       break;
                     },
                     _ => {
-                      println!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      println_err!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
                       thread::sleep(time::Duration::from_secs(2));
                       continue;
                     }
@@ -6684,14 +6748,14 @@ impl NoteArchive {
                 loop {
                   let typed_content_indices = self.current_note_template().get_typed_content_indices();
                   self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-                  println!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
-                  println!("Enter CANCEL at any time to cancel.");
+                  println_inst!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
+                  println_inst!("Enter CANCEL at any time to cancel.");
                   let mut insert_choice = String::new();
                   let insert_attempt = io::stdin().read_line(&mut insert_choice);
                   match insert_attempt {
                     Ok(_) => (),
                     Err(e) => {
-                      println!("Invalid input: {}", e);
+                      println_err!("Invalid input: {}", e);
                       continue;
                     }
                   }
@@ -6712,13 +6776,13 @@ impl NoteArchive {
                         let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
                         let num_chars = display_string.chars().count();
                         if num_chars <= 163 {
-                          println!("{}", &display_string);
+                          println_on_bg!("{}", &display_string);
                           let mut pointer_string = String::new();
                           for _ in 0..current_location {
                             pointer_string.push_str("-");
                           }
                           pointer_string.push_str("^");
-                          println!("{}", &pointer_string);
+                          println_on_bg!("{}", &pointer_string);
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
                           let num_vecs = if num_chars % 163 == 0 {
@@ -6748,20 +6812,20 @@ impl NoteArchive {
                             outer_vec.push((format!("{}", display_content), pointer_string));
                           }
                           for row_and_pointer in outer_vec {
-                            println!("{}", row_and_pointer.0);
-                            println!("{}", row_and_pointer.1);
+                            println_on_bg!("{}", row_and_pointer.0);
+                            println_on_bg!("{}", row_and_pointer.1);
                           }
                         }
-                        println!("Enter an integer to navigate to a point at which to insert the new blank.");
-                        println!("Press ENTER to insert the selected blank type in the current location.");
-                        println!("CANCEL / C: Cancel inserting blank");
+                        println_inst!("Enter an integer to navigate to a point at which to insert the new blank.");
+                        println_inst!("Press ENTER to insert the selected blank type in the current location.");
+                        println_inst!("CANCEL / C: Cancel inserting blank");
 
                         let mut insert_string = String::new();
                         let insert_attempt = io::stdin().read_line(&mut insert_string);
                         match insert_attempt {
                           Ok(_) => (),
                           Err(e) => {
-                            println!("Invalid input: {}", e);
+                            println_err!("Invalid input: {}", e);
                             thread::sleep(time::Duration::from_secs(2));
                             continue;
                           },
@@ -6802,15 +6866,15 @@ impl NoteArchive {
                                 &bfrs.1,
                                 &display_string[current_location..]
                               );
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_display_content);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_display_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println!("Failed to read input.");
+                                  println_err!("Failed to read input.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6844,7 +6908,7 @@ impl NoteArchive {
                                   continue 'insert_location_blanks;
                                 },
                                 _ => {
-                                  println!("Invalid command.");
+                                  println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6879,15 +6943,15 @@ impl NoteArchive {
                                 &bfrs.1,
                                 &display_string[..]
                               );
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_display_content);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_display_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println!("Failed to read input.");
+                                  println_err!("Failed to read input.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6909,7 +6973,7 @@ impl NoteArchive {
                                   continue 'insert_location_blanks;
                                 },
                                 _ => {
-                                  println!("Invalid command.");
+                                  println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6944,15 +7008,15 @@ impl NoteArchive {
                                 new_blank,
                                 &bfrs.1
                               );
-                              println!("Confirm editing the selection to the following? (Y/N)");
-                              println!("{}", &new_content);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_content);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println!("Failed to read input.");
+                                  println_err!("Failed to read input.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6974,7 +7038,7 @@ impl NoteArchive {
                                   continue 'insert_location_blanks;
                                 },
                                 _ => {
-                                  println!("Invalid command.");
+                                  println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6993,7 +7057,7 @@ impl NoteArchive {
                                 continue;
                               },
                               Err(e) => {
-                                println!("Invalid command.");
+                                println_err!("Invalid command.");
                                 thread::sleep(time::Duration::from_secs(2));
                                 continue;
                               }
@@ -7007,13 +7071,13 @@ impl NoteArchive {
                     _ => {
                       match insert.parse::<u32>() {
                         Err(_) => {
-                          println!("Invalid command.");
+                          println_err!("Invalid command.");
                           thread::sleep(time::Duration::from_secs(2));
                           continue;
                         },
                         Ok(num) => {
                           if num as usize > typed_content_indices.len() || num as usize == 0 {
-                            println!("Please choose from among the displayed content indices: {}.", typed_content_indices.len());
+                            println_err!("Please choose from among the displayed content indices: {}.", typed_content_indices.len());
                             thread::sleep(time::Duration::from_secs(2));
                             continue;
                           } else {
@@ -7049,12 +7113,12 @@ impl NoteArchive {
                     blank_focus_id = Some(u32_num.unwrap());
                     continue;
                   } else {
-                    println!("Please choose a blank by ID among those displayed in the note template's content.");
+                    println_err!("Please choose a blank by ID among those displayed in the note template's content.");
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   },
                   Err(_) => {
-                    println!("Invalid command.");
+                    println_err!("Invalid command.");
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   }
@@ -7075,7 +7139,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -7093,7 +7157,7 @@ impl NoteArchive {
           if self.current_user_personal_note_templates().len() > 0 {
             self.choose_edit_note_templates();
           } else {
-            println!("There are no custom templates to edit.");
+            println_err!("There are no custom templates to edit.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
@@ -7106,20 +7170,20 @@ impl NoteArchive {
             if !self.current_user_note_templates()
               .iter()
               .any(|&nt| nt.id == num) {
-                println!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
+                println_err!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
             }
             match self.load_note_template(num) {
               Ok(_) => self.choose_note_template(),
               Err(e) => {
-                println!("Unable to load template with ID {}: {}", num, e);
+                println_err!("Unable to load template with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
           }
         },
@@ -7135,7 +7199,7 @@ impl NoteArchive {
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
           Err(e) => {
-            println!("Could not read input; try again ({}).", e);
+            println_err!("Could not read input; try again ({}).", e);
             continue;
           }
         }
@@ -7162,21 +7226,21 @@ impl NoteArchive {
             if !self.current_user_note_templates()
               .iter()
               .any(|&nt| nt.id == num) {
-                println!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
+                println_err!("Please choose from among the listed templates, or 'NEW / N' to create a new template.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
             }
             match self.load_note_template(num) {
               Ok(_) => break Some(num),
               Err(e) => {
-                println!("Unable to load template with ID {}: {}", num, e);
+                println_err!("Unable to load template with ID {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
                 continue;
               }
             }
           },
           Err(e) => {
-            println!("Could not read input as a number; try again ({}).", e);
+            println_err!("Could not read input as a number; try again ({}).", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           }
@@ -7193,7 +7257,7 @@ impl NoteArchive {
       self.display_note_template();
 
       if self.current_note_template().custom {
-        println!(
+        println_inst!(
           "| {} | {} | {} | {} | {}",
           "NOTE / N: use template for a new note",
           "COPY / C: create new custom template from this template",
@@ -7202,7 +7266,7 @@ impl NoteArchive {
           "QUIT / Q: quit menu"
         );
       } else {
-        println!(
+        println_inst!(
           "| {} | {} | {}",
           "NOTE / N: Use template for a new note",
           "COPY / C: create new custom template from this template",
@@ -7214,7 +7278,7 @@ impl NoteArchive {
       let input = match read_attempt {
         Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
-          println!("Could not read input; try again ({}).", e);
+          println_err!("Could not read input; try again ({}).", e);
           continue;
         }
       };
@@ -7229,7 +7293,7 @@ impl NoteArchive {
             self.write_note_templates().unwrap();
             break;
           } else {
-            println!("Cannot delete default note.");
+            println_err!("Cannot delete default note.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
@@ -7238,12 +7302,12 @@ impl NoteArchive {
           let n_id = self.create_note_from_template_get_id(Some(self.current_note_template().id));
           match n_id {
             Some(id) => {
-              println!("Note #{} added to record.", id);
+              println_suc!("Note #{} added to record.", id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             },
             None => {
-              println!("Note discarded.");
+              println_yel!("Note discarded.");
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -7257,30 +7321,30 @@ impl NoteArchive {
           if self.current_note_template().custom {
             self.choose_edit_note_template();
           } else {
-            println!("Cannot edit default note templates. To create a custom version, use the 'COPY' command and edit the copy.");
+            println_err!("Cannot edit default note templates. To create a custom version, use the 'COPY' command and edit the copy.");
             thread::sleep(time::Duration::from_secs(4));
             continue;
           }
         }
-        _ => println!("Invalid command."),
+        _ => println_err!("Invalid command."),
       }
     }
   }
   fn display_structure_types(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^96}", "-");
-    println!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Template type ", " Abbreviation ");
-    println!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Template type ", " Abbreviation ");
+    println_on_bg!("{:-^96}", "-");
     for (i, st) in StructureType::iterator().enumerate() {
-      println!(
+      println_on_bg!(
         "{:-^10} | {:-^40} | {:-^40}",
         i+1,
         &format!(" {} ", st),
         &format!(" {} ", st.abbreviate()),
       );
     }
-    println!("{:-^96}", "-");
-    println!("| {}", "Choose template type by name, ID, or abbreviation.");
+    println_on_bg!("{:-^96}", "-");
+    println_inst!("| {}", "Choose template type by name, ID, or abbreviation.");
   }
   fn load_note_template(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&NoteTemplate> = self.note_templates.iter().find(|nt| nt.id == id);
@@ -7299,14 +7363,14 @@ impl NoteArchive {
     let note_template = loop {
       let structure = loop {
         self.display_structure_types();
-        println!("Enter 'CANCEL' at any time to cancel.");
-        println!("Build a template for what kind of record?");
+        println_inst!("Enter 'CANCEL' at any time to cancel.");
+        println_inst!("Build a template for what kind of record?");
         let mut structure_choice = String::new();
         let structure_attempt = io::stdin().read_line(&mut structure_choice);
         match structure_attempt {
           Ok(_) => (),
           Err(e) => {
-            println!("Invalid repsonse: {}", e);
+            println_err!("Invalid repsonse: {}", e);
             continue;
           }
         }
@@ -7327,7 +7391,7 @@ impl NoteArchive {
           "13" | "Custom" | "CUSTOM" | "custom" | "C" | "c" => CustomStructure,
           "cancel" | "CANCEL" | "Cancel" => return None,
           _ => {
-            println!("Invalid choice.");
+            println_err!("Invalid choice.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           },
@@ -7339,14 +7403,14 @@ impl NoteArchive {
         let display_content_vec_color_opt = NoteTemplate::get_display_content_vec_from_string(display_content.clone(), None);
         let display_content_vec: Vec<(usize, String)> = display_content_vec_color_opt.iter().map(|(e1, e2, _)| (*e1, e2.clone()) ).collect();
         NoteTemplate::display_content_from_vec(display_content_vec, &structure);
-        println!("Enter text to add text to the template, or choose from among the following options:");
-        println!("{} | {} | {} | {}", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template", "BACK: Delete last sentence");
+        println_inst!("Enter text to add text to the template, or choose from among the following options:");
+        println_inst!("{} | {} | {} | {}", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template", "BACK: Delete last sentence");
         let mut custom_choice = String::new();
         let custom_attempt = io::stdin().read_line(&mut custom_choice);
         let custom_choice = match custom_attempt {
           Ok(_) => custom_choice,
           Err(e) => {
-            println!("Invalid repsonse: {}", e);
+            println_err!("Invalid repsonse: {}", e);
             continue;
           }
         };
@@ -7373,7 +7437,7 @@ impl NoteArchive {
           },
           "text" | "t" | "TEXT" | "Text" | "T" => {
             loop {
-              println!("Enter custom text as you would like it to appear.");
+              println_inst!("Enter custom text as you would like it to appear.");
               let mut text_choice = String::new();
               let text_attempt = io::stdin().read_line(&mut text_choice);
               match text_attempt {
@@ -7396,7 +7460,7 @@ impl NoteArchive {
                   break;
                 },
                 Err(e) => {
-                  println!("Invalid repsonse: {}", e);
+                  println_err!("Invalid repsonse: {}", e);
                   continue;
                 }
               }
@@ -7415,13 +7479,13 @@ impl NoteArchive {
             let connected_blank_id: Option<usize> = match chosen_blank {
               Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
                 loop {
-                  println!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
+                  println_inst!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
                   let mut input_string = String::new();
                   let input_result = io::stdin().read_line(&mut input_string);
                   let input = match input_result {
                     Ok(_) => input_string.trim(),
                     Err(e) => {
-                      println!("Failed to read input.");
+                      println_err!("Failed to read input.");
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
                     }
@@ -7432,7 +7496,7 @@ impl NoteArchive {
                   match input.parse() {
                     Ok(num) => {
                       if num > num_blanks {
-                        println!("Please choose an integer in the range of the number of current blanks already added to this template.");
+                        println_err!("Please choose an integer in the range of the number of current blanks already added to this template.");
                         thread::sleep(time::Duration::from_secs(1));
                         continue;
                       } else {
@@ -7440,7 +7504,7 @@ impl NoteArchive {
                       }
                     },
                     Err(e) => {
-                      println!("Invalid command.");
+                      println_err!("Invalid command.");
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
                     }
@@ -7481,7 +7545,7 @@ impl NoteArchive {
           },
           "save" | "s" | "SAVE" | "Save" | "S" => {
             if display_content.len() == 0 {
-              println!("You must add at least one field to the content of a template. Please add either some text or at least one blank.");
+              println_err!("You must add at least one field to the content of a template. Please add either some text or at least one blank.");
               thread::sleep(time::Duration::from_secs(4));
               continue;
             }
@@ -7511,7 +7575,7 @@ impl NoteArchive {
       match self.generate_unique_new_note_template(structure, content, self.current_user().id) {
         Ok(nt) => break nt,
         Err((_, e)) => {
-          println!("Failed to generate template: {}", e);
+          println_err!("Failed to generate template: {}", e);
           thread::sleep(time::Duration::from_secs(3));
           continue;
         }
@@ -7555,7 +7619,7 @@ impl NoteArchive {
       let user_choice = match input_result {
         Ok(_) => input_string.trim(),
         Err(e) => {
-          println!("Failed to read input.");
+          println_err!("Failed to read input.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         },
@@ -7570,7 +7634,7 @@ impl NoteArchive {
               match self.load_note_template(num) {
                 Ok(_) => {
                   if !self.note_templates.iter().any(|nt| nt.id == num ) {
-                    println!("Please choose from among the listed templates.");
+                    println_err!("Please choose from among the listed templates.");
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   } else {
@@ -7578,14 +7642,14 @@ impl NoteArchive {
                   }
                 },
                 Err(e) => {
-                  println!("Please choose from among the listed templates.");
+                  println_err!("Please choose from among the listed templates.");
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
                 }
               }
             },
             Err(e) => {
-              println!("Invalid command: '{}'", &user_choice);
+              println_err!("Invalid command: '{}'", &user_choice);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -7803,14 +7867,14 @@ impl NoteArchive {
   fn choose_delete_note_template(&mut self) {
     loop {
       self.display_delete_note_template();
-      println!("Are you sure you want to delete this note template?");
-      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      println_yel!("Are you sure you want to delete this note template?");
+      println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
         Ok(_) => confirm.trim().to_string(),
         Err(e) => {
-          println!("Failed to read input: {}", e);
+          println_err!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -7829,13 +7893,13 @@ impl NoteArchive {
   fn display_delete_note_template(&self) {
     let heading = String::from(" DELETE NOTE TEMPLATE ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^146}", "-");
-    println!("{:-^146}", heading);
-    println!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", heading);
+    println_on_bg!("{:-^146}", "-");
 
     self.current_note_template().display_content(None, None);
 
-    println!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", "-");
   }
   fn delete_current_note_template(&mut self) {
     let id = self.foreign_key.get("current_note_template_id").unwrap();
@@ -7884,19 +7948,19 @@ impl NoteArchive {
   }
   fn display_note_sentences(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
 
     let n = self.current_note();
     let nd = self.get_note_day_by_note_id(n.id).unwrap();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     let nt = self.get_note_template_by_note_id(n.id).unwrap();
     let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
-    println!("{:-^163}", heading);
-    println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
-    println!("{:-^163}", "-");
-    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
+    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
     let mut current_i = 0;
     for (i, cont) in n.get_display_content_vec() {
       let display_i = if i == current_i {
@@ -7905,26 +7969,26 @@ impl NoteArchive {
         format!(" {} ", i)
       };
       let cont = format!(" {} ", cont);
-      println!("{:-^20} | {:-^140}", display_i, cont);
+      println_on_bg!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
-    println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
+    println_inst!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
   }
   fn display_note_sentences_and_blanks(&self, focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
 
     let n = self.current_note();
     let nd = self.get_note_day_by_note_id(n.id).unwrap();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     let nt = self.get_note_template_by_note_id(n.id).unwrap();
     let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
-    println!("{:-^163}", heading);
-    println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
-    println!("{:-^163}", "-");
-    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
+    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
     let mut current_i = 0;
     for (i, cont) in n.get_display_content_vec_and_blanks(focus_id) {
       let display_i = if i == current_i {
@@ -7932,10 +7996,10 @@ impl NoteArchive {
       } else {
         format!(" {} ", i)
       };
-      println!("{:-^20} | {:-^140}", display_i, cont);
+      println_on_bg!("{:-^20} | {:-^140}", display_i, cont);
       current_i = i;
     }
-    println!(
+    println_inst!(
       "| {} \n| {} \n| {} \n| {} \n| {} \n| {}",
       "Press ENTER to add data to the currently selected blank (indicated by '[===|   |===]').",
       "Enter ID of blank to skip directly to that blank.",
@@ -7947,7 +8011,7 @@ impl NoteArchive {
   }
   fn display_note(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
 
     let n = self.current_note();
     let nd = self.get_note_day_by_note_id(n.id).unwrap();
@@ -7959,27 +8023,27 @@ impl NoteArchive {
     };
 
     let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
-    println!("{:-^163}", heading);
-    println!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt_string, n.category);
-    println!("{:-^163}", "-");
-    println!("{:-^163}", " Content ");
-    println!("{:-^163}", "-");
-    println!("{}", n.generate_display_content_string());
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
+    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt_string, n.category);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", " Content ");
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{}", n.generate_display_content_string());
+    println_on_bg!("{:-^163}", "-");
   }
   fn display_new_note(&self, n: &Note) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     let nd = self.current_note_day();
     let c = self.current_client();
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
     let heading = format!("{} - {} - {} {} note for {}", self.current_user().full_name(), n.category, nd.fmt_date(), n.structure, c.full_name());
-    println!("{:-^163}", heading);
-    println!("{:-^163}", "-");
-    println!("{:-^163}", " Content ");
-    println!("{:-^163}", "-");
-    println!("{}", n.generate_display_content_string());
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", " Content ");
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{}", n.generate_display_content_string());
+    println_on_bg!("{:-^163}", "-");
   }
   fn load_note(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
@@ -7996,14 +8060,14 @@ impl NoteArchive {
   }
   fn choose_note(&mut self) {
     self.display_note();
-    println!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
+    println_inst!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
     loop {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
         Ok(_) => choice.to_ascii_lowercase(),
         Err(e) => {
-          println!("Could not read input; try again ({}).", e);
+          println_err!("Could not read input; try again ({}).", e);
           continue;
         }
       };
@@ -8018,9 +8082,9 @@ impl NoteArchive {
         }
         "edit" | "e" => {
           // self.choose_edit_note();
-          println!("self.choose_edit_note();");
+          println_err!("self.choose_edit_note();");
         }
-        _ => println!("Invalid command."),
+        _ => println_err!("Invalid command."),
       }
     }
   }
@@ -8059,15 +8123,15 @@ impl NoteArchive {
       _ => panic!("Incompatible blank fill in string passed to fn 'display_blank_fill_in'")
     };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^113}", "-");
-    println!("{:-^113}", format!(" Fill in blank with {} ", display_category));
-    println!("{:-^113}", "-");
-    println!("{:-^10} | {:-^100}", " ID ", " Content ");
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^113}", format!(" Fill in blank with {} ", display_category));
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^10} | {:-^100}", " ID ", " Content ");
     for (i, fi) in fill_ins.iter().enumerate() {
-      println!("{:-^10} | {:-^100}", i, fi);
+      println_on_bg!("{:-^10} | {:-^100}", i, fi);
     }
-    println!("{:-^113}", "-");
-    println!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
+    println_on_bg!("{:-^113}", "-");
+    println_inst!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
   }
   fn choose_blank_fill_in(blank_type: Blank) -> Option<String> {
     loop {
@@ -8077,7 +8141,7 @@ impl NoteArchive {
       let selected_option = match fill_in_attempt {
         Ok(_) => fill_in_choice.trim().to_ascii_lowercase(),
         Err(e) => {
-          println!("Failed to read line: {}", e);
+          println_err!("Failed to read line: {}", e);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -8089,7 +8153,7 @@ impl NoteArchive {
       let chosen_id: usize = match selected_option.parse() {
         Ok(num) => num,
         Err(e) => {
-          println!("Failed to parse '{}' as int: {}", selected_option, e);
+          println_err!("Failed to parse '{}' as int: {}", selected_option, e);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -8099,7 +8163,7 @@ impl NoteArchive {
           match InternalMeetingFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
             Some(b_tup) => format!("{}", b_tup.1),
             None => {
-              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -8109,7 +8173,7 @@ impl NoteArchive {
           match ExternalMeetingFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
             Some(b_tup) => format!("{}", b_tup.1),
             None => {
-              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -8119,7 +8183,7 @@ impl NoteArchive {
           match InternalDocumentFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
             Some(b_tup) => format!("{}", b_tup.1),
             None => {
-              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -8129,7 +8193,7 @@ impl NoteArchive {
           match ExternalDocumentFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
             Some(b_tup) => format!("{}", b_tup.1),
             None => {
-              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -8139,7 +8203,7 @@ impl NoteArchive {
           match ActionFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
             Some(b_tup) => format!("{}", b_tup.1),
             None => {
-              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -8149,7 +8213,7 @@ impl NoteArchive {
           match PhraseFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
             Some(b_tup) => format!("{}", b_tup.1),
             None => {
-              println!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -8161,30 +8225,30 @@ impl NoteArchive {
     }
   }
   fn display_icc_note_categories() {
-    println!("{:-^58}", "-");
-    println!("{:-^58}", " ICC Note Categories ");
-    println!("{:-^58}", "-");
-    println!("{: ^5} | {:-^50}", " ID ", " Note category ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", " ICC Note Categories ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{: ^5} | {:-^50}", " ID ", " Note category ");
     for (i, cat) in ICCNoteCategory::iterator().enumerate() {
-      println!("{: ^5} | {:-<50}", i, cat);
+      println_on_bg!("{: ^5} | {:-<50}", i, cat);
     }
-    println!("{:-^58}", "-");
-    println!(
+    println_on_bg!("{:-^58}", "-");
+    println_inst!(
       "| {} | {}",
       "Enter ID to select a note category.",
       "QUIT / Q: Quit menu",
     );
   }
   fn display_fp_note_categories() {
-    println!("{:-^58}", "-");
-    println!("{:-^58}", " FP Note Categories ");
-    println!("{:-^58}", "-");
-    println!("{:-^5} | {:-^50}", " ID ", " Note category ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", " FP Note Categories ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^5} | {:-^50}", " ID ", " Note category ");
     for (i, cat) in FPNoteCategory::iterator().enumerate() {
-      println!("{:-^5} | {:-<50}", i, cat);
+      println_on_bg!("{:-^5} | {:-<50}", i, cat);
     }
-    println!("{:-^58}", "-");
-    println!(
+    println_on_bg!("{:-^58}", "-");
+    println_inst!(
       "| {} | {}",
       "Enter ID to select a note category.",
       "QUIT / Q: Quit menu",
@@ -8210,7 +8274,7 @@ impl NoteArchive {
       let ncat_input = match ncat_attempt {
         Ok(_) => ncat_choice.trim().to_ascii_lowercase(),
         Err(e) => {
-          println!("Failed to read input.");
+          println_err!("Failed to read input.");
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -8219,7 +8283,7 @@ impl NoteArchive {
         "quit" | "q" => return None,
         _ => match ncat_input.parse::<usize>() {
           Err(e) => {
-            println!("Failed to parse input as a number: {}. Try again.", e);
+            println_err!("Failed to parse input as a number: {}. Try again.", e);
             thread::sleep(time::Duration::from_secs(1));
             continue;
           },
@@ -8230,7 +8294,7 @@ impl NoteArchive {
                 match iccncat {
                   Some(icccat) => return Some(ICCNote(icccat)),
                   None => {
-                    println!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
+                    println_err!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
@@ -8241,7 +8305,7 @@ impl NoteArchive {
                 match fpncat {
                   Some(fpcat) => return Some(FPNote(fpcat)),
                   None => {
-                    println!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
+                    println_err!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
@@ -8264,13 +8328,13 @@ impl NoteArchive {
             None => {
               let decision = loop {
                 let mut cancel_choice = String::new();
-                println!("You must select a note template to build a note from a template.");
-                println!("Cancel writing note? ( Y / N )");
+                println_yel!("You must select a note template to build a note from a template.");
+                println_inst!("Cancel writing note? ( Y / N )");
                 let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
                 break match cancel_choice_attempt {
                   Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
                   Err(e) => {
-                    println!("Failed to read line: {}", e);
+                    println_err!("Failed to read line: {}", e);
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   }
@@ -8284,7 +8348,7 @@ impl NoteArchive {
                   continue;
                 },
                 _ => {
-                  println!("Invalid command.");
+                  println_err!("Invalid command.");
                   continue;
                 },
               }
@@ -8326,13 +8390,13 @@ impl NoteArchive {
                 None => {
                   let decision = loop {
                     let mut cancel_choice = String::new();
-                    println!("You must select a note category to fill in a custom note template.");
-                    println!("Cancel writing note? ( Y / N )");
+                    println_yel!("You must select a note category to fill in a custom note template.");
+                    println_inst!("Cancel writing note? ( Y / N )");
                     let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
                     let cancel_choice_content = match cancel_choice_attempt {
                       Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
                       Err(e) => {
-                        println!("Failed to read line: {}", e);
+                        println_err!("Failed to read line: {}", e);
                         thread::sleep(time::Duration::from_secs(2));
                         continue;
                       }
@@ -8347,7 +8411,7 @@ impl NoteArchive {
                       continue;
                     },
                     _ => {
-                      println!("Invalid command.");
+                      println_err!("Invalid command.");
                       continue;
                     },
                   }
@@ -8514,7 +8578,7 @@ impl NoteArchive {
         match note_attempt {
           Ok(_) => break note_choice.trim().to_ascii_lowercase(),
           Err(e) => {
-            println!("Failed to read line: {}", e);
+            println_err!("Failed to read line: {}", e);
             thread::sleep(time::Duration::from_secs(2));
             continue;
           },
@@ -8540,12 +8604,12 @@ impl NoteArchive {
             Some(b_tup) => {
               loop {
                 let mut delete_choice = String::new();
-                println!("Delete blank currently filled in with '{}'?", b_tup.1);
+                println_yel!("Delete blank currently filled in with '{}'?", b_tup.1);
                 let delete_choice_attempt = io::stdin().read_line(&mut delete_choice);
                 let delete_choice_content = match delete_choice_attempt {
                   Ok(_) => delete_choice.trim().to_ascii_lowercase(),
                   Err(e) => {
-                    println!("Failed to read line: {}", e);
+                    println_err!("Failed to read line: {}", e);
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   }
@@ -8582,14 +8646,14 @@ impl NoteArchive {
                     break;
                   },
                   _ => {
-                    println!("Invalid command.");
+                    println_err!("Invalid command.");
                     continue;
                   },
                 }
               }
             },
             None => {
-              println!("Current blank is already empty.");
+              println_err!("Current blank is already empty.");
               thread::sleep(time::Duration::from_secs(2));
               continue;
             },
@@ -8597,18 +8661,18 @@ impl NoteArchive {
         },
         "clear" | "c" => {
           if n.blanks.len() == 0 {
-            println!("All blanks are already empty.");
+            println_err!("All blanks are already empty.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           } else {
             loop {
               let mut clear_choice = String::new();
-              println!("Delete all blanks from the current template and start over?");
+              println_yel!("Delete all blanks from the current template and start over?");
               let clear_choice_attempt = io::stdin().read_line(&mut clear_choice);
               let clear_choice_content = match clear_choice_attempt {
                 Ok(_) => clear_choice.trim().to_ascii_lowercase(),
                 Err(e) => {
-                  println!("Failed to read line: {}", e);
+                  println_err!("Failed to read line: {}", e);
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
                 }
@@ -8622,7 +8686,7 @@ impl NoteArchive {
                   break;
                 },
                 _ => {
-                  println!("Invalid command.");
+                  println_err!("Invalid command.");
                   continue;
                 },
               }
@@ -8653,7 +8717,7 @@ impl NoteArchive {
                   match read_attempt {
                     Ok(_) => break choice.trim().to_string(),
                     Err(e) => {
-                      println!("Could not read input; try again ({}).", e);
+                      println_err!("Could not read input; try again ({}).", e);
                       continue;
                     }
                   }
@@ -8689,17 +8753,17 @@ impl NoteArchive {
                         if !collats.iter().any(|co| co == &collat ) {
                           collats.push(collat);
                         } else {
-                          println!("Collateral already added to blank.");
+                          println_err!("Collateral already added to blank.");
                         }
                       },
                       Err(e) => {
-                        println!("Invalid input: {}; error: {}", initial_input, e);
+                        println_err!("Invalid input: {}; error: {}", initial_input, e);
                         thread::sleep(time::Duration::from_secs(3));
                         continue;
                       }
                     }
                     let add_another = 'another: loop {
-                      println!("Add another collateral to this blank? (y/n)");
+                      println_inst!("Add another collateral to this blank? (y/n)");
                       let mut add_another_choice = String::new();
                       let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
                       match maybe_add_another {
@@ -8707,13 +8771,13 @@ impl NoteArchive {
                           "yes" | "y" => continue 'keep_adding,
                           "no" | "n" => break 'keep_adding,
                           _ => {
-                            println!("Invalid response.");
+                            println_err!("Invalid response.");
                             thread::sleep(time::Duration::from_secs(2));
                             continue 'another;
                           }
                         },
                         Err(e) => {
-                          println!("Failed to read line: {}", e);
+                          println_err!("Failed to read line: {}", e);
                           continue;
                         }
                       }
@@ -8786,12 +8850,12 @@ impl NoteArchive {
             CustomBlank => {
               loop {
                 let mut custom_choice = String::new();
-                println!("Enter custom content for the current blank.");
+                println_inst!("Enter custom content for the current blank.");
                 let custom_attempt = io::stdin().read_line(&mut custom_choice);
                 let custom_content = match custom_attempt {
                   Ok(_) => custom_choice.trim(),
                   Err(e) => {
-                    println!("Failed to read line: {}", e);
+                    println_err!("Failed to read line: {}", e);
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   }
@@ -9019,12 +9083,12 @@ impl NoteArchive {
                   loop {
                     loop {
                       let mut fill_choice = String::new();
-                      println!("Fill custom blank with '{}'? ( Y / N )", choice);
+                      println_inst!("Fill custom blank with '{}'? ( Y / N )", choice);
                       let fill_choice_attempt = io::stdin().read_line(&mut fill_choice);
                       let fill_choice_content = match fill_choice_attempt {
                         Ok(_) => fill_choice.trim().to_ascii_lowercase(),
                         Err(e) => {
-                          println!("Failed to read line: {}", e);
+                          println_err!("Failed to read line: {}", e);
                           thread::sleep(time::Duration::from_secs(2));
                           continue;
                         }
@@ -9040,19 +9104,19 @@ impl NoteArchive {
                           break;
                         },
                         _ => {
-                          println!("Invalid command.");
+                          println_err!("Invalid command.");
                           continue;
                         },
                       }
                     }
                     loop {
                       let mut custom_choice = String::new();
-                      println!("Enter custom content for the current blank.");
+                      println_inst!("Enter custom content for the current blank.");
                       let custom_attempt = io::stdin().read_line(&mut custom_choice);
                       let custom_content = match custom_attempt {
                         Ok(_) => custom_choice.trim(),
                         Err(e) => {
-                          println!("Failed to read line: {}", e);
+                          println_err!("Failed to read line: {}", e);
                           thread::sleep(time::Duration::from_secs(2));
                           continue;
                         }
@@ -9065,7 +9129,7 @@ impl NoteArchive {
                   }
                 },
                 _ => {
-                  println!("Invalid command.");
+                  println_err!("Invalid command.");
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
                 }
@@ -9073,7 +9137,7 @@ impl NoteArchive {
             },
           };
           if blank_id < 0 || blank_id > n.number_of_blanks() {
-            println!("Invalid blank ID.");
+            println_err!("Invalid blank ID.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
@@ -9179,20 +9243,20 @@ impl NoteArchive {
           ).collect();
           new_vecs.push(new_vec);
         }
-        // println!("{:?}", new_vecs);
+        // println_on_bg!("{:?}", new_vecs);
         for n_vec in new_vecs {
           rows.insert(row_idx, n_vec);
           row_idx += 1;
         }
       }
-      // println!("{:?}", &rows);
+      // println_on_bg!("{:?}", &rows);
     }
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^195}", "-");
-    println!("{:-^195}", " All fill-ins for blanks ");
-    println!("{:-^195}", "-");
-    println!(
+    println_on_bg!("{:-^195}", "-");
+    println_on_bg!("{:-^195}", " All fill-ins for blanks ");
+    println_on_bg!("{:-^195}", "-");
+    println_on_bg!(
       "{:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25}",
       " Riverside documents ",
       " External documents ",
@@ -9213,7 +9277,7 @@ impl NoteArchive {
         &rows[&i][4],
         &rows[&i][5],
       );
-      println!(
+      println_on_bg!(
         "{:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25}",
         s1,
         s2,
@@ -9224,10 +9288,10 @@ impl NoteArchive {
       );
     }
 
-    println!("{:-^195}", "-");
-    println!("Select menu item by ID (seen above in brackets).");
-    println!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
-    println!(
+    println_on_bg!("{:-^195}", "-");
+    println_inst!("Select menu item by ID (seen above in brackets).");
+    println_inst!("You may also enter the alphabetic portion to view that menu by itself (e.g., 'rm' for Riverside meetings).");
+    println_inst!(
       "| {}",
       "CANCEL / C: Cancel",
     );
@@ -9241,7 +9305,7 @@ impl NoteArchive {
       let idx = match idx_attempt {
         Ok(_) => buffer.trim().to_ascii_lowercase(),
         Err(e) => {
-          println!("Failed to read line.");
+          println_err!("Failed to read line.");
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -9302,7 +9366,7 @@ impl NoteArchive {
             let last_part = num_chars.map(|c| c.to_string() ).collect::<Vec<String>>().join("");
 
             if format!("{}", idx) != format!("{}{}", &first_part, &last_part) {
-              println!("Invalid index syntax. If using an alphanumeric index, enter alphabetic portion followed by numeric portion.");
+              println_err!("Invalid index syntax. If using an alphanumeric index, enter alphabetic portion followed by numeric portion.");
               thread::sleep(time::Duration::from_secs(2));
               continue 'main;
             }
@@ -9311,7 +9375,7 @@ impl NoteArchive {
             let num = match num_result {
               Ok(num) => num,
               Err(e) => {
-                println!("Invalid index.");
+                println_err!("Invalid index.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue 'main;
               }
@@ -9342,7 +9406,7 @@ impl NoteArchive {
                 None => break None,
               },
               _ => {
-                println!("Invalid ID. Please use the alphanumeric IDs provided to select a phrase to add to your note.");
+                println_err!("Invalid ID. Please use the alphanumeric IDs provided to select a phrase to add to your note.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               }
@@ -9351,7 +9415,7 @@ impl NoteArchive {
           match selected_blank_tup {
             Some(_) => selected_blank_tup,
             None => {
-              println!("Valid ID format, but ID not found in the given list.");
+              println_err!("Valid ID format, but ID not found in the given list.");
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -9369,22 +9433,22 @@ impl NoteArchive {
         None => {
           let mut choice = String::new();
           let choice_att = io::stdin().read_line(&mut choice);
-          println!("In order to enter a note manually, you must select a category.");
-          println!("Do you wish to cancel writing this note?");
+          println_yel!("In order to enter a note manually, you must select a category.");
+          println_inst!("Do you wish to cancel writing this note?");
           match choice_att {
             Ok(_) => {
               match &choice.trim().to_ascii_lowercase()[..] {
                 "y" | "yes" => return None,
                 "no" | "n" => continue,
                 _ => {
-                  println!("Invalid entry. Please select a template or cancel to return to the previous menu.");
+                  println_err!("Invalid entry. Please select a template or cancel to return to the previous menu.");
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
                 }
               }
             },
             Err(e) => {
-              println!("Failed to read line: {}", e);
+              println_err!("Failed to read line: {}", e);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             }
@@ -9423,7 +9487,7 @@ impl NoteArchive {
     let mut current_blank = 1;
     loop {
       self.display_new_note(&n);
-      println!("{:-^163}", " Collaterals ");
+      println_on_bg!("{:-^163}", " Collaterals ");
       for c_row in col_rows.clone() {
         let val1: String = match c_row.get(0) {
           Some(v) => format!("[{}] {}", v.id, v.full_name()),
@@ -9441,24 +9505,24 @@ impl NoteArchive {
           Some(v) => format!("[{}] {}", v.id, v.full_name()),
           None => String::new(),
         };
-        println!(
+        println_on_bg!(
           "{:-^38} | {:-^38} | {:-^38} | {:-^38}",
           val1,
           val2,
           val3,
           val4,
         );
-      println!("{:-^163}", "-");
+      println_on_bg!("{:-^163}", "-");
 
       }
-      println!("Press ENTER to choose a phrase from the saved menus.");
-      println!("You may also enter text directly or choose from the following shortcuts.");
-      println!(
+      println_inst!("Press ENTER to choose a phrase from the saved menus.");
+      println_inst!("You may also enter text directly or choose from the following shortcuts.");
+      println_inst!(
         "| {} | {}",
         "YOUTH / Y: Youth's full name",
         "ALL / A: All collaterals",
       );
-      println!(
+      println_inst!(
         "| {} | {} | {}",
         "BACK / B: Delete last word or 5 characters",
         "SAVE / S: Finish writing and save to current record",
@@ -9483,7 +9547,7 @@ impl NoteArchive {
               let current_collaterals = self.current_client_collaterals();
               let num_collats = current_collaterals.len();
               let all_collaterals_string = if num_collats == 0 {
-                println!("No collaterals are saved for the current client.");
+                println_err!("No collaterals are saved for the current client.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               } else if num_collats == 1 {
@@ -9573,7 +9637,7 @@ impl NoteArchive {
           }
         },
         Err(e) => {
-          println!("Failed to read line: {}", e);
+          println_err!("Failed to read line: {}", e);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -9599,7 +9663,7 @@ impl NoteArchive {
     }
     loop {
       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-      println!(
+      println_inst!(
         "| {} | {} | {} ",
         "TEMPLATE / T: build from template",
         "SCRATCH / S: build from scratch",
@@ -9610,7 +9674,7 @@ impl NoteArchive {
       let input_val = match input_attempt {
         Ok(_) => input.trim().to_ascii_lowercase(),
         Err(e) => {
-          println!("Failed to read line: {}", e);
+          println_err!("Failed to read line: {}", e);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -9620,7 +9684,7 @@ impl NoteArchive {
         "scratch" | "s" => return self.create_note_manually_get_id(),
         "cancel" => return None,
         _ => {
-          println!("Invalid input: {}", input_val);
+          println_err!("Invalid input: {}", input_val);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -9803,14 +9867,14 @@ impl NoteArchive {
   fn choose_delete_note(&mut self) {
     loop {
       self.display_delete_note();
-      println!("Are you sure you want to delete this note?");
-      println!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      println_yel!("Are you sure you want to delete this note?");
+      println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
       let mut confirm = String::new();
       let input_attempt = io::stdin().read_line(&mut confirm);
       let command = match input_attempt {
         Ok(_) => confirm.trim().to_string(),
         Err(e) => {
-          println!("Failed to read input: {}", e);
+          println_err!("Failed to read input: {}", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -9829,14 +9893,14 @@ impl NoteArchive {
   fn display_delete_note(&self) {
     let heading = String::from(" DELETE NOTE ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
-    println!("{:-^163}", heading);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
 
     // the length of each line is 163
     self.current_note().display_content();
 
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
   }
   fn delete_current_note(&mut self) {
     let id = self.foreign_key.get("current_note_id").unwrap();

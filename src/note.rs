@@ -22,6 +22,21 @@ use crate::constants::*;
 use regex::Regex;
 use regex::Match;
 
+#[macro_use] use std::format_args;
+
+// print on default background
+pub fn print_on_bg(s: String) {
+  print!("{}", Style::new().on(BG).paint(s));
+}
+macro_rules! print_on_bg {
+    ($($arg:tt)*) => (print_on_bg(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_on_bg {
+    () => (print_on_bg("\n"));
+    ($fmt:expr) => (print_on_bg(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_on_bg!(concat!($fmt, "\n"), $($arg)*));
+}
+
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum StructureType {
   CarePlan,
@@ -685,12 +700,12 @@ impl NoteTemplate {
   }
   pub fn display_content_from_vec(length_adjusted_vec: Vec<(usize, String)>, s: &StructureType) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
     let heading = format!(" Current content for new {} note template ", s);
-    println!("{:-^163}", heading);
-    println!("{:-^163}", "-");
-    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
     let mut current_i = 100; // arbitrary value not equal to zero to allow first iteration 
     for (i, cont) in length_adjusted_vec {
       let display_i = if i == current_i {
@@ -699,10 +714,10 @@ impl NoteTemplate {
         let d_i = i + 1;
         format!(" {} ", d_i)
       };
-      println!("{:-^20} | {: <140}", display_i, cont);
+      println_on_bg!("{:-^20} | {: <140}", display_i, cont);
       current_i = i;
     }
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
   }
   pub fn generate_display_content_string(&self) -> String {
     let mut content_slice = self.content.clone();
@@ -719,17 +734,17 @@ impl NoteTemplate {
   }
   pub fn display_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
     let display_custom = if self.custom { "Custom" } else { "Default" };
     let heading = if self.structure == CustomStructure {
       String::from(" Custom template ")
     } else {
       format!(" {} {} template ", display_custom, self.structure)
     };
-    println!("{:-^163}", heading);
-    println!("{:-^163}", "-");
-    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
     for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
@@ -742,7 +757,7 @@ impl NoteTemplate {
       };
       prev_i = i;
       match f {
-        None => println!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
+        None => println_on_bg!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
         Some(f_vec) => {
           print!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
@@ -780,16 +795,16 @@ impl NoteTemplate {
       }
       print!("\n");
     }
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
   }
   pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
     let heading = format!(" Edit custom {} template ", self.structure);
-    println!("{:-^163}", heading);
-    println!("{:-^163}", "-");
-    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
     for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
@@ -802,7 +817,7 @@ impl NoteTemplate {
       };
       prev_i = i;
       match f {
-        None => println!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
+        None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
         Some(f_vec) => {
           print!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
@@ -840,7 +855,7 @@ impl NoteTemplate {
       }
       print!("\n");
     }
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
   }
 }
 
@@ -1179,16 +1194,16 @@ impl Note {
     RE_BLANK.find_iter(&self.content[..]).count()
   }
   pub fn display_content(&self) {
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
     let cat_string = match self.category {
       ICCNote(ncat) => format!("'{}' by ICC", ncat),
       FPNote(ncat) => format!("'{}' by FP", ncat),
     };
     let heading = format!(" Current content of {} service entry note for {} ", self.structure, cat_string);
-    println!("{:-^163}", heading);
-    println!("{:-^163}", "-");
-    println!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
     let mut current_i: isize = -1;
     for (i, cont) in self.get_display_content_vec() {
       let i = i as isize;
@@ -1199,10 +1214,10 @@ impl Note {
         String::from("   ")
       };
       let cont = format!(" {} ", cont);
-      println!("{:-^20} | {: <140}", display_i, cont);
+      println_on_bg!("{:-^20} | {: <140}", display_i, cont);
       current_i = i;
     }
-    println!("{:-^163}", "-");
+    println_on_bg!("{:-^163}", "-");
   }
 }
 
