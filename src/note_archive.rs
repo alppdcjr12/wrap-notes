@@ -6248,7 +6248,12 @@ impl NoteArchive {
                     }
                   };
 
-                  let typed_content_indices = self.current_note_template().get_typed_content_indices();
+                  // get_content_indices gets all indices, including blanks
+                  // also look at get_typed_content_indices calls in note.rs and get_num_content_sections
+
+
+                  
+                  let content_indices = self.current_note_template().get_content_indices();
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");
 
@@ -6270,7 +6275,7 @@ impl NoteArchive {
                       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
                       'insert_location_content: loop {
-                        let indices = typed_content_indices[content_focus_id.unwrap() as usize + 1];
+                        let indices = content_indices[content_focus_id.unwrap() as usize + 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
                         let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
@@ -6513,8 +6518,6 @@ impl NoteArchive {
                           }
                         }
                       }
-
-
                     },
                     _ => {
                       match insert.parse::<u32>() {
@@ -6746,7 +6749,7 @@ impl NoteArchive {
                   None => continue,
                 };
                 loop {
-                  let typed_content_indices = self.current_note_template().get_typed_content_indices();
+                  let typed_content_indices = self.current_note_template().get_content_indices();
                   self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");

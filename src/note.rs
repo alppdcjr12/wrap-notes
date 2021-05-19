@@ -36,6 +36,27 @@ macro_rules! println_on_bg {
     ($fmt:expr) => (print_on_bg(concat!($fmt, "\n").to_string()));
     ($fmt:expr, $($arg:tt)*) => (print_on_bg!(concat!($fmt, "\n"), $($arg)*));
 }
+// print unhighlighted content
+pub fn print_unhighlighted_content(s: String) {
+  print!("{}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(s));
+}
+macro_rules! print_unhighlighted_content {
+    ($($arg:tt)*) => (print_unhighlighted_content(format!("{}", format_args!($($arg)*))));
+}
+// print highlighted content
+pub fn print_highlighted_content(s: String) {
+  print!("{}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(s));
+}
+macro_rules! print_highlighted_content {
+    ($($arg:tt)*) => (print_highlighted_content(format!("{}", format_args!($($arg)*))));
+}
+// print unfocused blank
+pub fn print_unfocused_blank(s: String) {
+  print!("{}", Black.on(RGB(160, 160, 160)).paint(s));
+}
+macro_rules! print_unfocused_blank {
+    ($($arg:tt)*) => (print_unfocused_blank(format!("{}", format_args!($($arg)*))));
+}
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum StructureType {
@@ -748,6 +769,8 @@ impl NoteTemplate {
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
     for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+      let num_chars = cont.chars().count();
+      let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
       // f is Option<Vec<(String, usize, usize)>>
       let display_i = if i == prev_i {
         String::from("   ")
@@ -759,30 +782,30 @@ impl NoteTemplate {
       match f {
         None => println_on_bg!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
         Some(f_vec) => {
-          print!("{:-^20} |  ", display_i);
+          print_on_bg!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
-            print!("{}", Style::new().paint(&cont));
+            print_on_bg!("{: <140}", &cont);
           } else {
             for (s, idx1, idx2) in f_vec {
               let to_format = &cont[idx1..idx2];
               match &s[..] {
                 "HIGHLIGHTED CONTENT" => {
-                  print!("{: <140}", Black.on(RGB(25, 225, 225)).italic().paint(to_format));
+                  print_highlighted_content!("{}", to_format);
                 },
                 "UNHIGHLIGHTED CONTENT" => {
-                  print!("{: <140}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(to_format));
+                  print_unhighlighted_content!("{}", to_format);
                 },
                 "CONTENT" => {
-                  print!("{: <140}", Style::new().on(Black).paint(to_format));
+                  print_on_bg!("{}", to_format);
                 },
                 "HIGHLIGHTED BLANK" => {
-                  print!("{: <140}", Black.on(Yellow).bold().paint(to_format));
+                  print!("{}", Black.on(Yellow).bold().paint(to_format));
                 },
                 "UNHIGHLIGHTED BLANK" => {
-                  print!("{: <140}", Black.on(White).paint(to_format));
+                  print!("{}", Black.on(White).paint(to_format));
                 },
                 "UNFOCUSED BLANK" => {
-                  print!("{: <140}", Black.on(RGB(160, 160, 160)).paint(to_format));
+                  print_unfocused_blank!("{}", to_format);
                 },
                 "BLANK" => {
                   print!("{}", Black.on(White).paint(to_format));
@@ -790,12 +813,19 @@ impl NoteTemplate {
                 _ => (),
               }
             }
+            for _ in 0..num_to_add {
+              print_on_bg!(" ");
+            }
           }
         }
       }
       print!("\n");
     }
     println_on_bg!("{:-^163}", "-");
+  }
+  pub fn get_content_indices(&self) -> Vec<(usize, usize)> {
+    let (_, formatting) = self.generate_display_content_string_with_blanks(None, None);
+    formatting.iter().map(|(_, u1, u2)| (*u1, *u2) ).collect::<Vec<(usize, usize)>>()
   }
   pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -808,6 +838,8 @@ impl NoteTemplate {
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
     for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+      let num_chars = cont.chars().count();
+      let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
       // f is Option<Vec<(String, usize, usize)>>
       let display_i = if i == prev_i {
         String::from("   ")
@@ -819,36 +851,39 @@ impl NoteTemplate {
       match f {
         None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
         Some(f_vec) => {
-          print!("{:-^20} |  ", display_i);
+          print_on_bg!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
-            print!("{}", Style::new().paint(&cont));
+            println_on_bg!("{}", &cont);
           } else {
             for (s, idx1, idx2) in f_vec {
               let to_format = &cont[idx1..idx2];
               match &s[..] {
                 "HIGHLIGHTED CONTENT" => {
-                  print!("{: <140}", Black.on(RGB(25, 225, 225)).italic().paint(to_format));
+                  print_highlighted_content!("{}", to_format);
                 },
                 "UNHIGHLIGHTED CONTENT" => {
-                  print!("{: <140}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(to_format));
+                  print_unhighlighted_content!("{}", to_format);
                 },
                 "CONTENT" => {
-                  print!("{: <140}", Style::new().on(Black).paint(to_format));
+                  print_on_bg!("{}", to_format);
                 },
                 "HIGHLIGHTED BLANK" => {
-                  print!("{: <140}", Black.on(Yellow).bold().paint(to_format));
+                  print!("{}", Black.on(Yellow).bold().paint(to_format));
                 },
                 "UNHIGHLIGHTED BLANK" => {
-                  print!("{: <140}", Black.on(White).paint(to_format));
+                  print!("{}", Black.on(White).paint(to_format));
                 },
                 "UNFOCUSED BLANK" => {
-                  print!("{: <140}", Black.on(RGB(160, 160, 160)).paint(to_format));
+                  print!("{}", Black.on(RGB(160, 160, 160)).paint(to_format));
                 },
                 "BLANK" => {
                   print!("{}", Black.on(White).paint(to_format));
                 },
                 _ => (),
               }
+            }
+            for _ in 0..num_to_add {
+              print_on_bg!(" ");
             }
           }
         }
