@@ -45,7 +45,7 @@ macro_rules! print_unhighlighted_content {
 }
 // print highlighted content
 pub fn print_highlighted_content(s: String) {
-  print!("{}", RGB(25, 225, 225).on(RGB(0, 0, 255)).paint(s));
+  print!("{}", Black.on(RGB(25, 225, 225)).paint(s));
 }
 macro_rules! print_highlighted_content {
     ($($arg:tt)*) => (print_highlighted_content(format!("{}", format_args!($($arg)*))));
@@ -359,7 +359,7 @@ impl NoteTemplate {
             content.push_str(&find_match_string.clone());
             match content_focus_id {
               Some(id) => {
-                let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
+                let sentence_indices = NoteTemplate::get_sentence_end_indices(0, find_match_string.clone());
                 let last_tuple = sentence_indices[sentence_indices.len()-1].clone();
                 for (idx1, idx2) in sentence_indices {
                   let mut idx2_updated = idx2+1;
@@ -375,7 +375,7 @@ impl NoteTemplate {
                 }
               },
               None => {
-                let sentence_indices = NoteTemplate::get_sentence_end_indices(content.chars().count(), find_match_string.clone());
+                let sentence_indices = NoteTemplate::get_sentence_end_indices(0, find_match_string.clone());
                 let last_tuple = sentence_indices[sentence_indices.len()-1];
                 for (idx1, idx2) in sentence_indices {
                   let mut idx2_updated = idx2+1;
@@ -474,15 +474,13 @@ impl NoteTemplate {
         None => {
           let display_content = String::from(&content_string[prev_end_idx..m.start()]);
 
-          let last_idx_before_adding = content.chars().count();
-
           let cidx1 = content.chars().count();
           content.push_str(&display_content);
           let cidx2 = content.chars().count();
 
           if cidx1 != cidx2 {
             let sentence_indices = NoteTemplate::get_sentence_end_indices(
-              last_idx_before_adding,
+              cidx1,
               format!("{}", &content_string[prev_end_idx..m.start()]),
             );
             for (idx1, idx2) in sentence_indices {
@@ -556,6 +554,12 @@ impl NoteTemplate {
     }
     RE_BLANK.find_iter(&self.content).map(|m| Blank::get_blank_from_str(&self.content[m.start()..m.end()]) ).collect::<Vec<Blank>>()
   }
+  pub fn num_blanks_before_idx(&self, idx: usize) -> usize {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+    }
+    RE_BLANK.find_iter(&self.content[..idx]).count()
+  }
   pub fn get_display_content_vec_from_string(display_content: String, color_formatting: Option<Vec<(String, usize, usize)>>) -> Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
@@ -570,17 +574,15 @@ impl NoteTemplate {
           match color_formatting.clone() {
             None => length_adjusted_vec.push((i, sentence.clone(), None)),
             Some(f) => {
-              let sentence_formatting: Vec<(String, usize, usize)> = if i == display_content_vec.len() - 1 {
-                f.iter()
+              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
                   .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx + 1) )
-                  .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx-1) )
-                  .collect()
-                } else {
-                f.iter()
-                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx) )
-                  .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
-                  .collect()
-              };
+                  .map(|(s, i1, i2)| if i == display_content_vec.len() - 1 {
+                      (s.to_string(), i1-current_idx, i2-current_idx-1)
+                    } else {
+                      (s.to_string(), i1-current_idx, i2-current_idx)
+                    }
+                  )
+                  .collect();
               length_adjusted_vec.push((i, sentence.clone(), Some(sentence_formatting)));
             },
           }
@@ -768,7 +770,8 @@ impl NoteTemplate {
     println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
-    for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+    let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
+    for (i, cont, f) in display_content_vec {
       let num_chars = cont.chars().count();
       let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
       // f is Option<Vec<(String, usize, usize)>>
@@ -780,14 +783,96 @@ impl NoteTemplate {
       };
       prev_i = i;
       match f {
-        None => println_on_bg!("{:-^20} | {:-^140}", display_i, ANSIString::from(&cont)),
+        None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
         Some(f_vec) => {
           print_on_bg!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
             print_on_bg!("{: <140}", &cont);
           } else {
             for (s, idx1, idx2) in f_vec {
-              let to_format = &cont[idx1..idx2];
+              let to_format = if idx2 >= cont.len() {
+                &cont[idx1..]
+              } else {
+                &cont[idx1..idx2]
+              };
+              match &s[..] {
+                "HIGHLIGHTED CONTENT" => {
+                  print_highlighted_content!("{}", to_format);
+                },
+                "UNHIGHLIGHTED CONTENT" => {
+                  print_unhighlighted_content!("{}", to_format);
+                },
+                "CONTENT" => {
+                  print_on_bg!("{}", to_format);
+                },
+                "HIGHLIGHTED BLANK" => {
+                  print!("{}", Black.on(Yellow).bold().paint(to_format));
+                },
+                "UNHIGHLIGHTED BLANK" => {
+                  print!("{}", Black.on(White).paint(to_format));
+                },
+                "UNFOCUSED BLANK" => {
+                  print_unfocused_blank!("{}", to_format);
+                },
+                "BLANK" => {
+                  print!("{}", Black.on(White).paint(to_format));
+                },
+                _ => (),
+              }
+            }
+            for _ in 0..num_to_add {
+              print_on_bg!(" ");
+            }
+          }
+        }
+      }
+      print!("\n");
+    }
+    println_on_bg!("{:-^163}", "-");
+  }
+  pub fn display_content_unfinished(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^163}", "-");
+    let display_custom = if self.custom { "custom" } else { "default" };
+    let heading = if self.structure == CustomStructure {
+      String::from(" Current content for custom template ")
+    } else {
+      format!(" Current content for {} {} template ", display_custom, self.structure)
+    };
+    println_on_bg!("{:-^163}", heading);
+    println_on_bg!("{:-^163}", "-");
+    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
+    println_on_bg!("{:-^163}", "-");
+    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(None, None);
+    let mut prev_i = 100; // 0 is the actual index
+    let test = NoteTemplate::get_display_content_vec_from_string(display_content_string.clone(), Some(formatting.clone()));
+    println!("{:?}", test);
+    println!("{:?}", formatting.clone());
+    let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
+    for (i, cont, f) in display_content_vec {
+      let num_chars = cont.chars().count();
+      let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
+      // f is Option<Vec<(String, usize, usize)>>
+      let display_i = if i == prev_i {
+        String::from("   ")
+      } else {
+        let display_i = i + 1;
+        format!(" {} ", display_i)
+      };
+      prev_i = i;
+      match f {
+        None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
+        Some(f_vec) => {
+          print_on_bg!("{:-^20} |  ", display_i);
+          if f_vec.len() == 0 {
+            print_on_bg!("{: <140}", &cont);
+          } else {
+            for (s, idx1, idx2) in f_vec {
+              let to_format = if idx2 >= cont.len() {
+                &cont[idx1..]
+              } else {
+                &cont[idx1..idx2]
+              };
               match &s[..] {
                 "HIGHLIGHTED CONTENT" => {
                   print_highlighted_content!("{}", to_format);
@@ -837,7 +922,8 @@ impl NoteTemplate {
     println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
-    for (i, cont, f) in NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting)) {
+    let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
+    for (i, cont, f) in display_content_vec {
       let num_chars = cont.chars().count();
       let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
       // f is Option<Vec<(String, usize, usize)>>
@@ -853,10 +939,14 @@ impl NoteTemplate {
         Some(f_vec) => {
           print_on_bg!("{:-^20} |  ", display_i);
           if f_vec.len() == 0 {
-            println_on_bg!("{}", &cont);
+            print_on_bg!("{: <140}", &cont);
           } else {
             for (s, idx1, idx2) in f_vec {
-              let to_format = &cont[idx1..idx2];
+              let to_format = if idx2 >= cont.len() {
+                &cont[idx1..]
+              } else {
+                &cont[idx1..idx2]
+              };
               match &s[..] {
                 "HIGHLIGHTED CONTENT" => {
                   print_highlighted_content!("{}", to_format);

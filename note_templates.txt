@@ -1,4 +1,6 @@
 ##### note_templates #####
-1 | SNCD | , and also some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
-2 | Phone Call | A bunch of stuff happened today. Some good, some not so good. For example, here is some this that (---ed---) I have to write some stuff about. Lame, right? | 1 | 
+3 | Assessment | Here is a sentence. Here is another (---pc1---) with a blank. | 1 | 
+1 | SNCD | Here is some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
+4 | Agenda Prep | Here is a sentence. Here is a sentence with (---ed---) in it. Another one. Another one. Here is another (---im---) | 1 | 
+2 | Referral | Here is a sentence. It's nice that I can have periods. Aha! But the problem comes with blanks. Like this: (---im---) and where will be the period. Aha--there is not even it showing up. Once a blank is added, we are missing the period at the end. (Meaning, end of the last sentence.) | 1 | 
 ##### note_templates #####

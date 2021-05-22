@@ -180,6 +180,13 @@ macro_rules! println_suc {
     ($fmt:expr) => (print_suc(concat!($fmt, "\n").to_string()));
     ($fmt:expr, $($arg:tt)*) => (print_suc!(concat!($fmt, "\n"), $($arg)*));
 }
+// print highlighted content
+pub fn print_highlighted_content(s: String) {
+  print!("{}", Black.on(RGB(25, 225, 225)).paint(s));
+}
+macro_rules! print_highlighted_content {
+    ($($arg:tt)*) => (print_highlighted_content(format!("{}", format_args!($($arg)*))));
+}
 fn display_blanks_empty() {
   print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
   println_on_bg!("{:-^83}", "-");
@@ -188,7 +195,7 @@ fn display_blanks_empty() {
   println_on_bg!("{:-^10} | {:-^70}", " ID ", " Type ");
   println_on_bg!("{:-^83}", "-");
   for (i, b) in Blank::iterator().enumerate() {
-    let display = format!("{:-^10} | {: <70}", &format!(" {} ", i), b.display_to_user_empty());
+    let display = format!("{:-^10} | {: <70}", &format!(" {} ", i+1), b.display_to_user_empty());
     println_on_bg!("{}", display);
   }
   println_on_bg!("{: <83}", "Choose blank type by ID.");
@@ -1025,8 +1032,10 @@ impl NoteArchive {
     let user = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println_inst!("Enter 'CANCEL' at any time to cancel.");
-        println_inst!("First name:");
+        print_inst!("{}", "Enter 'CANCEL' at any time to cancel.");
+        print!("\n");
+        print_inst!("First name:");
+        print!("\n");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
@@ -1885,8 +1894,10 @@ impl NoteArchive {
     let client = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println_inst!("Enter 'CANCEL' at any time to cancel.");
-        println_inst!("Enter client's first name.");
+        print_inst!("Enter 'CANCEL' at any time to cancel.");
+        print!("\n");
+        print_inst!("Enter client's first name.");
+        print!("\n");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
@@ -3019,8 +3030,10 @@ impl NoteArchive {
     let collateral = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
-        println_inst!("Enter 'CANCEL' at any time to cancel.");
-        println_inst!("Collateral's first name:");
+        print_inst!("Enter 'CANCEL' at any time to cancel.");
+        print!("\n");
+        print_inst!("Collateral's first name:");
+        print!("\n");
         let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
         match first_name_attempt {
           Ok(_) => break String::from(first_name_choice.trim()),
@@ -5066,7 +5079,8 @@ impl NoteArchive {
     let new_date = 'main: loop {
       let current_nd = self.current_note_day();
       self.display_note_day();
-      println_inst!("Enter 'CANCEL' at any time to cancel.");
+      print_inst!("Enter 'CANCEL' at any time to cancel.");
+      print!("/n");
       let mut today_choice = String::new();
       if today != current_nd.date {
         'today: loop {
@@ -5488,8 +5502,10 @@ impl NoteArchive {
   fn create_note_day_get_id(&mut self) -> Option<u32> {
     let note_day = loop {
       let mut today_choice = String::new();
-      println_inst!("Enter 'CANCEL' at any time to cancel.");
-      println_inst!("Note for today? (Y/N)");
+      print_inst!("Enter 'CANCEL' at any time to cancel.");
+      print!("\n");
+      print_inst!("Note for today? (Y/N)");
+      print!("\n");
       let today_attempt = io::stdin().read_line(&mut today_choice);
       match today_attempt {
         Ok(_) => (),
@@ -6093,8 +6109,10 @@ impl NoteArchive {
         "structure" | "s" => {
           let structure = loop {
             self.display_structure_types();
-            println_inst!("Choose a new structure for the selected note template from the menu.");
-            println_inst!("Enter 'CANCEL' at any time to cancel.");
+            print_inst!("Choose a new structure for the selected note template from the menu.");
+            print!("\n");
+            print_inst!("Enter 'CANCEL' at any time to cancel.");
+            print!("\n");
             let mut structure_choice = String::new();
             let structure_attempt = io::stdin().read_line(&mut structure_choice);
             match structure_attempt {
@@ -6162,7 +6180,36 @@ impl NoteArchive {
               },
               "append" | "add" | "a" => {
 
-              }
+                self.current_note_template().display_edit_content(None, None);
+                println_inst!("Enter new content to append to the template, including spaces.");
+                let mut new_section = String::new();
+                let new_section_choice = loop {
+                  let section_result = io::stdin().read_line(&mut new_section);
+                  break match section_result {
+                    Ok(_) => String::from(&new_section[..new_section.len()-2]),
+                    Err(e) => {
+                      println_err!("Failed to read line: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+                };
+
+                let c_content = self.current_note_template().content.clone();
+                let last_char = c_content.chars().last();
+                let new_content = match last_char {
+                  None => format!("{}{}", c_content, new_section_choice),
+                  Some(c) => {
+                    if String::from("?!.").contains(c) {
+                      format!("{}{}{}", c_content, " ", new_section_choice)
+                    } else {
+                      format!("{}{}", c_content, new_section_choice)
+                    }
+                  }
+                };
+                self.current_note_template_mut().content = new_content;
+                self.write_note_templates().unwrap()
+              },
               "edit" | "e" => {
                 self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
                 println_inst!("Enter new content to replace the selected text, including spaces.");
@@ -6170,7 +6217,7 @@ impl NoteArchive {
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
                   break match section_result {
-                    Ok(_) => new_section.trim().to_string(),
+                    Ok(_) => String::from(&new_section[..new_section.len()-2]),
                     Err(e) => {
                       println_err!("Failed to read line: {}", e);
                       thread::sleep(time::Duration::from_secs(2));
@@ -6231,16 +6278,17 @@ impl NoteArchive {
                 }
               },
               "insert" | "i" => { // in content choice
-                let mut content_focus_id: Option<u32> = Some(1);
+                let mut content_focus_id: Option<u32> = Some(0);
                 let blank_focus_id: Option<u32> = None;
-                loop {
+                'insert_content: loop {
 
                   self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+
                   println_inst!("Enter new content to insert.");
                   let mut entered_content = String::new();
                   let enter_result = io::stdin().read_line(&mut entered_content);
                   let chosen_text = match enter_result {
-                    Ok(_) => entered_content,
+                    Ok(_) => String::from(&entered_content[..entered_content.len()-2]),
                     Err(e) => {
                       println_err!("Failed to read string: {}", e);
                       thread::sleep(time::Duration::from_secs(2));
@@ -6248,11 +6296,6 @@ impl NoteArchive {
                     }
                   };
 
-                  // get_content_indices gets all indices, including blanks
-                  // also look at get_typed_content_indices calls in note.rs and get_num_content_sections
-
-
-                  
                   let content_indices = self.current_note_template().get_content_indices();
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");
@@ -6269,7 +6312,7 @@ impl NoteArchive {
                   let insert = insert_choice.trim();
                   match &insert[..] {
                     "CANCEL" | "cancel" | "C" | "c" => {
-                      break;
+                      break 'insert_content;
                     },
                     "" => {
                       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -6426,14 +6469,17 @@ impl NoteArchive {
 
                               let current_content = self.current_note_template().content.clone();
 
-                              match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                              match &confirm.to_ascii_lowercase()[..] {
+                                "yes" | "y" => {
                                   self.current_note_template_mut().content = new_content;
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_content;
                                 },
-                                "NO" | "no" | "No" | "N" | "n" => {
+                                "no" | "n" => {
                                   continue 'insert_location_content;
+                                },
+                                "cancel" | "c" => {
+                                  break 'insert_content;
                                 },
                                 _ => {
                                   println_err!("Invalid command.");
@@ -6466,7 +6512,17 @@ impl NoteArchive {
                                 &display_string[current_location..]
                               );
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
-                              println_inst!("{}", &new_content);
+                              print_on_bg!("{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0,
+                              );
+                              print_highlighted_content!("{}",
+                                &chosen_text,
+                              );
+                              print_on_bg!("{}{}\n",
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -6748,9 +6804,10 @@ impl NoteArchive {
                   Some(nb) => Blank::vector_of_variants()[nb],
                   None => continue,
                 };
-                loop {
-                  let typed_content_indices = self.current_note_template().get_content_indices();
-                  self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
+                'insert_loop: loop {
+                  let current_note_template = self.current_note_template();
+                  let typed_content_indices = current_note_template.get_content_indices();
+                  current_note_template.display_edit_content(blank_focus_id, content_focus_id);
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");
                   let mut insert_choice = String::new();
@@ -6768,15 +6825,16 @@ impl NoteArchive {
                       break;
                     },
                     "" => {
-                      let mut new_blanks = self.current_note_template().get_ordered_blanks();
-                      new_blanks.insert(content_focus_id.unwrap() as usize - 1, new_blank.clone());
+                      let mut new_blanks = current_note_template.get_ordered_blanks();
+                      let indices = typed_content_indices[content_focus_id.unwrap() as usize - 1];
+                      let idx1 = indices.0 as usize;
+                      let idx2 = indices.1 as usize;
+                      let display_string = format!("{}", &current_note_template.generate_display_content_string()[idx1..idx2]);
+                      let num_blanks_before_idx = current_note_template.num_blanks_before_idx(idx1);
+                      new_blanks.insert(num_blanks_before_idx, new_blank.clone());
                       let mut current_location = 1;
                       'insert_location_blanks: loop {
                         print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                        let indices = typed_content_indices[content_focus_id.unwrap() as usize - 1];
-                        let idx1 = indices.0 as usize;
-                        let idx2 = indices.1 as usize;
-                        let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
                         let num_chars = display_string.chars().count();
                         if num_chars <= 163 {
                           println_on_bg!("{}", &display_string);
@@ -6837,7 +6895,7 @@ impl NoteArchive {
                           // integer to change current location
                           // ENTER to insert it there, then show what it will look like and confirm
                           "cancel" => {
-                            break 'insert_location_blanks;
+                            break 'insert_loop;
                           }
                           "" => {
                             loop {
@@ -6854,13 +6912,6 @@ impl NoteArchive {
                               };
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
-                              let new_display_content = format!(
-                                "{}{}{}{}{}",
-                                &display_string[..current_location],
-                                &bfrs.0, &new_blank.display_to_user_empty()[..],
-                                &bfrs.1,
-                                &display_string[current_location..]
-                              );
                               let new_content = format!(
                                 "{}{}{}{}{}",
                                 &display_string[..current_location],
@@ -6870,7 +6921,17 @@ impl NoteArchive {
                                 &display_string[current_location..]
                               );
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
-                              println_inst!("{}", &new_display_content);
+                              print_inst!("{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0,
+                              );
+                              print_highlighted_content!("{}",
+                                &new_blank.display_to_user_empty()[..],
+                              );
+                              print_inst!("{}{}\n",
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -6885,8 +6946,8 @@ impl NoteArchive {
 
                               let current_content = self.current_note_template().content.clone();
 
-                              match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                              match &confirm.to_ascii_lowercase()[..] {
+                                "yes" | "y" => {
                                   let mut edited_content = format!(
                                     "{}{}{}",
                                     &current_content[..idx1],
@@ -6907,8 +6968,11 @@ impl NoteArchive {
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_blanks;
                                 },
-                                "NO" | "no" | "No" | "N" | "n" => {
+                                "no" | "n" => {
                                   continue 'insert_location_blanks;
+                                },
+                                "cancel" | "c" => {
+                                  break 'insert_loop;
                                 },
                                 _ => {
                                   println_err!("Invalid command.");
@@ -7068,8 +7132,6 @@ impl NoteArchive {
                           }
                         }
                       }
-
-
                     },
                     _ => {
                       match insert.parse::<u32>() {
@@ -7080,11 +7142,12 @@ impl NoteArchive {
                         },
                         Ok(num) => {
                           if num as usize > typed_content_indices.len() || num as usize == 0 {
-                            println_err!("Please choose from among the displayed content indices: {}.", typed_content_indices.len());
+                            println_err!("Please choose from among the displayed content indices.");
                             thread::sleep(time::Duration::from_secs(2));
                             continue;
                           } else {
                             content_focus_id = Some(num);
+                            continue;
                           }
                         },
                       }
@@ -7366,8 +7429,10 @@ impl NoteArchive {
     let note_template = loop {
       let structure = loop {
         self.display_structure_types();
-        println_inst!("Enter 'CANCEL' at any time to cancel.");
-        println_inst!("Build a template for what kind of record?");
+        print_inst!("Enter 'CANCEL' at any time to cancel.");
+        print!("\n");
+        print_inst!("Build a template for what kind of record?");
+        print!("\n");
         let mut structure_choice = String::new();
         let structure_attempt = io::stdin().read_line(&mut structure_choice);
         match structure_attempt {
@@ -7402,12 +7467,21 @@ impl NoteArchive {
       };
       let mut content = String::new();
       let mut display_content = String::new();
+      let mut nt = NoteTemplate::new(0, structure.clone(), true, String::new(), None);
       loop {
-        let display_content_vec_color_opt = NoteTemplate::get_display_content_vec_from_string(display_content.clone(), None);
-        let display_content_vec: Vec<(usize, String)> = display_content_vec_color_opt.iter().map(|(e1, e2, _)| (*e1, e2.clone()) ).collect();
-        NoteTemplate::display_content_from_vec(display_content_vec, &structure);
+        nt.content = content.clone();
+        nt.display_content_unfinished();
+        // let display_content_vec_color_opt = NoteTemplate::get_display_content_vec_from_string(display_content.clone(), None);
+        // let display_content_vec: Vec<(usize, String)> = display_content_vec_color_opt.iter().map(|(e1, e2, _)| (*e1, e2.clone()) ).collect();
+        // NoteTemplate::display_content_from_vec(display_content_vec, &structure);
         println_inst!("Enter text to add text to the template, or choose from among the following options:");
-        println_inst!("{} | {} | {} | {}", "TEXT / T: add custom text", "BLANK / B: add custom blank", "SAVE / S: finish and save template", "BACK: Delete last sentence");
+        println_inst!(
+          "{} | {} | {} | {}",
+          "TEXT / T: add custom text",
+          "BLANK / B: add custom blank",
+          "SAVE / S: finish and save template",
+          "BACK: Delete last sentence"
+        );
         let mut custom_choice = String::new();
         let custom_attempt = io::stdin().read_line(&mut custom_choice);
         let custom_choice = match custom_attempt {
@@ -10882,7 +10956,7 @@ mod tests {
   }
   #[test]
   fn note_template_displays_properly_with_no_focus_id() {
-        let nt4 = NoteTemplate::new(
+    let nt4 = NoteTemplate::new(
       4,
       Sncd,
       true,
@@ -10950,4 +11024,77 @@ mod tests {
 
     assert_eq!(display_vecs, nt_output_vecs);
   }
+  // #[test]
+  // fn note_template_good_last_sentence() {
+  //   let nt1 = NoteTemplate::new(
+  //     1,
+  //     Sncd,
+  //     true,
+  //     format!(
+  //       "Here is a sentence with {}",
+  //       ExternalDocument,
+  //     ),
+  //     None
+  //   );
+
+  //   let nt2 = NoteTemplate::new(
+  //     2,
+  //     Sncd,
+  //     true,
+  //     format!(
+  //       "Here is a sentence with {} a blank.",
+  //       ExternalDocument,
+  //     ),
+  //     None
+  //   );
+
+  //   let l1 = String::from("Here is a sentence with ").chars().count();
+  //   let l2 = ExternalDocument.display_to_user().chars().count();
+  //   let l3 = String::from(" a blank.").chars().count();
+
+  //   let (d1, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None);
+  //   let (d2, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None);
+
+  //   let formatting1: Vec<(String, usize, usize)> = vec![
+  //     (String::from("CONTENT"), 0, l1),
+  //     (String::from("BLANK"), l1, l1+l2),
+  //     ];
+      
+  //   let mut formatting2 = formatting1.clone();
+  //   formatting2.push(
+  //     (String::from("CONTENT"), l1+l2, l1+l2+l3),
+  //   );
+    
+  //   assert_eq!(formatting1, formatting_vector1);
+  //   assert_eq!(formatting2, formatting_vector2);
+    
+  //   let f1 = NoteTemplate::get_display_content_vec_from_string(d1, Some(formatting_vector1));
+  //   let f2 = NoteTemplate::get_display_content_vec_from_string(d2, Some(formatting_vector2));
+    
+  //   let test1: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
+  //     (
+  //       0,
+  //       format!("Here is a sentence with {}", ExternalDocument.display_to_user()),
+  //       Some(vec![
+  //         (String::from("CONTENT"), 0, l1),
+  //         (String::from("BLANK"), l1, l1+l2),
+  //       ])
+  //     ),
+  //   ];
+  //   let test2: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
+  //     (
+  //       0,
+  //       format!("Here is a sentence with {} a blank.", ExternalDocument.display_to_user()),
+  //       Some(vec![
+  //         (String::from("CONTENT"), 0, l1),
+  //         (String::from("BLANK"), l1, l1+l2),
+  //         (String::from("CONTENT"), l1+l2, l1+l2+l3),
+  //       ])
+  //     ),
+  //   ];
+
+  //   assert_eq!(test1, f1);
+  //   assert_eq!(test2, f2);
+
+  // }
 }
