@@ -574,16 +574,36 @@ impl NoteTemplate {
           match color_formatting.clone() {
             None => length_adjusted_vec.push((i, sentence.clone(), None)),
             Some(f) => {
-              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                  .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx + 1) )
-                  .map(|(s, i1, i2)| if i == display_content_vec.len() - 1 {
-                      (s.to_string(), i1-current_idx, i2-current_idx-1)
-                    } else {
-                      (s.to_string(), i1-current_idx, i2-current_idx)
-                    }
+              let sf1: Vec<(String, usize, usize)> = f.iter()
+                .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx + 1) )
+                .map(|x| x.clone() )
+                .collect();
+              
+              let sf2 =  if i == display_content_vec.len() - 1 {
+                sf1.iter()
+                  .map(|(s, i1, i2)|
+
+
+
+                  // need to find a way to differentiate between the ones that end in a period and those that do not
+                  // actually maybe I had it and just needed to switch the conditions
+                  // to do
+                  // test
+                  // if errors, change to not -1 and test
+                  // add condition to check the last char and last 2 chars and check both ways
+                  // make sure last 2 chars is matching backwards for " ." if it needs to
+                  // if that doesn't work, check other methods
+                  
+                    (s.to_string(), i1-current_idx, i2-current_idx-1)
+
                   )
-                  .collect();
-              length_adjusted_vec.push((i, sentence.clone(), Some(sentence_formatting)));
+                  .collect::<Vec<(String, usize, usize)>>()
+              } else {
+                sf1.clone()
+              };
+
+
+              length_adjusted_vec.push((i, sentence.clone(), Some(sf2)));
             },
           }
           current_idx += sentence.chars().count();
