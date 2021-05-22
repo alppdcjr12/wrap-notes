@@ -576,26 +576,24 @@ impl NoteTemplate {
             Some(f) => {
               let sf1: Vec<(String, usize, usize)> = f.iter()
                 .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx + 1) )
-                .map(|x| x.clone() )
+                .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                 .collect();
+
+              let last_chars = sentence.clone().chars().rev().take(2).map(|c| c.to_string() ).collect::<Vec<String>>().join("");
+
+              let only_one = sf1.len() == 1;
               
-              let sf2 =  if i == display_content_vec.len() - 1 {
+              let sf2 = if i == display_content_vec.len() - 1 {
                 sf1.iter()
-                  .map(|(s, i1, i2)|
-
-
-
-                  // need to find a way to differentiate between the ones that end in a period and those that do not
-                  // actually maybe I had it and just needed to switch the conditions
-                  // to do
-                  // test
-                  // if errors, change to not -1 and test
-                  // add condition to check the last char and last 2 chars and check both ways
-                  // make sure last 2 chars is matching backwards for " ." if it needs to
-                  // if that doesn't work, check other methods
-                  
-                    (s.to_string(), i1-current_idx, i2-current_idx-1)
-
+                  .map(|(s, i1, i2)| if i == display_content_vec.len() - 1 {
+                      if &sentence[i2-1..] == ". " || only_one {
+                        (s.to_string(), *i1, i2-1)
+                      } else {
+                        (s.to_string(), *i1, *i2)
+                      }
+                    } else {
+                      (s.to_string(), *i1, *i2)
+                    }
                   )
                   .collect::<Vec<(String, usize, usize)>>()
               } else {
