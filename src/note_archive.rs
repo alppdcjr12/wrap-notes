@@ -1145,6 +1145,10 @@ impl NoteArchive {
     role: EmployeeRole,
     pronouns: u32,
   ) -> Result<User, String> {
+    if first_name.contains(" | ") || last_name.contains(" | ") {
+      return Err(String::from("Name cannot contain ' | '."));
+    }
+    
     let id: u32 = self.users.len() as u32 + 1;
 
     match self.user_dup_id_option(&first_name, &last_name, &role) {
@@ -2131,8 +2135,12 @@ impl NoteArchive {
     dob: NaiveDate,
     pronouns: u32,
   ) -> Result<Client, HashMap<String, u32>> {
+    if first_name.contains(" | ") || last_name.contains(" | ") {
+      return Err([(String::from("invalid character string: ' | ' "), 0)].iter().cloned().collect::<HashMap<String, u32>>());
+    }
+    
     let id: u32 = self.clients.len() as u32 + 1;
-
+    
     match self.client_dup_id_option(&first_name, &last_name, &dob ) {
       Some(dup_id) => Err([(String::from("duplicate"), dup_id)].iter().cloned().collect::<HashMap<String, u32>>()),
       None => Ok(Client::new(id, first_name, last_name, dob, pronouns, vec![]))
@@ -3318,6 +3326,20 @@ impl NoteArchive {
     support_type: SupportType,
     indirect_support: bool,
   ) -> Result<Collateral, HashMap<String, u32>> {
+
+    if first_name.contains(" | ") || last_name.contains(" | ") || title.contains(" | ") {
+      return Err([(String::from("invalid character string: ' | ' "), 0)].iter().cloned().collect::<HashMap<String, u32>>());
+    }
+    
+    match institution.clone() {
+      None => (),
+      Some(s) => {
+        if s.contains(" | ") {
+          return Err([(String::from("invalid character string: ' | ' "), 0)].iter().cloned().collect::<HashMap<String, u32>>());
+        }
+      }
+    }
+
     let id: u32 = self.collaterals.len() as u32 + 1;
 
     match self.collateral_dup_id_option(&first_name, &last_name, &title, &institution) {
@@ -4495,6 +4517,11 @@ impl NoteArchive {
     possessive_determiner: String,
     possessive: String,
   ) -> Result<Pronouns, String> {
+
+    if subject.contains(" | ") || object.contains(" | ") || possessive_determiner.contains(" | ") || possessive.contains(" | ") {
+      return Err(String::from("Name cannot contain ' | '."));
+    }
+
     let id: u32 = self.pronouns.len() as u32 + 1;
 
     let new_pronouns = Pronouns::new(
@@ -5843,7 +5870,15 @@ impl NoteArchive {
   fn delete_current_note_day(&mut self) {
     let id = self.foreign_key.get("current_note_day_id").unwrap();
     self.note_days.retain(|nd| nd.id != *id);
+    self.reindex_note_days();
     self.foreign_key.remove("current_note_day_id");
+  }
+  fn reindex_note_days(&mut self) {
+    let mut i: u32 = 1;
+    for mut nd in &mut self.note_days {
+      nd.id = i;
+      i += 1;
+    }
   }
   fn get_note_day_option_by_id(&self, id: u32) -> Option<&NoteDay> {
     self.note_days.iter().find(|nd| nd.id == id)
@@ -6200,7 +6235,7 @@ impl NoteArchive {
                 let new_content = match last_char {
                   None => format!("{}{}", c_content, new_section_choice),
                   Some(c) => {
-                    if String::from("?!.").contains(c) {
+                    if String::from("?!.").contains(c) && new_section_choice.chars().next() != Some(' ') {
                       format!("{}{}{}", c_content, " ", new_section_choice)
                     } else {
                       format!("{}{}", c_content, new_section_choice)
@@ -6300,16 +6335,25 @@ impl NoteArchive {
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");
 
-                  let mut insert_choice = String::new();
-                  let insert_attempt = io::stdin().read_line(&mut insert_choice);
-                  match insert_attempt {
-                    Ok(_) => (),
-                    Err(e) => {
-                      println_err!("Invalid input: {}", e);
-                      continue;
+                  let insert = loop {
+                    let mut insert_choice = String::new();
+                    let insert_attempt = io::stdin().read_line(&mut insert_choice);
+                    match insert_attempt {
+                      Ok(_) => (),
+                      Err(e) => {
+                        println_err!("Invalid input: {}", e);
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue 'insert_content;
+                      }
                     }
-                  }
-                  let insert = insert_choice.trim();
+                    let insert = insert_choice.trim();
+                    if content_focus_id.unwrap() == 0 {
+                      if &insert[..] == "" {
+                        continue;
+                      }
+                    }
+                    break insert.to_string();
+                  };
                   match &insert[..] {
                     "CANCEL" | "cancel" | "C" | "c" => {
                       break 'insert_content;
@@ -6321,7 +6365,7 @@ impl NoteArchive {
                         let indices = content_indices[content_focus_id.unwrap() as usize + 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
-                        let display_string = format!("{}", &self.current_note_template().generate_display_content_string()[idx1..idx2]);
+                        let display_string = format!("{}", self.current_note_template().content[idx1..idx2].to_string());
                         let num_chars = display_string.chars().count();
                         if num_chars <= 163 {
                           println_on_bg!("{}", &display_string);
@@ -6829,7 +6873,7 @@ impl NoteArchive {
                       let indices = typed_content_indices[content_focus_id.unwrap() as usize - 1];
                       let idx1 = indices.0 as usize;
                       let idx2 = indices.1 as usize;
-                      let display_string = format!("{}", &current_note_template.generate_display_content_string()[idx1..idx2]);
+                      let display_string = current_note_template.content[idx1..idx2].to_string();
                       let num_blanks_before_idx = current_note_template.num_blanks_before_idx(idx1);
                       new_blanks.insert(num_blanks_before_idx, new_blank.clone());
                       let mut current_location = 1;
@@ -6852,7 +6896,7 @@ impl NoteArchive {
                             (num_chars / 163) + 1
                           };
 
-                          let mut display_content = self.current_note_template().generate_display_content_string().clone();
+                          let mut display_content = self.current_note_template().content[idx1..idx2].to_string();
                           while display_content.chars().count() > 163 {
                             let (p1, p2) = display_content.split_at(163);
                             let mut pointer_string = String::new();
@@ -6879,7 +6923,7 @@ impl NoteArchive {
                         }
                         println_inst!("Enter an integer to navigate to a point at which to insert the new blank.");
                         println_inst!("Press ENTER to insert the selected blank type in the current location.");
-                        println_inst!("CANCEL / C: Cancel inserting blank");
+                        println_inst!("CANCEL: Cancel inserting blank");
 
                         let mut insert_string = String::new();
                         let insert_attempt = io::stdin().read_line(&mut insert_string);
@@ -6966,7 +7010,7 @@ impl NoteArchive {
 
                                   self.current_note_template_mut().content = edited_content;
                                   self.write_note_templates().unwrap();
-                                  break 'insert_location_blanks;
+                                  break 'insert_loop;
                                 },
                                 "no" | "n" => {
                                   continue 'insert_location_blanks;
@@ -7781,6 +7825,30 @@ impl NoteArchive {
     content: String,
     user_id: u32,
   ) -> Result<NoteTemplate, (NoteTemplate, String)> {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+    }
+    let matches = RE_BLANK.find_iter(&content);
+    let mut changed_content = content.clone();
+    for m in matches {
+      for idx in m.start()..m.end() {
+        changed_content = format!(
+          "{}{}{}",
+          &changed_content[..idx],
+          "X",
+          &changed_content[idx+1..]
+        );
+      }
+    }
+    if changed_content.contains(" | ") || changed_content.contains("(---") || changed_content.contains("---)") {
+      return Err(
+        (
+          NoteTemplate::new(0, structure, true, content, Some(user_id)),
+          String::from("The following strings are not allowed: ' | ', '(---', and '---)'. ")
+        )
+      );
+    }
+    
     let id: u32 = self.note_templates.len() as u32;
 
     match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
@@ -7903,6 +7971,7 @@ impl NoteArchive {
       }
     );
     nonduplicates.sort_by(|a, b| a.structure.cmp(&b.structure));
+    nonduplicates.sort_by(|a, b| a.custom.cmp(&b.custom));
     Ok(nonduplicates)
   }
   pub fn write_note_templates(&self) -> std::io::Result<()> {
@@ -7981,7 +8050,15 @@ impl NoteArchive {
   fn delete_current_note_template(&mut self) {
     let id = self.foreign_key.get("current_note_template_id").unwrap();
     self.note_templates.retain(|nd| nd.id != *id);
+    self.reindex_note_templates();
     self.foreign_key.remove("current_note_template_id");
+  }
+  fn reindex_note_templates(&mut self) {
+    let mut i: u32 = 1;
+    for mut nt in &mut self.note_templates {
+      nt.id = i;
+      i += 1;
+    }
   }
   fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nt| nt.id == id)
@@ -9869,14 +9946,14 @@ impl NoteArchive {
 
       let content = values[3].clone();
 
-      let blanks_strings: Vec<String> = values[4].split('#').map(|s| s.to_string() ).collect();
+      let blanks_strings: Vec<String> = values[4].split("/#/").map(|s| s.to_string() ).collect();
       let mut blanks: HashMap<u32, (Blank, String, Vec<u32>)> = HashMap::new();
 
         // pub blanks: HashMap<u32, (Blank, String, Vec<u32>)> 
 
       for b_string in blanks_strings {
         if b_string != String::from("") {
-          let blank_values: Vec<String> = b_string.split('%').map(|st| st.to_string() ).collect();
+          let blank_values: Vec<String> = b_string.split("/%/").map(|st| st.to_string() ).collect();
   
           let blank_position: u32 = blank_values[0].parse().unwrap();
           let blank = Blank::get_blank_from_str(&blank_values[1]);
@@ -9982,8 +10059,16 @@ impl NoteArchive {
   fn delete_current_note(&mut self) {
     let id = self.foreign_key.get("current_note_id").unwrap();
     self.notes.retain(|n| n.id != *id);
+    self.reindex_notes();
     self.foreign_key.remove("current_note_id");
     self.write_notes().unwrap();
+  }
+  fn reindex_notes(&mut self) {
+    let mut i: u32 = 1;
+    for mut n in &mut self.notes {
+      n.id = i;
+      i += 1;
+    }
   }
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
     self.notes.iter().find(|n| n.id == id)

@@ -1,7 +1,4 @@
 ##### note_templates #####
-3 | Assessment | Here is a sentence. Here is another (---pc1---) with a blank. | 1 | 
-1 | SNCD | Here is some information. Here is another sentence with a blank ( (---allco---) ) in it. And here is another one with several blanks, including (---u---) , (---pb3@2@---) , and (---td---). | 1 | 
-4 | Agenda Prep | Here is a sentence. Here is a sentence with (---ed---) in it. Another one. Another one. Here is another (---im---) | 1 | 
-2 | Referral | Here is a sentence. It's nice that I can have periods. Aha! But the problem comes with blanks. Like this: (---im---) and where will be the period. Aha--there is not even it showing up. Once a blank is added, we are missing the period at the end. (Meaning, end of the last sentence.) | 1 | 
-5 | Assessment | Sentence. Sentence (---ndd---) with words. | 1 | 
+1 | Assessment | Sentence. Sentence (---ndd---) with words. Here is a new sentence, bro. | 1 | 
+2 | Agenda Prep | Here is some (---ndd---) test. Here is another sentence. | 1 | 
 ##### note_templates #####

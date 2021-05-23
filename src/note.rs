@@ -380,7 +380,7 @@ impl NoteTemplate {
                 for (idx1, idx2) in sentence_indices {
                   let mut idx2_updated = idx2+1;
                   if idx1 == last_tuple.0 && idx2 == last_tuple.1 {
-                    idx2_updated += 1;
+                    idx2_updated += 2;
                   }
                   format_vec.push((String::from("CONTENT"), idx1, idx2_updated));
                 }
@@ -436,7 +436,7 @@ impl NoteTemplate {
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
                     let num_to_add = match &end_string[end_string.len()-1..] {
-                      "." => 1,
+                      "." => 2,
                       _ => {
                         if (idx1, idx2) == last_tuple {
                           2
@@ -863,9 +863,6 @@ impl NoteTemplate {
     println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(None, None);
     let mut prev_i = 100; // 0 is the actual index
-    let test = NoteTemplate::get_display_content_vec_from_string(display_content_string.clone(), Some(formatting.clone()));
-    println!("{:?}", test);
-    println!("{:?}", formatting.clone());
     let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
     for (i, cont, f) in display_content_vec {
       let num_chars = cont.chars().count();
@@ -1011,12 +1008,63 @@ impl PartialEq for NoteTemplate {
 
 impl fmt::Display for NoteTemplate {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+      static ref RE_PIPE: Regex = Regex::new(r#" \| "#).unwrap();
+      static ref RE_L: Regex = Regex::new(r#"\(---"#).unwrap();
+      static ref RE_R: Regex = Regex::new(r#"---\)"#).unwrap();
+    }
+    let find_match_string = self.content.clone();
+    let matches = RE_BLANK.find_iter(&find_match_string);
+    
+    let mut changed_content = self.content.clone();
+    for m in matches {
+      let mut replacement = String::new();
+      for i in m.start()..m.end() {
+        replacement.push_str("X");
+      }
+      changed_content = format!(
+        "{}{}{}",
+        &changed_content[..m.start()],
+        &replacement,
+        &changed_content[m.end()..]
+      );
+    }
+    let match_pipe = RE_PIPE.find_iter(&changed_content);
+    let match_l = RE_L.find_iter(&changed_content);
+    let match_r = RE_R.find_iter(&changed_content);
+    
+    let mut content = self.content.clone();
+    for m in match_pipe {
+      content = format!(
+        "{}{}{}",
+        &content[..m.start()],
+        " / ",
+        &content[m.end()..]
+      );
+    }
+    for m in match_l {
+      content = format!(
+        "{}{}{}",
+        &content[..m.start()],
+        "(-- ",
+        &content[m.end()..]
+      );
+    }
+    for m in match_r {
+      content = format!(
+        "{}{}{}",
+        &content[..m.start()],
+        " --)",
+        &content[m.end()..]
+      );
+    }
     write!(
       f,
       "{} | {} | {} | {} | {}\n",
       &self.id,
       &self.structure,
-      &self.content,
+      &content,
       &self.foreign_key["user_id"],
       &self.foreign_keys["note_ids"]
         .iter()
@@ -1377,23 +1425,77 @@ impl fmt::Display for Note {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let mut formatted_blanks = vec![];
     for (order, blanks_tup) in &self.blanks {
+      let mut b_string = blanks_tup.1.replace("/#/", "#");
+      b_string = b_string.replace("/%/", "%");
       let blanks_string = format!(
-        "{}%{}%{}%{}",
+        "{}/%/{}/%/{}/%/{}",
         order,
         blanks_tup.0,
-        blanks_tup.1,
+        &b_string,
         blanks_tup.2.iter().map(|id| id.to_string() ).collect::<Vec<String>>().join("-")
       );
       formatted_blanks.push(blanks_string);
     }
-    let blanks_str: String = formatted_blanks.join("#");
+    let blanks_str: String = formatted_blanks.join("/#/");
+
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+      static ref RE_PIPE: Regex = Regex::new(r#" \| "#).unwrap();
+      static ref RE_L: Regex = Regex::new(r#"\(---"#).unwrap();
+      static ref RE_R: Regex = Regex::new(r#"---\)"#).unwrap();
+    }
+    let find_match_string = self.content.clone();
+    let matches = RE_BLANK.find_iter(&find_match_string);
+    
+    let mut changed_content = self.content.clone();
+    for m in matches {
+      let mut replacement = String::new();
+      for i in m.start()..m.end() {
+        replacement.push_str("X");
+      }
+      changed_content = format!(
+        "{}{}{}",
+        &changed_content[..m.start()],
+        &replacement,
+        &changed_content[m.end()..]
+      );
+    }
+    let match_pipe = RE_PIPE.find_iter(&changed_content);
+    let match_l = RE_L.find_iter(&changed_content);
+    let match_r = RE_R.find_iter(&changed_content);
+    
+    let mut content = self.content.clone();
+    for m in match_pipe {
+      content = format!(
+        "{}{}{}",
+        &content[..m.start()],
+        " / ",
+        &content[m.end()..]
+      );
+    }
+    for m in match_l {
+      content = format!(
+        "{}{}{}",
+        &content[..m.start()],
+        "(-- ",
+        &content[m.end()..]
+      );
+    }
+    for m in match_r {
+      content = format!(
+        "{}{}{}",
+        &content[..m.start()],
+        " --)",
+        &content[m.end()..]
+      );
+    }
     write!(
       f,
       "{} | {} | {} | {} | {} | {} | {}\n",
       &self.id,
       &self.category,
       &self.structure,
-      &self.content,
+      &content,
       blanks_str,
       &self.foreign_key["user_id"],
       &self

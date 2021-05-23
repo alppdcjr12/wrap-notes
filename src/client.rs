@@ -85,12 +85,14 @@ impl Client {
 
 impl fmt::Display for Client {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let first_name = self.first_name.replace(" | ", " / ");
+    let last_name = self.last_name.replace(" | ", " / ");
     write!(
       f,
       "{} | {} | {} | {}-{}-{} | {} | {}\n",
       &self.id,
-      &self.first_name[..],
-      &self.last_name[..],
+      &first_name[..],
+      &last_name[..],
       &self.dob.year(),
       &self.dob.month(),
       &self.dob.day(),
