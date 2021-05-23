@@ -5390,10 +5390,11 @@ impl NoteArchive {
       };
 
       let words: Vec<&str> = n.content.split(" ").collect();
-      let sample = if n.generate_display_content_string().len() > 75 {
-        format!("{}{}", String::from(&n.generate_display_content_string()[..75]), String::from("..."))
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None);
+      let sample = if s.len() > 75 {
+        format!("{}{}", String::from(&s[..73]), String::from("..."))
       } else {
-        n.generate_display_content_string()
+        s
       };
 
       let cat = match n.category {
@@ -7533,10 +7534,7 @@ impl NoteArchive {
       loop {
         nt.content = content.clone();
         nt.clean_spacing();
-        nt.display_content_unfinished();
-        // let display_content_vec_color_opt = NoteTemplate::get_display_content_vec_from_string(display_content.clone(), None);
-        // let display_content_vec: Vec<(usize, String)> = display_content_vec_color_opt.iter().map(|(e1, e2, _)| (*e1, e2.clone()) ).collect();
-        // NoteTemplate::display_content_from_vec(display_content_vec, &structure);
+        nt.display_content(None, None);
         println_inst!("Enter text to add text to the template, or choose from among the following options:");
         println_inst!(
           "{} | {} | {} | {}",
@@ -8120,69 +8118,6 @@ impl NoteArchive {
   fn get_note_template_by_note_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &id) )
   }
-  fn display_note_sentences(&self) {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^163}", "-");
-
-    let n = self.current_note();
-    let nd = self.get_note_day_by_note_id(n.id).unwrap();
-    let c = self.get_client_by_note_day_id(nd.id).unwrap();
-    let nt = self.get_note_template_by_note_id(n.id).unwrap();
-    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
-    println_on_bg!("{:-^163}", heading);
-    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
-    println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println_on_bg!("{:-^163}", "-");
-    let mut current_i = 0;
-    for (i, cont) in n.get_display_content_vec() {
-      let display_i = if i == current_i {
-        String::from("   ")
-      } else {
-        format!(" {} ", i)
-      };
-      let cont = format!(" {} ", cont);
-      println_on_bg!("{:-^20} | {:-^140}", display_i, cont);
-      current_i = i;
-    }
-    println_inst!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " CANCEL / C: Cancel");
-  }
-  fn display_note_sentences_and_blanks(&self, focus_id: Option<u32>) {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^163}", "-");
-
-    let n = self.current_note();
-    let nd = self.get_note_day_by_note_id(n.id).unwrap();
-    let c = self.get_client_by_note_day_id(nd.id).unwrap();
-    let nt = self.get_note_template_by_note_id(n.id).unwrap();
-    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
-    println_on_bg!("{:-^163}", heading);
-    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt.display_short(), n.category);
-    println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println_on_bg!("{:-^163}", "-");
-    let mut current_i = 0;
-    for (i, cont) in n.get_display_content_vec_and_blanks(focus_id) {
-      let display_i = if i == current_i {
-        String::from("   ")
-      } else {
-        format!(" {} ", i)
-      };
-      println_on_bg!("{:-^20} | {:-^140}", display_i, cont);
-      current_i = i;
-    }
-    println_inst!(
-      "| {} \n| {} \n| {} \n| {} \n| {} \n| {}",
-      "Press ENTER to add data to the currently selected blank (indicated by '[===|   |===]').",
-      "Enter ID of blank to skip directly to that blank.",
-      "SKIP / S: Skip to the next blank",
-      "DELETE / D: Delete data from current blank",
-      "CLEAR / C: Delete data from all blanks",
-      "QUIT / Q: Save progress and quit",
-    );
-  }
   fn display_note(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^163}", "-");
@@ -8207,19 +8142,6 @@ impl NoteArchive {
     println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt_string, n.category);
     println_on_bg!("{:-^163}", "-");
     n.display_content(None, None);
-  }
-  fn display_new_note(&self, n: &Note) {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    let nd = self.current_note_day();
-    let c = self.current_client();
-    println_on_bg!("{:-^163}", "-");
-    let heading = format!("{} - {} - {} {} note for {}", self.current_user().full_name(), n.category, nd.fmt_date(), n.structure, c.full_name());
-    println_on_bg!("{:-^163}", heading);
-    println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{:-^163}", " Content ");
-    println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{}", n.generate_display_content_string());
-    println_on_bg!("{:-^163}", "-");
   }
   fn load_note(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
@@ -8749,7 +8671,7 @@ impl NoteArchive {
 
       let choice = loop {
         let mut note_choice = String::new();
-        self.display_note_sentences_and_blanks(focus_id_option);
+        self.current_note().display_content(focus_id_option, None);
         let note_attempt = io::stdin().read_line(&mut note_choice);
         match note_attempt {
           Ok(_) => break note_choice.trim().to_ascii_lowercase(),
@@ -8873,7 +8795,7 @@ impl NoteArchive {
           return None;
         },
         "" => {
-          self.display_note_sentences_and_blanks(focus_id_option);
+          self.current_note().display_content(focus_id_option, None);
           if empty_blanks.len() == 0 {
             break;
           }
@@ -9633,11 +9555,9 @@ impl NoteArchive {
       }
     };
     
-    let mut n = loop {
-      match self.generate_note(ncat, CustomStructure, String::new()) {
-        Ok(nopt) => break nopt,
-        Err(e) => panic!("Failed to generate Note with custom structure and '{}' as note category: {}.", format!("{}", ncat), e),
-      }
+    let mut n = match self.generate_note(ncat, CustomStructure, String::new()) {
+      Ok(nopt) => nopt,
+      Err(e) => panic!("Failed to generate Note with custom structure and '{}' as note category: {}.", format!("{}", ncat), e),
     };
     
     // prepare current client collaterals to display for entering into Note
@@ -9662,7 +9582,7 @@ impl NoteArchive {
     // add blanks
     let mut current_blank = 1;
     loop {
-      self.display_new_note(&n);
+      n.display_content(None, None);
       println_on_bg!("{:-^163}", " Collaterals ");
       for c_row in col_rows.clone() {
         let val1: String = match c_row.get(0) {
@@ -11131,77 +11051,4 @@ mod tests {
 
     assert_eq!(display_vecs, nt_output_vecs);
   }
-  // #[test]
-  // fn note_template_good_last_sentence() {
-  //   let nt1 = NoteTemplate::new(
-  //     1,
-  //     Sncd,
-  //     true,
-  //     format!(
-  //       "Here is a sentence with {}",
-  //       ExternalDocument,
-  //     ),
-  //     None
-  //   );
-
-  //   let nt2 = NoteTemplate::new(
-  //     2,
-  //     Sncd,
-  //     true,
-  //     format!(
-  //       "Here is a sentence with {} a blank.",
-  //       ExternalDocument,
-  //     ),
-  //     None
-  //   );
-
-  //   let l1 = String::from("Here is a sentence with ").chars().count();
-  //   let l2 = ExternalDocument.display_to_user().chars().count();
-  //   let l3 = String::from(" a blank.").chars().count();
-
-  //   let (d1, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None);
-  //   let (d2, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None);
-
-  //   let formatting1: Vec<(String, usize, usize)> = vec![
-  //     (String::from("CONTENT"), 0, l1),
-  //     (String::from("BLANK"), l1, l1+l2),
-  //     ];
-      
-  //   let mut formatting2 = formatting1.clone();
-  //   formatting2.push(
-  //     (String::from("CONTENT"), l1+l2, l1+l2+l3),
-  //   );
-    
-  //   assert_eq!(formatting1, formatting_vector1);
-  //   assert_eq!(formatting2, formatting_vector2);
-    
-  //   let f1 = NoteTemplate::get_display_content_vec_from_string(d1, Some(formatting_vector1));
-  //   let f2 = NoteTemplate::get_display_content_vec_from_string(d2, Some(formatting_vector2));
-    
-  //   let test1: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
-  //     (
-  //       0,
-  //       format!("Here is a sentence with {}", ExternalDocument.display_to_user()),
-  //       Some(vec![
-  //         (String::from("CONTENT"), 0, l1),
-  //         (String::from("BLANK"), l1, l1+l2),
-  //       ])
-  //     ),
-  //   ];
-  //   let test2: Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> = vec![
-  //     (
-  //       0,
-  //       format!("Here is a sentence with {} a blank.", ExternalDocument.display_to_user()),
-  //       Some(vec![
-  //         (String::from("CONTENT"), 0, l1),
-  //         (String::from("BLANK"), l1, l1+l2),
-  //         (String::from("CONTENT"), l1+l2, l1+l2+l3),
-  //       ])
-  //     ),
-  //   ];
-
-  //   assert_eq!(test1, f1);
-  //   assert_eq!(test2, f2);
-
-  // }
 }

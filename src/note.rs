@@ -747,19 +747,6 @@ impl NoteTemplate {
     }
     length_adjusted_vec
   }
-  pub fn generate_display_content_string(&self) -> String {
-    let mut content_slice = self.content.clone();
-    for b in Blank::iterator() {
-      content_slice = content_slice.replace(&format!("{}", b), &b.display_to_user_empty());
-    }
-    content_slice.clone()
-  }
-  pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
-    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(None, None);
-    Self::get_display_content_vec_from_string(display_content_string, Some(formatting)).iter()
-      .map(|(u, s, o)| (*u, s.to_string()) )
-      .collect::<Vec<(usize, String)>>()
-  }
   pub fn display_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^163}", "-");
@@ -774,81 +761,6 @@ impl NoteTemplate {
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
-    let mut prev_i = 100; // 0 is the actual index
-    let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
-    for (i, cont, f) in display_content_vec {
-      let num_chars = cont.chars().count();
-      let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
-      // f is Option<Vec<(String, usize, usize)>>
-      let display_i = if i == prev_i {
-        String::from("   ")
-      } else {
-        let display_i = i + 1;
-        format!(" {} ", display_i)
-      };
-      prev_i = i;
-      match f {
-        None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
-        Some(f_vec) => {
-          print_on_bg!("{:-^20} |  ", display_i);
-          if f_vec.len() == 0 {
-            print_on_bg!("{: <140}", &cont);
-          } else {
-            for (s, idx1, idx2) in f_vec {
-              let to_format = if idx2 >= cont.len() {
-                &cont[idx1..]
-              } else {
-                &cont[idx1..idx2]
-              };
-              match &s[..] {
-                "HIGHLIGHTED CONTENT" => {
-                  print_highlighted_content!("{}", to_format);
-                },
-                "UNHIGHLIGHTED CONTENT" => {
-                  print_unhighlighted_content!("{}", to_format);
-                },
-                "CONTENT" => {
-                  print_on_bg!("{}", to_format);
-                },
-                "HIGHLIGHTED BLANK" => {
-                  print!("{}", Black.on(Yellow).bold().paint(to_format));
-                },
-                "UNHIGHLIGHTED BLANK" => {
-                  print!("{}", Black.on(White).paint(to_format));
-                },
-                "UNFOCUSED BLANK" => {
-                  print_unfocused_blank!("{}", to_format);
-                },
-                "BLANK" => {
-                  print!("{}", Black.on(White).paint(to_format));
-                },
-                _ => (),
-              }
-            }
-            for _ in 0..num_to_add {
-              print_on_bg!(" ");
-            }
-          }
-        }
-      }
-      print!("\n");
-    }
-    println_on_bg!("{:-^163}", "-");
-  }
-  pub fn display_content_unfinished(&self) {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^163}", "-");
-    let display_custom = if self.custom { "custom" } else { "default" };
-    let heading = if self.structure == CustomStructure {
-      String::from(" Current content for custom template ")
-    } else {
-      format!(" Current content for {} {} template ", display_custom, self.structure)
-    };
-    println_on_bg!("{:-^163}", heading);
-    println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
-    println_on_bg!("{:-^163}", "-");
-    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(None, None);
     let mut prev_i = 100; // 0 is the actual index
     let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
     for (i, cont, f) in display_content_vec {
@@ -1266,16 +1178,6 @@ impl Note {
     }
     length_adjusted_vec
   }
-  pub fn generate_display_content_string(&self) -> String {
-    let mut content_string = self.content.clone();
-    for (_, (blank_type, display_string, _)) in self.blanks.iter() {
-      content_string = content_string.replacen(&format!("{}", blank_type)[..], &display_string[..], 1);
-    }
-    for blank_type in Blank::iterator() {
-      content_string = str::replace(&content_string, &format!("{}", blank_type)[..], "_______________");
-    }
-    content_string
-  }
   pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> (String, Vec<(String, usize, usize)>) {
     let mut content_string = self.content.clone();
     let mut format_vec: Vec<(String, usize, usize)> = vec![];
@@ -1418,13 +1320,13 @@ impl Note {
           match blank_focus_id {
             None => format!("{}", b_tup.1),
             Some(_) => format!("[{}]: {}", i, b_tup.1),
-          };
+          }
         },
         None => {
           match blank_focus_id {
             None => format!("{}", b.display_to_user()),
             Some(_) => format!("[{}]: {}", i, b.display_to_user()),
-          };
+          }
         }
       };
 
@@ -1505,12 +1407,6 @@ impl Note {
       i += 1;
     }
     (content, format_vec)
-  }
-  pub fn get_display_content_vec(&self) -> Vec<(usize, String)> {
-    Self::get_content_vec_from_string(self.generate_display_content_string())
-  }
-  pub fn get_display_content_vec_and_blanks(&self, focus_id: Option<u32>) -> Vec<(usize, String)> {
-    Self::get_content_vec_from_string(self.generate_display_content_string_with_blanks(focus_id))
   }
   pub fn get_blank_types(&self) -> Vec<Blank> {
     lazy_static! {
