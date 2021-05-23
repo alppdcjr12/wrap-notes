@@ -169,6 +169,14 @@ impl NoteTemplate {
       foreign_keys,
     }
   }
+  pub fn clean_spacing(&mut self) {
+    self.content = self.content.split(". ").map(|s| s.trim().to_string() ).collect::<Vec<String>>().join(". ");
+    if self.content.len() >= 1 {
+      if &self.content[self.content.len()-1..] == "." {
+        self.content = format!("{}{}", &self.content[..self.content.len()-1].trim(), ".");
+      }
+    } 
+  }
   pub fn preview(&self) -> String {
     let (this_content, _) = self.generate_display_content_string_with_blanks(None, None);
     if this_content.len() > 95 {
@@ -926,7 +934,7 @@ impl NoteTemplate {
   }
   pub fn get_content_indices(&self) -> Vec<(usize, usize)> {
     let (_, formatting) = self.generate_display_content_string_with_blanks(None, None);
-    formatting.iter().map(|(_, u1, u2)| (*u1, *u2) ).collect::<Vec<(usize, usize)>>()
+    formatting.iter().filter(|(s, _, _)| !String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(s) ).map(|(_, u1, u2)| (*u1, *u2) ).collect::<Vec<(usize, usize)>>()
   }
   pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -1238,8 +1246,14 @@ impl Note {
       &self.content[..]
     }
   }
-
-
+  pub fn clean_spacing(&mut self) {
+    self.content = self.content.split(". ").map(|s| s.trim().to_string() ).collect::<Vec<String>>().join(". ");
+    if self.content.len() >= 1 {
+      if &self.content[self.content.len()-1..] == "." {
+        self.content = format!("{}{}", &self.content[..self.content.len()-1].trim(), ".");
+      }
+    }
+  }
   pub fn get_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];

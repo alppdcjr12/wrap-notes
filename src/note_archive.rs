@@ -6243,6 +6243,7 @@ impl NoteArchive {
                   }
                 };
                 self.current_note_template_mut().content = new_content;
+                self.current_note_template_mut().clean_spacing();
                 self.write_note_templates().unwrap()
               },
               "edit" | "e" => {
@@ -6272,6 +6273,7 @@ impl NoteArchive {
                 }
 
                 self.current_note_template_mut().content = new_content;
+                self.current_note_template_mut().clean_spacing();
                 self.write_note_templates().unwrap()
               },
               "delete" | "d" => {
@@ -6298,6 +6300,7 @@ impl NoteArchive {
                         }
                       }
                       self.current_note_template_mut().content = new_content;
+                      self.current_note_template_mut().clean_spacing();
                       self.write_note_templates().unwrap();
                       break;
                     },
@@ -6315,21 +6318,24 @@ impl NoteArchive {
               "insert" | "i" => { // in content choice
                 let mut content_focus_id: Option<u32> = Some(0);
                 let blank_focus_id: Option<u32> = None;
+                let mut chosen_text = String::new();
                 'insert_content: loop {
 
                   self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
 
-                  println_inst!("Enter new content to insert.");
-                  let mut entered_content = String::new();
-                  let enter_result = io::stdin().read_line(&mut entered_content);
-                  let chosen_text = match enter_result {
-                    Ok(_) => String::from(&entered_content[..entered_content.len()-2]),
-                    Err(e) => {
-                      println_err!("Failed to read string: {}", e);
-                      thread::sleep(time::Duration::from_secs(2));
-                      continue;
+                  if content_focus_id.unwrap() == 0 {
+                    println_inst!("Enter new content to insert.");
+                    let mut entered_content = String::new();
+                    let enter_result = io::stdin().read_line(&mut entered_content);
+                    match enter_result {
+                      Ok(_) => chosen_text = String::from(&entered_content[..entered_content.len()-2]),
+                      Err(e) => {
+                        println_err!("Failed to read string: {}", e);
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue;
+                      }
                     }
-                  };
+                  }
 
                   let content_indices = self.current_note_template().get_content_indices();
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
@@ -6362,10 +6368,10 @@ impl NoteArchive {
                       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
                       'insert_location_content: loop {
-                        let indices = content_indices[content_focus_id.unwrap() as usize + 1];
+                        let indices = content_indices[content_focus_id.unwrap() as usize - 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
-                        let display_string = format!("{}", self.current_note_template().content[idx1..idx2].to_string());
+                        let display_string = format!("{}", self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx1..idx2].to_string());
                         let num_chars = display_string.chars().count();
                         if num_chars <= 163 {
                           println_on_bg!("{}", &display_string);
@@ -6383,7 +6389,7 @@ impl NoteArchive {
                             (num_chars / 163) + 1
                           };
 
-                          let mut display_content = self.current_note_template().generate_display_content_string().clone();
+                          let mut display_content = self.current_note_template().generate_display_content_string_with_blanks(None, None).0.clone();
                           while display_content.chars().count() > 163 {
                             let (p1, p2) = display_content.split_at(163);
                             let mut pointer_string = String::new();
@@ -6410,7 +6416,7 @@ impl NoteArchive {
                         }
                         println_inst!("New content: {}", &chosen_text);
                         println_inst!("Enter an integer to navigate to a point at which to insert the new content.");
-                        println_inst!("Press ENTER to insert new_content in the current location.");
+                        println_inst!("Press ENTER to insert new content in the current location.");
                         println_inst!(
                           "{} | {} | {}",
                           "BEFORE / B: Insert at start of section",
@@ -6437,12 +6443,12 @@ impl NoteArchive {
                           "before" | "b" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -6468,6 +6474,7 @@ impl NoteArchive {
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
                                   self.current_note_template_mut().content = new_content;
+                                  self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_content;
                                 },
@@ -6485,12 +6492,12 @@ impl NoteArchive {
                           "after" | "a" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -6516,6 +6523,7 @@ impl NoteArchive {
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
                                   self.current_note_template_mut().content = new_content;
+                                  self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_content;
                                 },
@@ -6536,12 +6544,12 @@ impl NoteArchive {
                           "" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -6589,8 +6597,9 @@ impl NoteArchive {
                                     &new_content,
                                     &current_content[idx2..],
                                   );
+                                  self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
-                                  break 'insert_location_content;
+                                  break 'insert_content;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
                                   continue 'insert_location_content;
@@ -6627,7 +6636,11 @@ impl NoteArchive {
                           continue;
                         },
                         Ok(num) => {
-                          content_focus_id = Some(num);
+                          if num > 0 && (num as usize) < content_indices.len() {
+                            content_focus_id = Some(num);
+                          } else {
+                            println_err!("Please enter an ID in the range shown.");
+                          }
                         },
                       }
                     }
@@ -6797,6 +6810,7 @@ impl NoteArchive {
                 }
 
                 self.current_note_template_mut().content = new_content;
+                self.current_note_template_mut().clean_spacing();
                 self.write_note_templates().unwrap();
               },
               "delete" | "d" => {
@@ -6827,6 +6841,7 @@ impl NoteArchive {
                         }
                       }
                       self.current_note_template_mut().content = new_content;
+                      self.current_note_template_mut().clean_spacing();
                       self.write_note_templates().unwrap();
                       break;
                     },
@@ -6873,7 +6888,7 @@ impl NoteArchive {
                       let indices = typed_content_indices[content_focus_id.unwrap() as usize - 1];
                       let idx1 = indices.0 as usize;
                       let idx2 = indices.1 as usize;
-                      let display_string = current_note_template.content[idx1..idx2].to_string();
+                      let display_string = current_note_template.generate_display_content_string_with_blanks(None, None).0[idx1..idx2].to_string();
                       let num_blanks_before_idx = current_note_template.num_blanks_before_idx(idx1);
                       new_blanks.insert(num_blanks_before_idx, new_blank.clone());
                       let mut current_location = 1;
@@ -6945,12 +6960,12 @@ impl NoteArchive {
                             loop {
 
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -7009,6 +7024,7 @@ impl NoteArchive {
                                   }
 
                                   self.current_note_template_mut().content = edited_content;
+                                  self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
                                   break 'insert_loop;
                                 },
@@ -7029,12 +7045,12 @@ impl NoteArchive {
                           "before" | "b" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -7077,6 +7093,7 @@ impl NoteArchive {
                                     &new_blank,
                                     &current_content[..],
                                   );
+                                  self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_blanks;
                                 },
@@ -7094,12 +7111,12 @@ impl NoteArchive {
                           "after" | "a" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string()[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string()[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -7142,6 +7159,7 @@ impl NoteArchive {
                                     &current_content[..],
                                     &new_blank,
                                   );
+                                  self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_blanks;
                                 },
@@ -7470,7 +7488,7 @@ impl NoteArchive {
     }
   }
   fn create_note_template_get_id(&mut self) -> Option<u32> {
-    let note_template = loop {
+    let mut note_template = loop {
       let structure = loop {
         self.display_structure_types();
         print_inst!("Enter 'CANCEL' at any time to cancel.");
@@ -7514,6 +7532,7 @@ impl NoteArchive {
       let mut nt = NoteTemplate::new(0, structure.clone(), true, String::new(), None);
       loop {
         nt.content = content.clone();
+        nt.clean_spacing();
         nt.display_content_unfinished();
         // let display_content_vec_color_opt = NoteTemplate::get_display_content_vec_from_string(display_content.clone(), None);
         // let display_content_vec: Vec<(usize, String)> = display_content_vec_color_opt.iter().map(|(e1, e2, _)| (*e1, e2.clone()) ).collect();
@@ -7703,6 +7722,7 @@ impl NoteArchive {
       }
     };
 
+    note_template.clean_spacing();
     let id = note_template.id;
     self.save_note_template(note_template);
     Some(id)
