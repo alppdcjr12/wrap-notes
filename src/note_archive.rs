@@ -8186,14 +8186,19 @@ impl NoteArchive {
   fn display_note(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^163}", "-");
-
+    
     let n = self.current_note();
     let nd = self.get_note_day_by_note_id(n.id).unwrap();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
-
+    
     let nt_string = match self.get_note_template_by_note_id(n.id) {
       Some(nt) => nt.display_short(),
       None => String::from("n/a"),
+    };
+
+    let cat_string = match n.category {
+      ICCNote(ncat) => format!("'{}' by ICC", ncat),
+      FPNote(ncat) => format!("'{}' by FP", ncat),
     };
 
     let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
@@ -8201,10 +8206,7 @@ impl NoteArchive {
     println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
     println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt_string, n.category);
     println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{:-^163}", " Content ");
-    println_on_bg!("{:-^163}", "-");
-    println_on_bg!("{}", n.generate_display_content_string());
-    println_on_bg!("{:-^163}", "-");
+    n.display_content(None, None);
   }
   fn display_new_note(&self, n: &Note) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -10072,7 +10074,7 @@ impl NoteArchive {
     println_on_bg!("{:-^163}", "-");
 
     // the length of each line is 163
-    self.current_note().display_content();
+    self.current_note().display_content(None, None);
 
     println_on_bg!("{:-^163}", "-");
   }

@@ -1556,14 +1556,6 @@ impl Note {
     RE_BLANK.find_iter(&self.content[..]).count()
   }
   pub fn display_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
-    println_on_bg!("{:-^163}", "-");
-    let cat_string = match self.category {
-      ICCNote(ncat) => format!("'{}' by ICC", ncat),
-      FPNote(ncat) => format!("'{}' by FP", ncat),
-    };
-    let heading = format!(" Current content of {} service entry note for {} ", self.structure, cat_string);
-    println_on_bg!("{:-^163}", heading);
-    println_on_bg!("{:-^163}", "-");
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
     let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
