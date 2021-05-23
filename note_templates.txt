@@ -1,4 +1,9 @@
 ##### note_templates #####
-1 | Assessment | Sentence. Sentence (---ndd---) with words. Here is a new sentence, bro. | 1 | 
-2 | Agenda Prep | Here is some (---ndd---) test. Here is another sentence. | 1 | 
+1 | Care Plan Meeting | Here is another sentence that has a (---pu3---), (---pu1---), and (---allco---). | 1 | 
+2 | Assessment | Sentence. Sentence (---ndd---) with words. Here is a new sentence, bro. | 1 | 
+3 | Assessment | Here is a sentence. Here is another one with a blank ((---u---)) in it. Here is another sentence that has a (---u---), (---u---), and (---u---). | 1 | 
+4 | Home Visit | Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool. | 1 | 
+5 | Home Visit | Here is a sentence. Here is another one with a blank ((---ndd---)) in it. Here is another sentence that has a (---ndd---), (---ndd---), and (---ndd---). | 1 | 
+6 | Agenda Prep | Here is some (---ndd---) test. Here is another sentence. | 1 | 
+7 | Agenda Prep | (---ndd---) is a user with (---ndd---)/(---ndd---) for pronouns. | 1 | 
 ##### note_templates #####

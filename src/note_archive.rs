@@ -10508,7 +10508,7 @@ mod tests {
     let s1c = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1b;
     let s1d = String::from("/").chars().count() + s1c;
     let s1e = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1d;
-    let s1f = String::from(" for pronouns.").chars().count() + s1e;
+    let s1f = String::from(" for pronouns.").chars().count() + s1e + 1;
 
     let formatting1: Vec<(String, usize, usize)> = vec![
       (String::from("HIGHLIGHTED BLANK"), 0, s1a),
@@ -10547,7 +10547,7 @@ mod tests {
     let s1h = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1g;
     let s1i = String::from(", and ").chars().count() + s1h;
     let s1j = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1i;
-    let s1k = String::from(".").chars().count() + s1j;
+    let s1k = String::from(".").chars().count() + s1j + 1;
 
     let formatting2: Vec<(String, usize, usize)> = vec![
       (String::from("CONTENT"), 0, s1a),
@@ -10579,7 +10579,7 @@ mod tests {
     let s1b = String::from("This is a new template. ").chars().count() + s1a;
     let s1c = String::from("And it has a blank here: ").chars().count() + s1b;
     let s1d = format!("[1]: {}", &Pronoun4ForClient.display_to_user()).chars().count() + s1c;
-    let s1e = String::from(" which is pretty cool.").chars().count() + s1d;
+    let s1e = String::from(" which is pretty cool.").chars().count() + s1d + 1;
 
     let formatting3: Vec<(String, usize, usize)> = vec![
       (String::from("CONTENT"), 0, s1a),
@@ -10813,7 +10813,7 @@ mod tests {
     let s1c = Pronoun1ForUser.display_to_user().chars().count() + s1b;
     let s1d = String::from("/").chars().count() + s1c;
     let s1e = Pronoun2ForUser.display_to_user().chars().count() + s1d;
-    let s1f = String::from(" for pronouns.").chars().count() + s1e;
+    let s1f = String::from(" for pronouns.").chars().count() + s1e + 1;
 
     let formatting1: Vec<(String, usize, usize)> = vec![
       (String::from("BLANK"), 0, s1a),
@@ -10871,7 +10871,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED BLANK"), s1g, s1h),
       (String::from("CONTENT"), s1h, s1i),
       (String::from("UNHIGHLIGHTED BLANK"), s1i, s1j),
-      (String::from("CONTENT"), s1j, s1k),
+      (String::from("CONTENT"), s1j, s1k + 1),
     ];
 
     // let blank_vec: Vec<(String, usize, usize)> = vec![];
@@ -10931,7 +10931,7 @@ mod tests {
         format!("[4]: {}.", AllCollaterals.display_to_user()),
         Some(vec![
           (String::from("UNHIGHLIGHTED BLANK"), 0, n3+5),
-          (String::from("CONTENT"), n3+5, n3+6),
+          (String::from("CONTENT"), n3+5, n3+6+1),
         ])
       ),
     ];

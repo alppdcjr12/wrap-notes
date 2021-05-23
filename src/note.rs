@@ -587,6 +587,7 @@ impl NoteTemplate {
                 sf1.iter()
                   .map(|(s, i1, i2)| if i == display_content_vec.len() - 1 {
                       if &sentence[i2-1..] == ". " || only_one {
+                        // if 
                         (s.to_string(), *i1, i2-1)
                       } else {
                         (s.to_string(), *i1, *i2)
@@ -669,7 +670,7 @@ impl NoteTemplate {
                         match last_divider_idx {
                           None => {
                             let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                              .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140) )
+                              .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140+1) )
                               .map(|(s, i1, i2)|
                                 if i2 <= &(current_idx+140) {
                                   (s.to_string(), i1-current_idx, i2-current_idx)
@@ -726,7 +727,7 @@ impl NoteTemplate {
             None => length_adjusted_vec.push((i, long_sent, None)),
             Some(f) => {
               let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(long_sent.chars().count() + current_idx) )
+                .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(long_sent.chars().count() + current_idx + 1) )
                 .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                 .collect();
                 
