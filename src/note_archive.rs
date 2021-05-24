@@ -5433,7 +5433,7 @@ impl NoteArchive {
           Ok(num) => {
             if !self.current_user_notes()
               .iter()
-              .any(|&nd| nd.id == num) {
+              .any(|&n| n.id == num) {
                 println_err!("Please choose from among the listed note IDs.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
@@ -7867,7 +7867,7 @@ impl NoteArchive {
       );
     }
     
-    let id: u32 = self.note_templates.len() as u32;
+    let id = (self.note_templates.len() + 1) as u32;
 
     match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
       Some(dup_id) => Err(
@@ -8207,7 +8207,7 @@ impl NoteArchive {
         ExternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
       },
       InternalMeeting => {
-        InternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
+        InternalMeetingFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
       },
       ExternalMeeting => {
         ExternalMeetingFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
@@ -8258,8 +8258,8 @@ impl NoteArchive {
       };
       let selected_content: String = match blank_type {
         InternalMeeting => {
-          match InternalMeetingFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
-            Some(b_tup) => format!("{}", b_tup.1),
+          match InternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -8268,8 +8268,8 @@ impl NoteArchive {
           }
         },
         ExternalMeeting => {
-          match ExternalMeetingFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
-            Some(b_tup) => format!("{}", b_tup.1),
+          match ExternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -8278,8 +8278,8 @@ impl NoteArchive {
           }
         },
         InternalDocument => {
-          match InternalDocumentFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
-            Some(b_tup) => format!("{}", b_tup.1),
+          match InternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -8288,8 +8288,8 @@ impl NoteArchive {
           }
         },
         ExternalDocument => {
-          match ExternalDocumentFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
-            Some(b_tup) => format!("{}", b_tup.1),
+          match ExternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -8298,8 +8298,8 @@ impl NoteArchive {
           }
         },
         Action => {
-          match ActionFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
-            Some(b_tup) => format!("{}", b_tup.1),
+          match ActionFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -8308,8 +8308,8 @@ impl NoteArchive {
           }
         },
         Phrase => {
-          match PhraseFillIn::iterator_of_blanks().enumerate().find(|(i, f)| i == &chosen_id ) {
-            Some(b_tup) => format!("{}", b_tup.1),
+          match PhraseFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -8573,7 +8573,7 @@ impl NoteArchive {
           } else {
             collaterals[0].full_name_and_title()
           };
-          let id_vec = client.foreign_keys[&String::from("collaterals")].to_owned();
+          let id_vec = client.foreign_keys["collateral_ids"].to_owned();
           n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
           n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
         },
@@ -8671,7 +8671,13 @@ impl NoteArchive {
 
       let choice = loop {
         let mut note_choice = String::new();
-        self.current_note().display_content(focus_id_option, None);
+
+        n.display_content(Some(i), None);
+
+
+        // display options here
+
+
         let note_attempt = io::stdin().read_line(&mut note_choice);
         match note_attempt {
           Ok(_) => break note_choice.trim().to_ascii_lowercase(),
@@ -8795,7 +8801,6 @@ impl NoteArchive {
           return None;
         },
         "" => {
-          self.current_note().display_content(focus_id_option, None);
           if empty_blanks.len() == 0 {
             break;
           }

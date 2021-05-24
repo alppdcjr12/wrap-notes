@@ -593,7 +593,7 @@ impl NoteTemplate {
               let sf2 = if i == display_content_vec.len() - 1 {
                 sf1.iter()
                   .map(|(s, i1, i2)| if i == display_content_vec.len() - 1 {
-                      if &sentence[i2-1..] == ". " || only_one {
+                      if (&sentence[i2-1..] == ". " || only_one) && !String::from("UNHIGHLIGHED BLANK UNFOCUSED BLANK").contains(s) {
                         // if 
                         (s.to_string(), *i1, i2-1)
                       } else {
