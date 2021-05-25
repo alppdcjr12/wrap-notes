@@ -2494,7 +2494,7 @@ impl NoteArchive {
     }
 
   }
-  fn display_client_collaterals(&self) {
+  fn display_client_collaterals(&self, selected: Option<Vec<u32>>) {
     let mut heading = String::from(" ");
     heading.push_str(&self.current_client().full_name()[..]);
     heading.push_str("'s Collaterals ");
@@ -2507,11 +2507,30 @@ impl NoteArchive {
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
         for c in self.get_current_collaterals() {
-          println_on_bg!(
-            "{: ^10} | {: <100}",
-            c.id,
-            c.full_name_and_title(),
-          );
+          match selected {
+            None => {
+              println_on_bg!(
+                "{: ^10} | {: <100}",
+                c.id,
+                c.full_name_and_title(),
+              );
+            },
+            Some(ids) => {
+              if ids.iter().any(|id| *id == c.id ) {
+                println_suc!(
+                  "{: ^10} | {: <100}",
+                  c.id,
+                  c.full_name_and_title(),
+                );
+              } else {
+                println_on_bg!(
+                  "{: ^10} | {: <100}",
+                  c.id,
+                  c.full_name_and_title(),
+                );
+              }
+            }
+          }
         }
       }
       None => (),
@@ -2775,7 +2794,7 @@ impl NoteArchive {
   fn choose_client_collaterals(&mut self) {
     loop {
       let input = loop {
-        self.display_client_collaterals();
+        self.display_client_collaterals(None);
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -8189,7 +8208,7 @@ impl NoteArchive {
   fn choose_edit_note(&mut self) {
 
   }
-  fn display_blank_fill_in(blank_type: Blank) {
+  fn display_blank_fill_in(blank_type: Blank, selected: Option<Vec<usize>>) {
     let display_category = match blank_type {
       InternalDocument => String::from("internal document"),
       ExternalDocument => String::from("external document"),
@@ -8226,14 +8245,131 @@ impl NoteArchive {
     println_on_bg!("{:-^113}", "-");
     println_on_bg!("{:-^10} | {:-^100}", " ID ", " Content ");
     for (i, fi) in fill_ins.iter().enumerate() {
-      println_on_bg!("{:-^10} | {:-^100}", i, fi);
+      match selected {
+        Some(id) => {
+          if id == i {
+            println_suc!("{:-^10} | {:-^100}", i, fi);
+          } else {
+            println_on_bg!("{:-^10} | {:-^100}", i, fi);
+          }
+        },
+        None => {
+          println_on_bg!("{:-^10} | {:-^100}", i, fi);
+        }
+      }
     }
     println_on_bg!("{:-^113}", "-");
-    println_inst!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
+    match selected {
+      None=> {
+        println_inst!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
+      },
+      Some(_) => {
+        println_inst!("{} | {}", "Select content to add to blank by ID.", "ENTER: Add selected content to blank.");
+      }
+    }
+  }
+  fn select_blank_fill_in(blank_type: Blank, selected: Vec<usize>) -> Option<usize> {
+    loop {
+      NoteArchive::display_blank_fill_in(blank_type, Some(selected));
+      let mut fill_in_choice = String::new();
+      let fill_in_attempt = io::stdin().read_line(&mut fill_in_choice);
+      let selected_option = match fill_in_attempt {
+        Ok(_) => fill_in_choice.trim().to_ascii_lowercase(),
+        Err(e) => {
+          println_err!("Failed to read line: {}", e);
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      };
+      match &selected_option[..] {
+        "" => {
+          if selected.len() > 0 {
+            return None;
+          } else {
+            println_err!("Please choose at least one fill-in for the current blank.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+        }
+        _ => (),
+      }
+      let chosen_id: usize = match selected_option.parse() {
+        Ok(num) => num,
+        Err(e) => {
+          println_err!("Failed to parse '{}' as int: {}", selected_option, e);
+          thread::sleep(time::Duration::from_secs(2));
+          continue;
+        }
+      };
+      let selected_content: usize = match blank_type {
+        InternalMeeting => {
+          match InternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => chosen_id,
+            None => {
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        ExternalMeeting => {
+          match ExternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => chosen_id,
+            None => {
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        InternalDocument => {
+          match InternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => chosen_id,
+            None => {
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        ExternalDocument => {
+          match ExternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => chosen_id,
+            None => {
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        Action => {
+          match ActionFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => chosen_id,
+            None => {
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        Phrase => {
+          match PhraseFillIn::iterator_of_blanks().nth(chosen_id) {
+            Some(b) => chosen_id,
+            None => {
+              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
+              thread::sleep(time::Duration::from_secs(2));
+              continue;
+            }
+          }
+        },
+        _ => panic!("Incompatible fill in type passed to fn 'choose_phrase_flll_in'"),
+      };
+      return Some(selected_content)
+    }
   }
   fn choose_blank_fill_in(blank_type: Blank) -> Option<String> {
     loop {
-      NoteArchive::display_blank_fill_in(blank_type);
+      NoteArchive::display_blank_fill_in(blank_type, None);
       let mut fill_in_choice = String::new();
       let fill_in_attempt = io::stdin().read_line(&mut fill_in_choice);
       let selected_option = match fill_in_attempt {
@@ -8728,10 +8864,15 @@ impl NoteArchive {
                       Collaterals | AllCollaterals => {
                         let mut collat_ids_included_elsewhere: Vec<u32> = vec![];
                         for (idx, blank_tup) in &n.blanks {
-                          for co_id in &blank_tup.2 {
-                            if !collat_ids_included_elsewhere.clone().iter().any(|id| id == co_id ) {
-                              collat_ids_included_elsewhere.push(*co_id)
-                            }
+                          match blank_tup.0 {
+                            Collaterals | AllCollaterals => {
+                              for co_id in &blank_tup.2 {
+                                if !collat_ids_included_elsewhere.clone().iter().any(|id| id == co_id ) {
+                                  collat_ids_included_elsewhere.push(*co_id)
+                                }
+                              }
+                            },
+                            _ => (),
                           }
                         }
                         for co_id in current_blank_ids {
@@ -8743,6 +8884,9 @@ impl NoteArchive {
                         }
                       },
                       _ => (),
+                    }
+                    if current_blank_type.has_pronouns() {
+                      n.delete_associated_pronouns(&i);
                     }
                     break;
                   },
@@ -8814,7 +8958,9 @@ impl NoteArchive {
               let mut collats: Vec<Collateral> = vec![];
               'keep_adding: loop {
                 let initial_input = loop {
-                  self.display_client_collaterals();
+                  let collat_ids = collats.iter().map(|co| co.id ).collect::<Vec<u32>>();
+                  self.display_client_collaterals(Some(collat_ids));
+                  println_inst!("ALL: Select all");
                   let mut choice = String::new();
                   let read_attempt = io::stdin().read_line(&mut choice);
                   match read_attempt {
@@ -8845,6 +8991,19 @@ impl NoteArchive {
                   "quit" | "q" => {
                     break;
                   },
+                  "all" => {
+                    collats = self.get_current_collaterals().iter().map(|co| *co ).collect::<Vec<Collateral>>();
+                    break;
+                  },
+                  "" => {
+                    if collats.len() > 0 {
+                      break;
+                    } else {
+                      println_err!("Please choose at least one collateral to add to the current blank.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  },
                   _ => {
                     let selected_id_res: Result<u32, _> = initial_input.parse();
                     match selected_id_res {
@@ -8856,7 +9015,7 @@ impl NoteArchive {
                         if !collats.iter().any(|co| co == &collat ) {
                           collats.push(collat);
                         } else {
-                          println_err!("Collateral already added to blank.");
+                          collats.retain(|co| co != &collat );
                         }
                       },
                       Err(e) => {
@@ -8865,26 +9024,6 @@ impl NoteArchive {
                         continue;
                       }
                     }
-                    let add_another = 'another: loop {
-                      println_inst!("Add another collateral to this blank? (y/n)");
-                      let mut add_another_choice = String::new();
-                      let maybe_add_another = io::stdin().read_line(&mut add_another_choice);
-                      match maybe_add_another {
-                        Ok(_) => match &add_another_choice.trim().to_ascii_lowercase()[..] {
-                          "yes" | "y" => continue 'keep_adding,
-                          "no" | "n" => break 'keep_adding,
-                          _ => {
-                            println_err!("Invalid response.");
-                            thread::sleep(time::Duration::from_secs(2));
-                            continue 'another;
-                          }
-                        },
-                        Err(e) => {
-                          println_err!("Failed to read line: {}", e);
-                          continue;
-                        }
-                      }
-                    };
                   }
                 }
               }
@@ -8903,52 +9042,178 @@ impl NoteArchive {
               n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
             },
             InternalDocument => {
-              let blank_string = match Self::choose_blank_fill_in(InternalDocument) {
-                Some(s) => s,
-                None => continue,
+              let mut fill_ins: Vec<usize> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match Self::select_blank_fill_in(InternalDocument, fill_ins) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_objects = fill_ins.iter().map(|fi| InternalDocumentFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else {
+                      fill_in_strings[0]
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
               };
               let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
             ExternalDocument => {
-              let blank_string = match Self::choose_blank_fill_in(ExternalDocument) {
-                Some(s) => s,
-                None => continue,
+              let mut fill_ins: Vec<usize> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match Self::select_blank_fill_in(ExternalDocument, fill_ins) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_objects = fill_ins.iter().map(|fi| ExternalDocumentFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else {
+                      fill_in_strings[0]
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
               };
               let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
             InternalMeeting => {
-              let blank_string = match Self::choose_blank_fill_in(InternalMeeting) {
-                Some(s) => s,
-                None => continue,
+              let mut fill_ins: Vec<usize> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match Self::select_blank_fill_in(InternalMeeting, fill_ins) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_objects = fill_ins.iter().map(|fi| InternalMeetingFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else {
+                      fill_in_strings[0]
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
               };
               let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
             ExternalMeeting => {
-              let blank_string = match Self::choose_blank_fill_in(ExternalMeeting) {
-                Some(s) => s,
-                None => continue,
+              let mut fill_ins: Vec<usize> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match Self::select_blank_fill_in(ExternalMeeting, fill_ins) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_objects = fill_ins.iter().map(|fi| ExternalMeetingFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else {
+                      fill_in_strings[0]
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
               };
               let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
             Action => {
-              let blank_string = match Self::choose_blank_fill_in(Action) {
-                Some(s) => s,
-                None => continue,
+              let mut fill_ins: Vec<usize> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match Self::select_blank_fill_in(Action, fill_ins) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_objects = fill_ins.iter().map(|fi| ActionFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else {
+                      fill_in_strings[0]
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
               };
               let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
             Phrase => {
-              let blank_string = match Self::choose_blank_fill_in(Phrase) {
-                Some(s) => s,
-                None => continue,
+              let mut fill_ins: Vec<usize> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match Self::select_blank_fill_in(Phrase, fill_ins) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_objects = fill_ins.iter().map(|fi| PhraseFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else {
+                      fill_in_strings[0]
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
               };
               let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
             CustomBlank => {
               loop {

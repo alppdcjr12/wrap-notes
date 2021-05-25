@@ -1144,6 +1144,23 @@ impl Note {
       }
     }
   }
+  pub fn delete_associated_pronouns(&mut self, i: &u32) {
+    for (idx, blank_tup) in &self.blanks.clone() {
+      match blank_tup.0 {
+        Pronoun1ForBlank(id_opt) | Pronoun2ForBlank(id_opt) | Pronoun3ForBlank(id_opt) | Pronoun4ForBlank(id_opt) => {
+          match id_opt {
+            None => (),
+            Some(pronoun_blank_id) => {
+              if pronoun_blank_id == *i {
+                self.blanks.remove(&idx);
+              }
+            }
+          }
+        },
+        _ => (),
+      }
+    }
+  }
   pub fn get_content_vec_from_string(display_content: String) -> Vec<(usize, String)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
@@ -1673,6 +1690,15 @@ use Blank::{
 };
 
 impl Blank {
+  pub fn has_pronouns(&self) -> bool {
+    match self {
+      CurrentUser => true,
+      CurrentClientName => true,
+      Collaterals => true,
+      AllCollaterals => true,
+      _ => false,
+    }
+  }
   pub fn iterator() -> impl Iterator<Item = Blank> {
     [
       CurrentUser,
