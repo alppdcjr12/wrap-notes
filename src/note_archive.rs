@@ -2507,7 +2507,7 @@ impl NoteArchive {
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
         for c in self.get_current_collaterals() {
-          match selected {
+          match selected.clone() {
             None => {
               println_on_bg!(
                 "{: ^10} | {: <100}",
@@ -2550,6 +2550,15 @@ impl NoteArchive {
         .iter()
         .any(|&id| id == collateral.id)
     })
+      .collect()
+  }
+  fn get_owned_current_collaterals(&self) -> Vec<Collateral> {
+    self.collaterals.iter().filter(|collateral| {
+      self.current_client().foreign_keys["collateral_ids"]
+        .iter()
+        .any(|&id| id == collateral.id)
+    })
+      .cloned()
       .collect()
   }
   fn get_noncurrent_collaterals(&self) -> Vec<&Collateral> {
@@ -6754,7 +6763,8 @@ impl NoteArchive {
                     let connected_blank_id: Option<u32> = match new_b {
                       Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
                         loop {
-                          println_inst!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
+                          self.current_note_template().display_edit_content(Some(0), None);
+                          println_inst!("Please enter the ID of the blank to add pronouns for. Enter CANCEL / C to cancel.");
                           let mut input_string = String::new();
                           let input_result = io::stdin().read_line(&mut input_string);
                           let input = match input_result {
@@ -8245,9 +8255,9 @@ impl NoteArchive {
     println_on_bg!("{:-^113}", "-");
     println_on_bg!("{:-^10} | {:-^100}", " ID ", " Content ");
     for (i, fi) in fill_ins.iter().enumerate() {
-      match selected {
-        Some(id) => {
-          if id == i {
+      match selected.clone() {
+        Some(ids) => {
+          if ids.iter().any(|id| id == &i ) {
             println_suc!("{:-^10} | {:-^100}", i, fi);
           } else {
             println_on_bg!("{:-^10} | {:-^100}", i, fi);
@@ -8270,7 +8280,7 @@ impl NoteArchive {
   }
   fn select_blank_fill_in(blank_type: Blank, selected: Vec<usize>) -> Option<usize> {
     loop {
-      NoteArchive::display_blank_fill_in(blank_type, Some(selected));
+      NoteArchive::display_blank_fill_in(blank_type, Some(selected.clone()));
       let mut fill_in_choice = String::new();
       let fill_in_attempt = io::stdin().read_line(&mut fill_in_choice);
       let selected_option = match fill_in_attempt {
@@ -8459,6 +8469,7 @@ impl NoteArchive {
     }
   }
   fn display_icc_note_categories() {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^58}", "-");
     println_on_bg!("{:-^58}", " ICC Note Categories ");
     println_on_bg!("{:-^58}", "-");
@@ -8548,6 +8559,99 @@ impl NoteArchive {
             }
           }
         }
+      }
+    }
+  }
+  fn autofill_current_note_blanks(&mut self) {
+    let current_client = self.current_client().clone();
+    let current_collaterals = self.get_owned_current_collaterals();
+    let current_collaterals_len = current_collaterals.len();
+    let u = self.current_user().clone();
+    let nd = self.current_note_day().clone();
+    let up = self.get_pronouns_by_id(u.pronouns).unwrap().clone();
+    let cp = self.get_pronouns_by_id(current_client.pronouns).unwrap().clone();
+    let n = self.current_note_mut();
+    let empty_blanks = n.get_empty_blanks_and_indexes();
+    for (i, b) in empty_blanks {
+      let i = i as u32;
+      match b {
+        CurrentUser => {
+          n.blanks.insert(i, (b.clone(), format!("{}", u.role), vec![u.id]));
+        }
+        CurrentClientName => {
+          let blank_string = current_client.full_name_with_label();
+          let id_vec = vec![current_client.id];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        }
+        AllCollaterals => {
+          let blank_string = if current_collaterals_len > 1 {
+            format!(
+              "{} {} {}",
+              current_collaterals[..current_collaterals.len()-1].iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", "),
+              "and",
+              current_collaterals[current_collaterals.len()-1].full_name_and_title(),
+            )
+          } else {
+            current_collaterals[0].full_name_and_title()
+          };
+          let id_vec = current_client.foreign_keys["collateral_ids"].to_owned();
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
+          n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
+        },
+        Pronoun1ForUser => {
+          let blank_string = up.subject.clone();
+          let id_vec = vec![u.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun2ForUser => {
+          let blank_string = up.object.clone();
+          let id_vec = vec![u.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun3ForUser => {
+          let blank_string = up.possessive_determiner.clone();
+          let id_vec = vec![u.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun4ForUser => {
+          let blank_string = up.possessive.clone();
+          let id_vec = vec![u.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun1ForClient => {
+          let blank_string = cp.subject.clone();
+          let id_vec = vec![current_client.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun2ForClient => {
+          let blank_string = cp.object.clone();
+          let id_vec = vec![current_client.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun3ForClient => {
+          let blank_string = cp.possessive_determiner.clone();
+          let id_vec = vec![current_client.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        Pronoun4ForClient => {
+          let blank_string = cp.possessive.clone();
+          let id_vec = vec![current_client.pronouns.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        TodayDate => {
+          let today = Local::now().naive_local().date();
+          let blank_string = format!("{}, {}-{}-{}", today.weekday(), today.year(), today.month(), today.day());
+          let id_vec = vec![];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        NoteDayDate => {
+          let nd_date = nd.date;
+          let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
+          let blank_string = nd_date_string.clone();
+          let id_vec = vec![nd.id.clone()];
+          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+        },
+        _ => (), // all others need to be filled in based on user input
       }
     }
   }
@@ -8682,107 +8786,7 @@ impl NoteArchive {
 
     // autofill blanks that do not require user input
     // (can clearly determine output)
-    let mut empty_blanks = n.get_empty_blanks_and_indexes();
-    for (i, b) in empty_blanks {
-      let i = i as u32;
-      match b {
-        CurrentUser => {
-          n.blanks.insert(i, (b.clone(), format!("{}", self.current_user().role), vec![self.current_user().id]));
-        }
-        CurrentClientName => {
-          let client = self.current_client();
-          let blank_string = client.full_name_with_label();
-          let id_vec = vec![client.id];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        }
-        AllCollaterals => {
-          let client = self.current_client();
-          let collaterals = self.get_current_collaterals();
-
-          let blank_string = if collaterals.len() > 1 {
-            format!(
-              "{} {} {}",
-              collaterals[..collaterals.len()-1].iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", "),
-              "and",
-              collaterals[collaterals.len()-1].full_name_and_title(),
-            )
-          } else {
-            collaterals[0].full_name_and_title()
-          };
-          let id_vec = client.foreign_keys["collateral_ids"].to_owned();
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
-          n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
-        },
-        Pronoun1ForUser => {
-          let u = self.current_user();
-          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-          let blank_string = p.subject.clone();
-          let id_vec = vec![u.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun2ForUser => {
-          let u = self.current_user();
-          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-          let blank_string = p.object.clone();
-          let id_vec = vec![u.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun3ForUser => {
-          let u = self.current_user();
-          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-          let blank_string = p.possessive_determiner.clone();
-          let id_vec = vec![u.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun4ForUser => {
-          let u = self.current_user();
-          let p = self.get_pronouns_by_id(u.pronouns).unwrap();
-          let blank_string = p.possessive.clone();
-          let id_vec = vec![u.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun1ForClient => {
-          let c = self.current_client();
-          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-          let blank_string = p.subject.clone();
-          let id_vec = vec![c.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun2ForClient => {
-          let c = self.current_client();
-          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-          let blank_string = p.object.clone();
-          let id_vec = vec![c.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun3ForClient => {
-          let c = self.current_client();
-          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-          let blank_string = p.possessive_determiner.clone();
-          let id_vec = vec![c.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        Pronoun4ForClient => {
-          let c = self.current_client();
-          let p = self.get_pronouns_by_id(c.pronouns).unwrap();
-          let blank_string = p.possessive.clone();
-          let id_vec = vec![c.pronouns.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        TodayDate => {
-          let today = Local::now().naive_local().date();
-          let blank_string = format!("{}, {}-{}-{}", today.weekday(), today.year(), today.month(), today.day());
-          let id_vec = vec![];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        NoteDayDate => {
-          let blank_string = nd_date_string.clone();
-          let id_vec = vec![nd.id.clone()];
-          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-        },
-        _ => (), // all others need to be filled in based on user input
-      }
-    }
+    self.autofill_current_note_blanks();
 
     let mut focus_id_option: Option<u32> = None;
     'choice: loop {
@@ -8790,7 +8794,7 @@ impl NoteArchive {
       // increments the current blank by going to the next one only when the current is filled,
       // or alternatively when focus_id_option is set to Some(id) because the user selected it
 
-      empty_blanks = n.get_empty_blanks_and_indexes();
+      let empty_blanks = n.get_empty_blanks_and_indexes();
 
       if empty_blanks.len() == 0 {
         break;
@@ -8809,7 +8813,16 @@ impl NoteArchive {
         let mut note_choice = String::new();
 
         n.display_content(Some(i), None);
-
+        println_on_bg!("{:-^58}", "-");
+        println_inst!(
+          "| {} | {} | {} | {}",
+          "SKIP / S: Skip to next blank",
+          "DELETE / D: Delete content of current blank",
+          "CLEAR / C: Clear content of all blanks",
+          "QUIT / Q: Quit menu",
+        );
+        println_inst!("ENTER to fill in the current blank.");
+        println_inst!("Choose blank by ID to switch current blank.");
 
         // display options here
 
@@ -8956,7 +8969,7 @@ impl NoteArchive {
               // This can be done by collecting the indexes of the blanks that are in that category on the first iteration
               // and checking for them on every second iteration.
               let mut collats: Vec<Collateral> = vec![];
-              'keep_adding: loop {
+              loop {
                 let initial_input = loop {
                   let collat_ids = collats.iter().map(|co| co.id ).collect::<Vec<u32>>();
                   self.display_client_collaterals(Some(collat_ids));
@@ -8992,11 +9005,12 @@ impl NoteArchive {
                     break;
                   },
                   "all" => {
-                    collats = self.get_current_collaterals().iter().map(|co| *co ).collect::<Vec<Collateral>>();
+                    collats = self.get_current_collaterals().iter().cloned().cloned().collect::<Vec<Collateral>>();
                     break;
                   },
                   "" => {
                     if collats.len() > 0 {
+                      self.autofill_current_note_blanks();
                       break;
                     } else {
                       println_err!("Please choose at least one collateral to add to the current blank.");
@@ -9044,7 +9058,7 @@ impl NoteArchive {
             InternalDocument => {
               let mut fill_ins: Vec<usize> = vec![];
               let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(InternalDocument, fill_ins) {
+                let blank_id = match Self::select_blank_fill_in(InternalDocument, fill_ins.clone()) {
                   Some(s) => s,
                   None => {
                     let fill_in_objects = fill_ins.iter().map(|fi| InternalDocumentFillIn::iterator_of_blanks().nth(*fi).unwrap() );
@@ -9057,7 +9071,7 @@ impl NoteArchive {
                         fill_in_strings[fill_in_strings.len()-1],
                       )
                     } else {
-                      fill_in_strings[0]
+                      fill_in_strings[0].clone()
                     };
                   }
                 };
@@ -9073,7 +9087,7 @@ impl NoteArchive {
             ExternalDocument => {
               let mut fill_ins: Vec<usize> = vec![];
               let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(ExternalDocument, fill_ins) {
+                let blank_id = match Self::select_blank_fill_in(ExternalDocument, fill_ins.clone()) {
                   Some(s) => s,
                   None => {
                     let fill_in_objects = fill_ins.iter().map(|fi| ExternalDocumentFillIn::iterator_of_blanks().nth(*fi).unwrap() );
@@ -9086,7 +9100,7 @@ impl NoteArchive {
                         fill_in_strings[fill_in_strings.len()-1],
                       )
                     } else {
-                      fill_in_strings[0]
+                      fill_in_strings[0].clone()
                     };
                   }
                 };
@@ -9102,7 +9116,7 @@ impl NoteArchive {
             InternalMeeting => {
               let mut fill_ins: Vec<usize> = vec![];
               let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(InternalMeeting, fill_ins) {
+                let blank_id = match Self::select_blank_fill_in(InternalMeeting, fill_ins.clone()) {
                   Some(s) => s,
                   None => {
                     let fill_in_objects = fill_ins.iter().map(|fi| InternalMeetingFillIn::iterator_of_blanks().nth(*fi).unwrap() );
@@ -9115,7 +9129,7 @@ impl NoteArchive {
                         fill_in_strings[fill_in_strings.len()-1],
                       )
                     } else {
-                      fill_in_strings[0]
+                      fill_in_strings[0].clone()
                     };
                   }
                 };
@@ -9131,7 +9145,7 @@ impl NoteArchive {
             ExternalMeeting => {
               let mut fill_ins: Vec<usize> = vec![];
               let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(ExternalMeeting, fill_ins) {
+                let blank_id = match Self::select_blank_fill_in(ExternalMeeting, fill_ins.clone()) {
                   Some(s) => s,
                   None => {
                     let fill_in_objects = fill_ins.iter().map(|fi| ExternalMeetingFillIn::iterator_of_blanks().nth(*fi).unwrap() );
@@ -9144,7 +9158,7 @@ impl NoteArchive {
                         fill_in_strings[fill_in_strings.len()-1],
                       )
                     } else {
-                      fill_in_strings[0]
+                      fill_in_strings[0].clone()
                     };
                   }
                 };
@@ -9160,7 +9174,7 @@ impl NoteArchive {
             Action => {
               let mut fill_ins: Vec<usize> = vec![];
               let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(Action, fill_ins) {
+                let blank_id = match Self::select_blank_fill_in(Action, fill_ins.clone()) {
                   Some(s) => s,
                   None => {
                     let fill_in_objects = fill_ins.iter().map(|fi| ActionFillIn::iterator_of_blanks().nth(*fi).unwrap() );
@@ -9173,7 +9187,7 @@ impl NoteArchive {
                         fill_in_strings[fill_in_strings.len()-1],
                       )
                     } else {
-                      fill_in_strings[0]
+                      fill_in_strings[0].clone()
                     };
                   }
                 };
@@ -9189,7 +9203,7 @@ impl NoteArchive {
             Phrase => {
               let mut fill_ins: Vec<usize> = vec![];
               let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(Phrase, fill_ins) {
+                let blank_id = match Self::select_blank_fill_in(Phrase, fill_ins.clone()) {
                   Some(s) => s,
                   None => {
                     let fill_in_objects = fill_ins.iter().map(|fi| PhraseFillIn::iterator_of_blanks().nth(*fi).unwrap() );
@@ -9202,7 +9216,7 @@ impl NoteArchive {
                         fill_in_strings[fill_in_strings.len()-1],
                       )
                     } else {
-                      fill_in_strings[0]
+                      fill_in_strings[0].clone()
                     };
                   }
                 };
@@ -9279,6 +9293,7 @@ impl NoteArchive {
                         },
                         _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
                       }
+                      continue;
                     },
                     None => (), 
                   }
@@ -9851,42 +9866,47 @@ impl NoteArchive {
 
     // add blanks
     let mut current_blank = 1;
+    let mut hide = false;
+    let mut youth_added = false;
     loop {
       n.display_content(None, None);
-      println_on_bg!("{:-^163}", " Collaterals ");
-      for c_row in col_rows.clone() {
-        let val1: String = match c_row.get(0) {
-          Some(v) => format!("[{}] {}", v.id, v.full_name()),
-          None => String::new(),
-        };
-        let val2: String = match c_row.get(1) {
-          Some(v) => format!("[{}] {}", v.id, v.full_name()),
-          None => String::new(),
-        };
-        let val3: String = match c_row.get(2) {
-          Some(v) => format!("[{}] {}", v.id, v.full_name()),
-          None => String::new(),
-        };
-        let val4: String = match c_row.get(3) {
-          Some(v) => format!("[{}] {}", v.id, v.full_name()),
-          None => String::new(),
-        };
-        println_on_bg!(
-          "{:-^38} | {:-^38} | {:-^38} | {:-^38}",
-          val1,
-          val2,
-          val3,
-          val4,
-        );
+      if !hide {
+        println_on_bg!("{:-^163}", " Collaterals ");
+        for c_row in col_rows.clone() {
+          let val1: String = match c_row.get(0) {
+            Some(v) => format!("[{}] {}", v.id, v.full_name()),
+            None => String::new(),
+          };
+          let val2: String = match c_row.get(1) {
+            Some(v) => format!("[{}] {}", v.id, v.full_name()),
+            None => String::new(),
+          };
+          let val3: String = match c_row.get(2) {
+            Some(v) => format!("[{}] {}", v.id, v.full_name()),
+            None => String::new(),
+          };
+          let val4: String = match c_row.get(3) {
+            Some(v) => format!("[{}] {}", v.id, v.full_name()),
+            None => String::new(),
+          };
+          println_on_bg!(
+            "{:-^38} | {:-^38} | {:-^38} | {:-^38}",
+            val1,
+            val2,
+            val3,
+            val4,
+          );
+      }
       println_on_bg!("{:-^163}", "-");
 
       }
       println_inst!("Press ENTER to choose a phrase from the saved menus.");
       println_inst!("You may also enter text directly or choose from the following shortcuts.");
       println_inst!(
-        "| {} | {}",
+        "| {} | {} | {}",
         "YOUTH / Y: Youth's full name",
         "ALL / A: All collaterals",
+        "HIDE / H: Hide collaterals",
       );
       println_inst!(
         "| {} | {} | {}",
@@ -9900,16 +9920,23 @@ impl NoteArchive {
         Ok(_) => {
           match &choice.trim().to_ascii_lowercase()[..] {
             "" => (),
+            "hide" | "h" => {
+              hide = true;
+              continue;
+            }
             "youth" | "y" | "YOUTH" | "Youth" | "Y" => {
-              let current_client_string = &self.current_client().full_name_with_label();
-              if n.content.trim_end() != n.content {
-                n.content.push_str(&current_client_string[..]);
+              let current_client_string = if !youth_added {
+                youth_added = true;
+                self.current_client().full_name_with_label()
               } else {
-                n.content.push_str(&format!("{}{}", " ", &current_client_string[..])[..]);
-              }
+                self.current_client().full_name()
+              };
+              n.add_blank(CurrentClientName);
+              n.blanks.insert(current_blank, (CurrentClientName, current_client_string, vec![]));
+              current_blank += 1;
               continue;
             },
-            "all" | "a" | "ALL" | "All" | "A" => {
+            "all" | "a" => {
               let current_collaterals = self.current_client_collaterals();
               let num_collats = current_collaterals.len();
               let all_collaterals_string = if num_collats == 0 {
@@ -9926,19 +9953,18 @@ impl NoteArchive {
                 // else condition is impossible because vec must have positive length
                 String::from("")
               };
-              if n.content.trim_end() != n.content {
-                n.content.push_str(&all_collaterals_string[..]);
-              } else {
-                n.content.push_str(&format!("{}{}", " ", &all_collaterals_string[..])[..]);
-              }
+              n.add_blank(AllCollaterals);
+              n.blanks.insert(current_blank, (AllCollaterals, all_collaterals_string, vec![]));
+              current_blank += 1;
               continue;
             },
-            "back" | "b" | "BACK" | "Back" | "B" => {
+            "back" | "b" => {
 
               n.content = n.content.trim().to_string();
 
               let last_space = n.content.rfind(' ');
 
+              
               match last_space {
                 None => {
                   if n.content.chars().count() > 5 {
@@ -9948,19 +9974,24 @@ impl NoteArchive {
                     n.content = String::new();
                   }
                 },
-                Some(idx) => n.content = n.content[..idx].to_string(),
+                Some(idx) => {
+                  if String::from(&n.content[idx..]).contains(&self.current_client().full_name_with_label()[..]) {
+                    youth_added = false;
+                  }
+                  n.remove_blanks_after_content_index(idx);
+                  n.content = n.content[..idx].to_string();
+                },
               }
-              for co_id in n.foreign_keys["collateral_ids"].clone() {
-                if !n.content.contains(&self.get_collateral_by_id(co_id).unwrap().full_name()) {
-                  let new_ids: Vec<u32> = n.foreign_keys["collateral_ids"].clone().iter()
-                    .map(|num| *num )
-                    .filter(|saved_co_id|
-                      saved_co_id != &co_id
-                    ).collect();
-
-                  n.foreign_keys.insert(String::from("collateral_ids"), new_ids);
-                }
-              }
+              let mut new_ids = n.foreign_keys["collateral"].clone();
+              new_ids.retain(|co_id|
+                n.blanks.values()
+                  .filter(|(b, s, ids)| *b == AllCollaterals || *b == Collaterals )
+                  .any(|(_, _, ids)| ids.iter().any(|id| id == co_id ) )
+              );
+              n.foreign_keys.insert(
+                String::from("collateral_ids"),
+                new_ids
+              );
               continue;
             },
             "save" | "s" | "SAVE" | "Save" | "S" => {

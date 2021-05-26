@@ -1129,6 +1129,31 @@ impl Note {
       foreign_keys,
     }
   }
+  pub fn add_blank(&mut self, blank: Blank) {
+    if self.content.len() == 0 {
+      self.content.push_str(&blank.to_string())
+    } else {
+      match &self.content[self.content.len()-1..] {
+        " " => {
+          self.content.push_str(&blank.to_string())
+        },
+        _ => {
+          self.content.push_str(&format!(" {}", blank.to_string()));
+        }
+      }
+    }
+  }
+  pub fn remove_blanks_after_content_index(&mut self, idx: usize) {
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+    }
+    let matches = RE_BLANK.find_iter(&self.content);
+    for (i, m) in matches.enumerate() {
+      if m.start() > idx {
+        self.blanks.remove(&(i as u32));
+      }
+    }
+  }
   pub fn preview(&self) -> &str {
     if self.content.len() > 95 {
       &self.content[0..95]
