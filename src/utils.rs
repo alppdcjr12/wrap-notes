@@ -7,10 +7,13 @@ use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockCipher, NewBlockCipher};
 use aes::Aes256;
 
-pub fn make_ascii_titlecase(s: &mut str) {
-  if let Some(r) = s.get_mut(0..1) {
+pub fn make_ascii_titlecase(s: String) -> String {
+  let mut s = s.clone();
+  let s_str = &mut s;
+  if let Some(r) = s_str.get_mut(0..1) {
     r.make_ascii_uppercase();
   }
+  s
 }
 
 pub fn decrypt_file(data_fp: &str, output_fp: &str, pw: &str) -> Result<(), Error> {

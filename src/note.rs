@@ -305,9 +305,9 @@ impl NoteTemplate {
     let typed_content_indices = self.get_typed_content_indices();
     for (i1, i2) in typed_content_indices {
       let sentence_indices = if i2 == self.content.len() {
-        NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2]))
+        NoteTemplate::get_sentence_end_indices(i1, String::from(&self.content[i1..i2]))
       } else {
-        NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2+1]))
+        NoteTemplate::get_sentence_end_indices(i1, String::from(&self.content[i1..i2+1]))
       };
       for idcs in sentence_indices {
         num_contents.push(idcs);
@@ -1093,6 +1093,7 @@ impl PartialEq for FPNoteCategory {
 
 use FPNoteCategory::{Tbd};
 
+#[derive(Clone)]
 pub struct Note {
   pub id: u32,
   pub category: NoteCategory,
@@ -1128,6 +1129,66 @@ impl Note {
       foreign_key,
       foreign_keys,
     }
+  }
+  pub fn get_num_content_sections(&self) -> usize {
+    self.get_content_section_indices().iter().count()
+  }
+  pub fn get_typed_content_indices(&self) -> Vec<(usize, usize)> {
+    let mut content_string = self.content.clone();
+
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+    }
+    
+    let mut typed_content_indices: Vec<(usize, usize)> = vec![];
+    let mut prev_end_idx = 0;
+    
+    let mut i = 1;
+    loop {
+      let find_match_string = content_string.clone();
+      let m = RE_BLANK.find(&find_match_string);
+      let m = match m {
+        None => break,
+        Some(m) => m,
+      };
+
+      let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
+
+      let mut display_blank = String::new();
+      for i in m.start()..m.end() {
+        display_blank.push_str("X");
+      }
+
+      content_string = format!(
+        "{}{}{}",
+        &content_string[..m.start()],
+        display_blank,
+        &content_string[m.end()..]
+      );
+
+      typed_content_indices.push((prev_end_idx, m.start()));
+      prev_end_idx = m.end();
+      i += 1;
+    }
+    if prev_end_idx < content_string.len() {
+      typed_content_indices.push((prev_end_idx, content_string.len()))
+    }
+    typed_content_indices
+  }
+  pub fn get_content_section_indices(&self) -> Vec<(usize, usize)> {
+    let mut num_contents: Vec<(usize, usize)> = vec![];
+    let typed_content_indices = self.get_typed_content_indices();
+    for (i1, i2) in typed_content_indices {
+      let sentence_indices = if i2 == self.content.len() {
+        NoteTemplate::get_sentence_end_indices(i1, String::from(&self.content[i1..i2]))
+      } else {
+        NoteTemplate::get_sentence_end_indices(i1, String::from(&self.content[i1..i2+1]))
+      };
+      for idcs in sentence_indices {
+        num_contents.push(idcs);
+      }
+    }
+    num_contents
   }
   pub fn add_blank(&mut self, blank: Blank) {
     if self.content.len() == 0 {

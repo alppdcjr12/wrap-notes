@@ -1,5 +1,5 @@
 use std::fmt;
-use chrono::{NaiveDate, Datelike, TimeZone, Utc, Local};
+use chrono::{NaiveDate, Datelike, TimeZone, Utc, Local, Weekday};
 use std::collections::HashMap;
 
 
@@ -42,7 +42,28 @@ impl NoteDay {
   pub fn fmt_date(&self) -> String {
     self.date.format("%Y-%m-%d").to_string()
   }
+  pub fn heading_date(&self) -> String {
+    let wd = match self.date.weekday() {
+      Weekday::Mon => "Monday",
+      Weekday::Tue => "Tuesday",
+      Weekday::Wed => "Wednesday",
+      Weekday::Thu => "Thursday",
+      Weekday::Fri => "Friday",
+      Weekday::Sat => "Saturday",
+      Weekday::Sun => "Sunday",
+    };
+    format!("{} {}/{}", wd, self.date.month(), self.date.day())
+  }
   pub fn fmt_date_long(&self) -> String {
+    let wd = match self.date.weekday() {
+      Weekday::Mon => "Monday",
+      Weekday::Tue => "Tuesday",
+      Weekday::Wed => "Wednesday",
+      Weekday::Thu => "Thursday",
+      Weekday::Fri => "Friday",
+      Weekday::Sat => "Saturday",
+      Weekday::Sun => "Sunday",
+    };
     let month = match &self.date.month() {
       1 => "January",
       2 => "February",
@@ -64,7 +85,7 @@ impl NoteDay {
       3 | 23 => "rd",
       _ => "th"
     };
-    let date: String = format!("{} {}{}, {}", month, &self.date.day(), suffix, &self.date.year());
+    let date: String = format!("{}, {} {}{}, {}", wd, month, &self.date.day(), suffix, &self.date.year());
     date
   }
 }

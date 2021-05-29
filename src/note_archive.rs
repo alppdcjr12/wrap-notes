@@ -5023,40 +5023,40 @@ impl NoteArchive {
     heading.push_str(&self.current_user().full_name()[..]);
     heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^96}", "-");
-    println_on_bg!("{:-^96}", heading);
-    println_on_bg!("{:-^96}", "-");
-    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Client ", " Date of note ");
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^116}", heading);
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^60}", " ID ", " Client ", " Date of note ");
     for nd in self.current_user_note_days() {
       println_on_bg!(
-        "{: ^10} | {: ^40} | {: <12} {: >26}",
+        "{: ^10} | {: ^40} | {: <46} {: >12}",
         nd.id,
         self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name(),
+        nd.fmt_date_long(),
         nd.fmt_date(),
-        nd.fmt_date_long()
       );
     }
-    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^116}", "-");
   }
   fn display_user_recent_note_days(&self) {
     let mut heading = String::from(" Recent notes for ");
     heading.push_str(&self.current_user().full_name()[..]);
     heading.push_str("'s clients ");
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^96}", "-");
-    println_on_bg!("{:-^96}", heading);
-    println_on_bg!("{:-^96}", "-");
-    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Client ", " Date of note ");
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^116}", heading);
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^60}", " ID ", " Client ", " Date of note ");
     for nd in self.current_user_recent_10_note_days() {
       println_on_bg!(
-        "{: ^10} | {: ^40} | {: <12} {: >26}",
+        "{: ^10} | {: ^40} | {: <46} {: >12}",
         nd.id,
         self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name(),
+        nd.fmt_date_long(),
         nd.fmt_date(),
-        nd.fmt_date_long()
       );
     }
-    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^116}", "-");
   }
   fn load_note_day(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&NoteDay> = self.note_days.iter().find(|nd| nd.id == id);
@@ -5435,10 +5435,86 @@ impl NoteArchive {
     }
     println_on_bg!("{:-^178}", "-");
   }
+  fn display_edit_note_day(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^178}", "-");
+    
+    let notes = self.current_note_day_notes();
+    
+    let nd = self.current_note_day();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    let heading = format!(" Edit notes for {} for {} ", c.full_name(), nd.fmt_date());
+    println_on_bg!("{:-^178}", heading);
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println_on_bg!("{:-^178}", "-");
+    for n in notes {
+      let nt_opt = self.get_note_template_by_note_id(n.id);
+      let nt_display = match nt_opt {
+        Some(nt) => format!("{}", nt),
+        None => String::from("n/a"),
+      };
+
+      let words: Vec<&str> = n.content.split(" ").collect();
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None);
+      let sample = if s.len() > 75 {
+        format!("{}{}", String::from(&s[..73]), String::from("..."))
+      } else {
+        s
+      };
+
+      let cat = match n.category {
+        ICCNote(c) => c.to_string(),
+        FPNote(c) => c.to_string(),
+      };
+      let n_structure = n.structure.to_string();
+      
+      println_on_bg!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
+    }
+    println_on_bg!("{:-^178}", "-");
+  }
+  fn display_delete_note_day(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^178}", "-");
+    
+    let notes = self.current_note_day_notes();
+    
+    let nd = self.current_note_day();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    let heading = format!(" Delete notes for {} for {} ", c.full_name(), nd.fmt_date());
+    println_on_bg!("{:-^178}", heading);
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
+    println_on_bg!("{:-^178}", "-");
+    for n in notes {
+      let nt_opt = self.get_note_template_by_note_id(n.id);
+      let nt_display = match nt_opt {
+        Some(nt) => format!("{}", nt),
+        None => String::from("n/a"),
+      };
+
+      let words: Vec<&str> = n.content.split(" ").collect();
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None);
+      let sample = if s.len() > 75 {
+        format!("{}{}", String::from(&s[..73]), String::from("..."))
+      } else {
+        s
+      };
+
+      let cat = match n.category {
+        ICCNote(c) => c.to_string(),
+        FPNote(c) => c.to_string(),
+      };
+      let n_structure = n.structure.to_string();
+      
+      println_on_bg!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
+    }
+    println_on_bg!("{:-^178}", "-");
+  }
   fn choose_delete_notes(&mut self) {
     loop {
 
-      self.display_note_day();
+      self.display_delete_note_day();
       println_inst!("Select note ID to delete.");
       println_inst!("CANCEL / C: Cancel");
 
@@ -5877,25 +5953,6 @@ impl NoteArchive {
       }
     }
   }
-  fn display_delete_note_day(&self) {
-    let mut heading = String::from(" DELETE NOTE RECORD ");
-    let date_string = &format!("from {} ", self.current_note_day().date.format("%m/%d/%Y"));
-    let client_string = &format!("for {} ", self.current_client().full_name());
-    heading.push_str(date_string);
-    heading.push_str(client_string);
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^146}", heading);
-    println_on_bg!("{:-^146}", "-");
-    println_on_bg!(
-      "{:-^20} | {:-^50} | {:-<70}",
-      " Category ", " Collaterals ", " First sentence ",
-    );
-
-    println_on_bg!("ITERATE OVER ALL NOTES IN THIS NOTEDAY");
-
-    println_on_bg!("{:-^146}", "-");
-  }
   fn delete_current_note_day(&mut self) {
     let id = self.foreign_key.get("current_note_day_id").unwrap();
     self.note_days.retain(|nd| nd.id != *id);
@@ -6243,7 +6300,7 @@ impl NoteArchive {
                 break;
               },
               "append" | "add" | "a" => {
-
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                 self.current_note_template().display_edit_content(None, None);
                 println_inst!("Enter new content to append to the template, including spaces.");
                 let mut new_section = String::new();
@@ -6366,7 +6423,7 @@ impl NoteArchive {
                     }
                   }
 
-                  let content_indices = self.current_note_template().get_content_indices();
+                  let content_indices = self.current_note_template().get_content_section_indices();
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert new content before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");
 
@@ -6682,9 +6739,43 @@ impl NoteArchive {
               _ => {
                 match content.parse::<u32>() {
                   Err(_) => {
-                    println_err!("Invalid command.");
-                    thread::sleep(time::Duration::from_secs(2));
-                    continue;
+                    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                    self.current_note_template().display_content(blank_focus_id, content_focus_id);
+                    println_inst!("Press ENTER to confirm editing selected content to '{}'.", &content);
+                    println_inst!("Any other key to cancel.");
+                    let mut new_section = String::new();
+                    let new_section_choice = loop {
+                      let section_result = io::stdin().read_line(&mut new_section);
+                      break match section_result {
+                        Ok(_) => new_section.trim().to_ascii_lowercase(),
+                        Err(e) => {
+                          println_err!("Failed to read line: {}", e);
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        }
+                      };
+                    };
+
+                    match &new_section[..] {
+                      "" => {
+                        let n_content = self.current_note_template().content.clone();
+    
+                        let mut new_content = String::new();
+    
+                        for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
+                          if i + 1 == content_focus_id.unwrap() as usize {
+                            new_content = format!("{}{}{}", &n_content[..idxs.0], &new_section_choice[..], &n_content[idxs.1..]);
+                          }
+                        }
+    
+                        self.current_note_template_mut().content = new_content;
+                        self.current_note_template_mut().clean_spacing();
+                        self.write_note_templates().unwrap()
+                      },
+                      _ => {
+                        continue;
+                      }
+                    }
                   },
                   Ok(num) => {
                     let num_sections = self.current_note_template().get_num_content_sections();
@@ -6845,7 +6936,7 @@ impl NoteArchive {
               },
               "delete" | "d" => {
                 loop {
-                  println_yel!("Are you sure you want to delete the currently selected blank? (Y/N)");
+                  println_yel!("Are you sure you want to delete the selected blank? (Y/N)");
                   let mut delete_choice = String::new();
                   let delete_attempt = io::stdin().read_line(&mut delete_choice);
                   match delete_attempt {
@@ -6895,7 +6986,7 @@ impl NoteArchive {
                 };
                 'insert_loop: loop {
                   let current_note_template = self.current_note_template();
-                  let typed_content_indices = current_note_template.get_content_indices();
+                  let typed_content_indices = current_note_template.get_content_section_indices();
                   current_note_template.display_edit_content(blank_focus_id, content_focus_id);
                   println_inst!("Select a section of text in the template by ID, then ENTER to insert a new blank before, after, or in that section.");
                   println_inst!("Enter CANCEL at any time to cancel.");
@@ -7563,6 +7654,7 @@ impl NoteArchive {
       loop {
         nt.content = content.clone();
         nt.clean_spacing();
+        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
         nt.display_content(None, None);
         println_inst!("Enter text to add text to the template, or choose from among the following options:");
         println_inst!(
@@ -8138,6 +8230,17 @@ impl NoteArchive {
       None => panic!("The loaded ID does not match any saved notes."),
     }
   }
+  fn current_note_copy(&self) -> Note {
+    let n_id = match self.foreign_key.get("current_note_id") {
+      Some(id) => id,
+      None => panic!("There is no current note selected."),
+    };
+    let maybe_current: Option<Note> = self.notes.iter().cloned().find(|n| n.id == *n_id);
+    match maybe_current {
+      Some(n) => n,
+      None => panic!("The loaded ID does not match any saved notes."),
+    }
+  }
   fn current_note_day_notes(&self) -> Vec<&Note> {
     self.notes.iter().filter(|n| self.current_note_day().foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id )).collect()
   }
@@ -8165,12 +8268,37 @@ impl NoteArchive {
       FPNote(ncat) => format!("'{}' by FP", ncat),
     };
 
-    let heading = format!("{} {} note for {}", nd.fmt_date(), n.structure, c.full_name());
+    let heading = format!(" {} {} note for {} ", nd.heading_date(), n.structure, c.full_name());
     println_on_bg!("{:-^163}", heading);
-    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", " Author ", " Template ", " Category ");
-    println_on_bg!("{:-^50} | {:-^50} | {:-^50}", self.current_user().name_and_title(), nt_string, n.category);
+    let heading2 = format!(" ({}) ", n.category);
+    println_on_bg!("{:-^163}", heading2);
     println_on_bg!("{:-^163}", "-");
-    n.display_content(None, None);
+    n.display_content(Some(0), None);
+  }
+  fn display_edit_note(&self) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^163}", "-");
+    
+    let n = self.current_note();
+    let nd = self.get_note_day_by_note_id(n.id).unwrap();
+    let c = self.get_client_by_note_day_id(nd.id).unwrap();
+    
+    let nt_string = match self.get_note_template_by_note_id(n.id) {
+      Some(nt) => nt.display_short(),
+      None => String::from("n/a"),
+    };
+
+    let cat_string = match n.category {
+      ICCNote(ncat) => format!("'{}' by ICC", ncat),
+      FPNote(ncat) => format!("'{}' by FP", ncat),
+    };
+
+    let heading = format!(" Edit {} {} note for {} ", nd.heading_date(), n.structure, c.full_name());
+    println_on_bg!("{:-^163}", heading);
+    let heading2 = format!(" ({}) ", n.category);
+    println_on_bg!("{:-^163}", heading2);
+    println_on_bg!("{:-^163}", "-");
+    n.display_content(Some(0), None);
   }
   fn load_note(&mut self, id: u32) -> std::io::Result<()> {
     let current: Option<&Note> = self.notes.iter().find(|n| n.id == id);
@@ -8208,15 +8336,1111 @@ impl NoteArchive {
           break;
         }
         "edit" | "e" => {
-          // self.choose_edit_note();
-          println_err!("self.choose_edit_note();");
+          self.choose_edit_note();
+          break;
         }
         _ => println_err!("Invalid command."),
       }
     }
   }
   fn choose_edit_note(&mut self) {
+    let mut blank_focus_id: Option<u32> = None;
+    let mut content_focus_id: Option<u32> = None;
+    'choose_edit: loop {
+      let num_blanks = self.current_note().blanks.len() as u32;
+      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+      self.current_note().display_content(blank_focus_id, content_focus_id);
+      println_inst!(
+        "{} | {} | {} | {}",
+        "BLANKS / B: Edit blanks",
+        "CONTENT / C: Edit other content",
+        "TYPE / T: Edit note type/category",
+        "QUIT / Q: Quit menu",
+      );
+      println_inst!("Choose blank by ID to edit its content.");
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println_err!("Failed to read input. Please try again.");
+          continue;
+        }
+      }
+      field_to_edit = field_to_edit.trim().to_string();
+      match &field_to_edit.to_ascii_lowercase()[..] {
+        "quit" | "q" => break,
+        "type" | "t" | "category" | "cat" => {
+          let structure = loop {
+            self.display_structure_types();
+            print_inst!("Choose a new structure for the selected note from the menu.");
+            print!("\n");
+            print_inst!("Enter 'CANCEL' at any time to cancel.");
+            print!("\n");
+            let mut structure_choice = String::new();
+            let structure_attempt = io::stdin().read_line(&mut structure_choice);
+            match structure_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println_err!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let structure = structure_choice.trim();
+            break match &structure.to_ascii_lowercase()[..] {
+              "1" | "cpm" | "care plan meeting" => CarePlan,
+              "2" | "cpm-v" | "care plan meeting verbose" => CarePlanVerbose,
+              "3" | "intake" | "i" => Intake,
+              "4" | "assessment" | "a" => Assessment,
+              "5" | "sncd" | "strengths, needs and cultural discovery" | "s" => Sncd,
+              "6" | "home visit" | "hv" => HomeVisit,
+              "7" | "agenda prep" | "ap" => AgendaPrep,
+              "8" | "debrief" | "d" => Debrief,
+              "9" | "phone call" | "pc" => PhoneCall,
+              "10" | "scheduling" | "sch" => Scheduling,
+              "11" | "sent email" | "se" => SentEmail,
+              "12" | "referral" | "r" => Referral,
+              "13" | "custom" | "c" => CustomStructure,
+              "cancel" => continue 'choose_edit,
+              _ => {
+                println_err!("Invalid choice.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              },
+            };
+          };
+          let ncat = match self.current_user().role {
+            ICC => {
+              match structure {
+                CarePlan => ICCNote(FaceToFaceContactWithClient),
+                CarePlanVerbose => ICCNote(FaceToFaceContactWithClient),
+                Intake => ICCNote(FaceToFaceContactWithClient),
+                Assessment => ICCNote(FaceToFaceContactWithClient),
+                Sncd => ICCNote(FaceToFaceContactWithClient),
+                HomeVisit => ICCNote(FaceToFaceContactWithClient),
+                AgendaPrep => ICCNote(FaceToFaceContactWithClient),
+                Debrief => ICCNote(FaceToFaceContactWithClient),
+                PhoneCall => ICCNote(TelephoneContactWithClient),
+                Scheduling => ICCNote(CareCoordination),
+                SentEmail => ICCNote(CareCoordination),
+                Referral => ICCNote(CareCoordination),
+                CustomStructure => {
+                  loop {
+                    match self.choose_note_category() {
+                      Some(ncat) => break ncat,
+                      None => {
+                        let decision = loop {
+                          let mut cancel_choice = String::new();
+                          println_yel!("You must select a note category to fill in a custom note template.");
+                          println_inst!("Cancel writing note? ( Y / N )");
+                          let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+                          let cancel_choice_content = match cancel_choice_attempt {
+                            Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+                            Err(e) => {
+                              println_err!("Failed to read line: {}", e);
+                              thread::sleep(time::Duration::from_secs(2));
+                              continue;
+                            }
+                          };
+                          break cancel_choice_content;
+                        };
+                        match &decision[..] {
+                          "yes" | "y" => {
+                            continue 'choose_edit;
+                          },
+                          "no" | "n" => {
+                            continue;
+                          },
+                          _ => {
+                            println_err!("Invalid command.");
+                            continue;
+                          },
+                        }
+                      }
+                    }
 
+                  }
+                }
+              }
+            }
+            FP => {
+              match structure {
+                CarePlan => FPNote(Tbd),
+                CarePlanVerbose => FPNote(Tbd),
+                Intake => FPNote(Tbd),
+                Assessment => FPNote(Tbd),
+                Sncd => FPNote(Tbd),
+                HomeVisit => FPNote(Tbd),
+                AgendaPrep => FPNote(Tbd),
+                Debrief => FPNote(Tbd),
+                PhoneCall => FPNote(Tbd),
+                Scheduling => FPNote(Tbd),
+                SentEmail => FPNote(Tbd),
+                Referral => FPNote(Tbd),
+                CustomStructure => FPNote(Tbd),
+              }
+            }
+          };
+          self.current_note_mut().structure = structure;
+          self.current_note_mut().category = ncat;
+        },
+        "content" | "c" => {
+          content_focus_id = Some(1);
+          blank_focus_id = None;
+          loop {
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            self.current_note().display_content(blank_focus_id, content_focus_id);
+            println_inst!(
+              "{} | {} | {} | {}",
+              "EDIT / E: Edit selected content",
+              "ADD / A: Add content to end of note",
+              "INSERT / I: Insert additional content",
+              "DELETE / D: Delete content",
+            );
+            println_inst!("Choose content section by ID.");
+            println_inst!("Enter 'QUIT / Q' at any time to return to the editing menu.");
+            let mut content_choice = String::new();
+            let content_attempt = io::stdin().read_line(&mut content_choice);
+            match content_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println_err!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let content = content_choice.trim();
+            match &content.to_ascii_lowercase()[..] {
+              "quit" | "q" => {
+                break;
+              },
+              "append" | "add" | "a" => {
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                self.current_note().display_content(None, None);
+                println_inst!("Enter new content to append to the note, including spaces.");
+                let mut new_section = String::new();
+                let new_section_choice = loop {
+                  let section_result = io::stdin().read_line(&mut new_section);
+                  break match section_result {
+                    Ok(_) => String::from(&new_section[..new_section.len()-2]),
+                    Err(e) => {
+                      println_err!("Failed to read line: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+                };
+
+                let c_content = self.current_note().content.clone();
+                let last_char = c_content.chars().last();
+                let new_content = match last_char {
+                  None => format!("{}{}", c_content, new_section_choice),
+                  Some(c) => {
+                    if String::from("?!.").contains(c) && new_section_choice.chars().next() != Some(' ') {
+                      format!("{}{}{}", c_content, " ", new_section_choice)
+                    } else {
+                      format!("{}{}", c_content, new_section_choice)
+                    }
+                  }
+                };
+                self.current_note_mut().content = new_content;
+                self.current_note_mut().clean_spacing();
+                self.write_notes().unwrap()
+              },
+              "edit" | "e" => {
+                print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                self.current_note().display_content(blank_focus_id, content_focus_id);
+                println_inst!("Enter new content to replace the selected text, including spaces.");
+                let mut new_section = String::new();
+                let new_section_choice = loop {
+                  let section_result = io::stdin().read_line(&mut new_section);
+                  break match section_result {
+                    Ok(_) => String::from(&new_section[..new_section.len()-2]),
+                    Err(e) => {
+                      println_err!("Failed to read line: {}", e);
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  };
+                };
+
+                let nt_content = self.current_note().content.clone();
+
+                let mut new_content = String::new();
+
+                for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
+                  if i + 1 == content_focus_id.unwrap() as usize {
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
+                  }
+                }
+
+                self.current_note_mut().content = new_content;
+                self.current_note_mut().clean_spacing();
+                self.write_notes().unwrap()
+              },
+              "delete" | "d" => {
+                loop {
+                  println_yel!("Are you sure you want to delete the currently selected section of content? (Y/N)");
+                  let mut delete_choice = String::new();
+                  let delete_attempt = io::stdin().read_line(&mut delete_choice);
+                  match delete_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println_err!("Invalid repsonse: {}", e);
+                      continue;
+                    }
+                  }
+                  let delete = delete_choice.trim();
+                  match &delete[..] {
+                    "YES" | "yes" | "Yes" | "Y" | "y" => {
+                      let nt_content = self.current_note().content.clone();
+
+                      let mut new_content = String::new();
+                      for (i, idxs) in self.current_note().get_typed_content_indices().iter().enumerate() {
+                        if i == content_focus_id.unwrap() as usize {
+                          new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
+                        }
+                      }
+                      self.current_note_mut().content = new_content;
+                      self.current_note_mut().clean_spacing();
+                      self.write_notes().unwrap();
+                      break;
+                    },
+                    "NO" | "no" | "No" | "N" | "n" => {
+                      break;
+                    },
+                    _ => {
+                      println_err!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              },
+              "insert" | "i" => { // in content choice
+                content_focus_id = Some(0);
+                blank_focus_id = None;
+                let mut chosen_text = String::new();
+                'insert_content: loop {
+                  print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                  self.current_note().display_content(blank_focus_id, content_focus_id);
+
+                  if content_focus_id.unwrap() == 0 {
+                    println_inst!("Enter new content to insert.");
+                    let mut entered_content = String::new();
+                    let enter_result = io::stdin().read_line(&mut entered_content);
+                    match enter_result {
+                      Ok(_) => chosen_text = String::from(&entered_content[..entered_content.len()-2]),
+                      Err(e) => {
+                        println_err!("Failed to read string: {}", e);
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue;
+                      }
+                    }
+                  }
+
+                  let content_indices = self.current_note().get_content_section_indices();
+                  println_inst!("Select a section of text in the note by ID, then ENTER to insert new content before, after, or in that section.");
+                  println_inst!("Enter CANCEL at any time to cancel.");
+
+                  let insert = loop {
+                    let mut insert_choice = String::new();
+                    let insert_attempt = io::stdin().read_line(&mut insert_choice);
+                    match insert_attempt {
+                      Ok(_) => (),
+                      Err(e) => {
+                        println_err!("Invalid input: {}", e);
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue 'insert_content;
+                      }
+                    }
+                    let insert = insert_choice.trim();
+                    if content_focus_id.unwrap() == 0 {
+                      if &insert[..] == "" {
+                        continue;
+                      }
+                    }
+                    break insert.to_string();
+                  };
+                  match &insert[..] {
+                    "CANCEL" | "cancel" | "C" | "c" => {
+                      break 'insert_content;
+                    },
+                    "" => {
+                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                      let mut current_location = 1;
+                      'insert_location_content: loop {
+                        let indices = content_indices[content_focus_id.unwrap() as usize - 1];
+                        let idx1 = indices.0 as usize;
+                        let idx2 = indices.1 as usize;
+                        let display_string = self.current_note().content[idx1..idx2].to_string();
+                        let num_chars = display_string.chars().count();
+                        if num_chars <= 163 {
+                          println_on_bg!("{}", &display_string);
+                          let mut pointer_string = String::new();
+                          for _ in 0..current_location {
+                            pointer_string.push_str("-");
+                          }
+                          pointer_string.push_str("^");
+                          println_on_bg!("{}", &pointer_string);
+                        } else {
+                          let mut outer_vec: Vec<(String, String)> = vec![];
+                          let num_vecs = if num_chars % 163 == 0 {
+                            num_chars / 163
+                          } else {
+                            (num_chars / 163) + 1
+                          };
+
+                          let mut display_content = self.current_note().generate_display_content_string_with_blanks(None, None).0.clone();
+                          while display_content.chars().count() > 163 {
+                            let (p1, p2) = display_content.split_at(163);
+                            let mut pointer_string = String::new();
+                            for _ in 0..163 {
+                              pointer_string.push_str(" ");
+                            }
+                            outer_vec.push((format!("{}", p1), pointer_string));
+                            display_content = format!("{}", p2);
+                          }
+                          if display_content == String::new() {
+                            ()
+                          } else {
+                            let mut pointer_string = String::new();
+                            for _ in 1..pointer_string.chars().count() {
+                              pointer_string.push_str("-");
+                            }
+                            pointer_string.push_str("^");
+                            outer_vec.push((format!("{}", display_content), pointer_string));
+                          }
+                          for row_and_pointer in outer_vec {
+                            println_on_bg!("{}", row_and_pointer.0);
+                            println_on_bg!("{}", row_and_pointer.1);
+                          }
+                        }
+                        println_inst!("New content: {}", &chosen_text);
+                        println_inst!("Enter an integer to navigate to a point at which to insert the new content.");
+                        println_inst!("Press ENTER to insert new content in the current location.");
+                        println_inst!(
+                          "{} | {} | {}",
+                          "BEFORE / B: Insert at start of section",
+                          "AFTER / A: Insert at end of section",
+                          "CANCEL / C: Cancel inserting new content",
+                        );
+
+                        let mut insert_string = String::new();
+                        let insert_attempt = io::stdin().read_line(&mut insert_string);
+                        match insert_attempt {
+                          Ok(_) => (),
+                          Err(e) => {
+                            println_err!("Invalid input: {}", e);
+                            thread::sleep(time::Duration::from_secs(2));
+                            continue;
+                          },
+                        }
+                        match &insert_string.trim().to_ascii_lowercase()[..] {
+                          // integer to change current location
+                          // ENTER to insert it there, then show what it will look like and confirm
+                          "cancel" => {
+                            break 'insert_location_content;
+                          }
+                          "before" | "b" => {
+                            loop {
+                              let last_content_char = if current_location == 0 {
+                                self.current_note().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_content = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println_err!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note().content.clone();
+
+                              match &confirm.to_ascii_lowercase()[..] {
+                                "yes" | "y" => {
+                                  self.current_note_mut().content = new_content;
+                                  self.current_note_mut().clean_spacing();
+                                  self.write_notes().unwrap();
+                                  break 'insert_location_content;
+                                },
+                                "no" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println_err!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "after" | "a" => {
+                            loop {
+                              let last_content_char = if current_location == 0 {
+                                self.current_note().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_content = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              println_inst!("{}", &new_content);
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println_err!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note().content.clone();
+
+                              match &confirm.to_ascii_lowercase()[..] {
+                                "yes" | "y" => {
+                                  self.current_note_mut().content = new_content;
+                                  self.current_note_mut().clean_spacing();
+                                  self.write_notes().unwrap();
+                                  break 'insert_location_content;
+                                },
+                                "no" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                "cancel" | "c" => {
+                                  break 'insert_content;
+                                },
+                                _ => {
+                                  println_err!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          "" => {
+                            loop {
+                              let last_content_char = if current_location == 0 {
+                                self.current_note().generate_display_content_string_with_blanks(None, None).0[..idx1].chars().last()
+                              } else {
+                                display_string[..current_location].chars().last()
+                              };
+                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
+                                self.current_note().generate_display_content_string_with_blanks(None, None).0[idx2..].chars().next()
+                              } else {
+                                display_string[current_location..].chars().next()
+                              };
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                              let new_content = format!(
+                                "{}{}{}{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0,
+                                &chosen_text,
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
+                              println_inst!("Confirm editing the selection to the following? (Y/N)");
+                              print_on_bg!("{}{}",
+                                &display_string[..current_location],
+                                &bfrs.0,
+                              );
+                              print_highlighted_content!("{}",
+                                &chosen_text,
+                              );
+                              print_on_bg!("{}{}\n",
+                                &bfrs.1,
+                                &display_string[current_location..]
+                              );
+
+                              let mut confirm_insert = String::new();
+                              let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
+                              let confirm = match confirm_attempt {
+                                Ok(_) => confirm_insert.trim(),
+                                Err(e) => {
+                                  println_err!("Failed to read input.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              };
+
+                              let current_content = self.current_note().content.clone();
+
+                              match &confirm[..] {
+                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                  self.current_note_mut().content = format!(
+                                    "{}{}{}",
+                                    &current_content[..idx1],
+                                    &new_content,
+                                    &current_content[idx2..],
+                                  );
+                                  self.current_note_mut().clean_spacing();
+                                  self.write_notes().unwrap();
+                                  break 'insert_content;
+                                },
+                                "NO" | "no" | "No" | "N" | "n" => {
+                                  continue 'insert_location_content;
+                                },
+                                _ => {
+                                  println_err!("Invalid command.");
+                                  thread::sleep(time::Duration::from_secs(2));
+                                  continue;
+                                }
+                              }
+                            }
+                          },
+                          _ => {
+                            match insert_string.trim().parse() {
+                              Ok(num) => {
+                                current_location = num;
+                                continue;
+                              },
+                              Err(e) => {
+                                println_err!("Invalid command.");
+                                thread::sleep(time::Duration::from_secs(2));
+                                continue;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    _ => {
+                      match insert.parse::<u32>() {
+                        Err(_) => {
+                          println_err!("Invalid command.");
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        },
+                        Ok(num) => {
+                          if num > 0 && (num as usize) < content_indices.len() {
+                            content_focus_id = Some(num);
+                          } else {
+                            println_err!("Please enter an ID in the range shown.");
+                          }
+                        },
+                      }
+                    }
+                  }
+                }
+                blank_focus_id = Some(1);
+                content_focus_id = None;
+                self.write_notes().unwrap();
+              },
+              _ => {
+                match content.parse::<u32>() {
+                  Err(_) => {
+                    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+                    self.current_note().display_content(blank_focus_id, content_focus_id);
+                    println_inst!("Press ENTER to confirm replacing selected content with '{}'.", &content);
+                    println_inst!("Any other key to cancel.");
+                    let mut new_section = String::new();
+                    let new_section_choice = loop {
+                      let section_result = io::stdin().read_line(&mut new_section);
+                      break match section_result {
+                        Ok(_) => new_section.trim().to_ascii_lowercase(),
+                        Err(e) => {
+                          println_err!("Failed to read line: {}", e);
+                          thread::sleep(time::Duration::from_secs(2));
+                          continue;
+                        }
+                      };
+                    };
+
+                    match &new_section[..] {
+                      "" => {
+                        let n_content = self.current_note().content.clone();
+    
+                        let mut new_content = String::new();
+    
+                        for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
+                          if i + 1 == content_focus_id.unwrap() as usize {
+                            new_content = format!("{}{}{}", &n_content[..idxs.0], &new_section_choice[..], &n_content[idxs.1..]);
+                          }
+                        }
+    
+                        self.current_note_mut().content = new_content;
+                        self.current_note_mut().clean_spacing();
+                        self.write_notes().unwrap()
+                      },
+                      _ => {
+                        continue;
+                      }
+                    }
+                  },
+                  Ok(num) => {
+                    let num_sections = self.current_note().get_num_content_sections();
+                    if num as usize > num_sections || num == 0 {
+                      println_err!("Please choose from among the content IDs shown above.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    } else {
+                      content_focus_id = Some(num);
+                    }
+                  },
+                }
+              },
+            }
+          }
+        },
+        _ => { // THIS IS "blanks" | "b" option - because parsing to int will also lead to choosing blank condition
+          lazy_static! {
+            static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+          }
+          let num_blanks = RE_BLANK.find_iter(&self.current_note().content).count() as u32;
+          if num_blanks == 0 {
+            println_err!("There are no blanks to edit.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          blank_focus_id = Some(1);
+          content_focus_id = None;
+          if field_to_edit.clone() == String::from("blanks") || field_to_edit.clone() == String::from("b") {
+            ()
+          } else {
+            match field_to_edit.parse::<u32>() {
+              Ok(num) => {
+                if num > num_blanks || num == 0 {
+                  blank_focus_id = Some(num);
+                  content_focus_id = None;
+                } else {
+                  println_err!("Please choose from among the blank IDs shown above.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              },
+              Err(_) => {
+                println_err!("Invalid command.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              }
+            }
+          }
+          loop {
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            self.current_note().display_content(blank_focus_id, content_focus_id);
+            println_inst!(
+              "{} | {}",
+              "DELETE / D: Delete selected blank",
+              "QUIT / Q: Return to editing menu",
+            );
+            println_inst!("Choose blank by blank ID.");
+            println_inst!("Press ENTER to edit content of the selected blank.");
+            let mut blank_choice = String::new();
+            let blank_attempt = io::stdin().read_line(&mut blank_choice);
+            match blank_attempt {
+              Ok(_) => (),
+              Err(e) => {
+                println_err!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+            let blank = blank_choice.trim();
+            match &blank.to_ascii_lowercase()[..] {
+              "quit" | "q" => {
+                break;
+              },
+              "" | "edit" | "e" => {
+                let i = blank_focus_id.unwrap();
+                match self.current_note().blanks.clone().get(&i) {
+                  None => panic!("Blank #{} in already finished note has no content.", i),
+                  Some(b_tup) => {
+                    let b = b_tup.0;
+                    match b {
+                      Collaterals => {
+                        let mut collats: Vec<Collateral> = vec![];
+                        loop {
+                          let initial_input = loop {
+                            let collat_ids = collats.iter().map(|co| co.id ).collect::<Vec<u32>>();
+                            self.display_client_collaterals(Some(collat_ids));
+                            println_inst!("ALL: Select all");
+                            let mut choice = String::new();
+                            let read_attempt = io::stdin().read_line(&mut choice);
+                            match read_attempt {
+                              Ok(_) => break choice.trim().to_string(),
+                              Err(e) => {
+                                println_err!("Could not read input; try again ({}).", e);
+                                continue;
+                              }
+                            }
+                          };
+                          match &initial_input.to_ascii_lowercase()[..] {
+                            "new" | "n" => {
+                              let maybe_new_id = self.create_collateral_get_id();
+                              match maybe_new_id {
+                                Some(new_id) => self.update_current_collaterals(new_id),
+                                None => (),
+                              }
+                              continue;
+                            },
+                            "add" | "a" => {
+                              self.add_collateral();
+                              continue;
+                            },
+                            "edit" | "e" => {
+                              self.choose_edit_client_collaterals();
+                              continue;
+                            },
+                            "quit" | "q" => {
+                              break;
+                            },
+                            "all" => {
+                              collats = self.get_current_collaterals().iter().cloned().cloned().collect::<Vec<Collateral>>();
+                              break;
+                            },
+                            "" => {
+                              if collats.len() > 0 {
+                                let current_note_id = self.current_note().id;
+                                let new_note = self.autofill_note_blanks(self.current_note_copy());
+                                self.current_note_mut().blanks = new_note.blanks.clone();
+                                break;
+                              } else {
+                                println_err!("Please choose at least one collateral to add to the current blank.");
+                                thread::sleep(time::Duration::from_secs(2));
+                                continue;
+                              }
+                            },
+                            _ => {
+                              let selected_id_res: Result<u32, _> = initial_input.parse();
+                              match selected_id_res {
+                                Ok(num) => {
+                                  let collat = match self.choose_get_client_collateral(num) {
+                                    Some(co) => co.clone(),
+                                    None => continue,
+                                  };
+                                  if !collats.iter().any(|co| co == &collat ) {
+                                    collats.push(collat);
+                                    if collats.len() == self.current_client_collaterals().len() {
+                                      break;
+                                    }
+                                  } else {
+                                    collats.retain(|co| co != &collat );
+                                  }
+                                },
+                                Err(e) => {
+                                  println_err!("Invalid input: {}; error: {}", initial_input, e);
+                                  thread::sleep(time::Duration::from_secs(3));
+                                  continue;
+                                }
+                              }
+                            }
+                          }
+                        }
+                        let blank_string = if collats.len() > 1 {
+                          format!(
+                            "{} {} {}",
+                            collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).collect::<Vec<String>>().join(", "),
+                            "and",
+                            collats[collats.len()-1].full_name_and_title()
+                          )
+                        } else {
+                          collats[0].full_name_and_title()
+                        };
+                        let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
+                        self.current_note_mut().blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
+                        self.current_note_mut().foreign_keys.insert(String::from("collateral_ids"), id_vec);
+                      },
+                      InternalDocument => {
+                        let mut fill_ins: Vec<usize> = vec![];
+                        let final_blank_string = loop {
+                          let blank_id = match Self::select_blank_fill_in(InternalDocument, fill_ins.clone()) {
+                            Some(s) => s,
+                            None => {
+                              let fill_in_objects = fill_ins.iter().map(|fi| InternalDocumentFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                              let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                              break if fill_in_strings.len() > 1 {
+                                format!(
+                                  "{}{}{}",
+                                  fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                                  " and ",
+                                  fill_in_strings[fill_in_strings.len()-1],
+                                )
+                              } else {
+                                fill_in_strings[0].clone()
+                              };
+                            }
+                          };
+                          if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                            fill_ins.push(blank_id);
+                          } else {
+                            fill_ins.retain(|fi| fi != &blank_id )
+                          }
+                        };
+                        let id_vec = vec![];
+                        self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
+                      },
+                      ExternalDocument => {
+                        let mut fill_ins: Vec<usize> = vec![];
+                        let final_blank_string = loop {
+                          let blank_id = match Self::select_blank_fill_in(ExternalDocument, fill_ins.clone()) {
+                            Some(s) => s,
+                            None => {
+                              let fill_in_objects = fill_ins.iter().map(|fi| ExternalDocumentFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                              let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                              break if fill_in_strings.len() > 1 {
+                                format!(
+                                  "{}{}{}",
+                                  fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                                  " and ",
+                                  fill_in_strings[fill_in_strings.len()-1],
+                                )
+                              } else {
+                                fill_in_strings[0].clone()
+                              };
+                            }
+                          };
+                          if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                            fill_ins.push(blank_id);
+                          } else {
+                            fill_ins.retain(|fi| fi != &blank_id )
+                          }
+                        };
+                        let id_vec = vec![];
+                        self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
+                      },
+                      InternalMeeting => {
+                        let mut fill_ins: Vec<usize> = vec![];
+                        let final_blank_string = loop {
+                          let blank_id = match Self::select_blank_fill_in(InternalMeeting, fill_ins.clone()) {
+                            Some(s) => s,
+                            None => {
+                              let fill_in_objects = fill_ins.iter().map(|fi| InternalMeetingFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                              let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                              break if fill_in_strings.len() > 1 {
+                                format!(
+                                  "{}{}{}",
+                                  fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                                  " and ",
+                                  fill_in_strings[fill_in_strings.len()-1],
+                                )
+                              } else {
+                                fill_in_strings[0].clone()
+                              };
+                            }
+                          };
+                          if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                            fill_ins.push(blank_id);
+                          } else {
+                            fill_ins.retain(|fi| fi != &blank_id )
+                          }
+                        };
+                        let id_vec = vec![];
+                        self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
+                      },
+                      ExternalMeeting => {
+                        let mut fill_ins: Vec<usize> = vec![];
+                        let final_blank_string = loop {
+                          let blank_id = match Self::select_blank_fill_in(ExternalMeeting, fill_ins.clone()) {
+                            Some(s) => s,
+                            None => {
+                              let fill_in_objects = fill_ins.iter().map(|fi| ExternalMeetingFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                              let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                              break if fill_in_strings.len() > 1 {
+                                format!(
+                                  "{}{}{}",
+                                  fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                                  " and ",
+                                  fill_in_strings[fill_in_strings.len()-1],
+                                )
+                              } else {
+                                fill_in_strings[0].clone()
+                              };
+                            }
+                          };
+                          if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                            fill_ins.push(blank_id);
+                          } else {
+                            fill_ins.retain(|fi| fi != &blank_id )
+                          }
+                        };
+                        let id_vec = vec![];
+                        self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
+                      },
+                      Action => {
+                        let mut fill_ins: Vec<usize> = vec![];
+                        let final_blank_string = loop {
+                          let blank_id = match Self::select_blank_fill_in(Action, fill_ins.clone()) {
+                            Some(s) => s,
+                            None => {
+                              let fill_in_objects = fill_ins.iter().map(|fi| ActionFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                              let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                              break if fill_in_strings.len() > 1 {
+                                format!(
+                                  "{}{}{}",
+                                  fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                                  " and ",
+                                  fill_in_strings[fill_in_strings.len()-1],
+                                )
+                              } else {
+                                fill_in_strings[0].clone()
+                              };
+                            }
+                          };
+                          if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                            fill_ins.push(blank_id);
+                          } else {
+                            fill_ins.retain(|fi| fi != &blank_id )
+                          }
+                        };
+                        let id_vec = vec![];
+                        self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
+                      },
+                      Phrase => {
+                        let mut fill_ins: Vec<usize> = vec![];
+                        let final_blank_string = loop {
+                          let blank_id = match Self::select_blank_fill_in(Phrase, fill_ins.clone()) {
+                            Some(s) => s,
+                            None => {
+                              let fill_in_objects = fill_ins.iter().map(|fi| PhraseFillIn::iterator_of_blanks().nth(*fi).unwrap() );
+                              let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
+                              break if fill_in_strings.len() > 1 {
+                                format!(
+                                  "{}{}{}",
+                                  fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                                  " and ",
+                                  fill_in_strings[fill_in_strings.len()-1],
+                                )
+                              } else {
+                                fill_in_strings[0].clone()
+                              };
+                            }
+                          };
+                          if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                            fill_ins.push(blank_id);
+                          } else {
+                            fill_ins.retain(|fi| fi != &blank_id )
+                          }
+                        };
+                        let id_vec = vec![];
+                        self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
+                      },
+                      CustomBlank => {
+                        loop {
+                          let mut custom_choice = String::new();
+                          println_inst!("Enter new custom content for the current blank.");
+                          let custom_attempt = io::stdin().read_line(&mut custom_choice);
+                          let custom_content = match custom_attempt {
+                            Ok(_) => custom_choice.trim(),
+                            Err(e) => {
+                              println_err!("Failed to read line: {}", e);
+                              thread::sleep(time::Duration::from_secs(2));
+                              continue;
+                            }
+                          };
+                          let blank_string = custom_content.to_string();
+                          let id_vec = vec![];
+                          self.current_note_mut().blanks.insert(i, (b.clone(), blank_string, id_vec));
+                          break;
+                        }
+                      },
+                      _ => {
+                        println_err!("The selected blank type cannot be edited.");
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue;
+                      },
+                    }
+                  },
+                }
+                self.write_notes().unwrap();
+              },
+              "delete" | "d" => {
+                loop {
+                  println_yel!("Are you sure you want to delete the currently selected blank? (Y/N)");
+                  let mut delete_choice = String::new();
+                  let delete_attempt = io::stdin().read_line(&mut delete_choice);
+                  match delete_attempt {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println_err!("Invalid repsonse: {}", e);
+                      continue;
+                    }
+                  }
+                  let delete = delete_choice.trim().to_ascii_lowercase();
+                  match &delete[..] {
+                    "yes" | "y" => {
+                      let n_content = self.current_note().content.clone();
+
+                      lazy_static! {
+                        static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+                      }
+
+                      let mut new_content = String::new();
+                      for (i, m) in RE_BLANK.find_iter(&n_content).enumerate() {
+                        if i == blank_focus_id.unwrap() as usize {
+                          new_content = format!("{}{}", &n_content[..m.start()], &n_content[m.end()..]);
+                        }
+                      }
+                      self.current_note_mut().content = new_content;
+                      self.current_note_mut().clean_spacing();
+                      self.write_notes().unwrap();
+                      break;
+                    },
+                    "no" | "n" => {
+                      break;
+                    },
+                    _ => {
+                      println_err!("Please enter either 'YES'/'Y' or 'NO'/'N'.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              },
+              _ => {
+                let n_content = self.current_note().content.clone();
+                lazy_static! {
+                  static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+                }
+
+                let num_matches = RE_BLANK.find_iter(&n_content).count();
+
+                let u32_num = blank.parse::<u32>();
+
+                match blank.parse::<usize>() {
+                  Ok(num) => if num <= num_matches {
+                    blank_focus_id = Some(u32_num.unwrap());
+                    continue;
+                  } else {
+                    println_err!("Please choose a blank by ID among those displayed in the note's content.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  },
+                  Err(_) => {
+                    println_err!("Invalid command.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                }                  
+              }
+            }
+          }
+        },
+      }
+    }
   }
   fn display_blank_fill_in(blank_type: Blank, selected: Option<Vec<usize>>) {
     let display_category = match blank_type {
@@ -8471,11 +9695,16 @@ impl NoteArchive {
   fn display_icc_note_categories() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^58}", "-");
-    println_on_bg!("{:-^58}", " ICC Note Categories ");
+    println_on_bg!("{:-^58}", " ICC note categories ");
     println_on_bg!("{:-^58}", "-");
     println_on_bg!("{: ^5} | {:-^50}", " ID ", " Note category ");
     for (i, cat) in ICCNoteCategory::iterator().enumerate() {
-      println_on_bg!("{: ^5} | {:-<50}", i, cat);
+      let num_remaining = 50 - format!("{}", cat.clone()).chars().count();
+      let mut spacer = String::new();
+      for _ in 0..num_remaining {
+        spacer.push_str(" ");
+      }
+      println_on_bg!("{: ^5} | {:-<50}{}", i, cat, spacer);
     }
     println_on_bg!("{:-^58}", "-");
     println_inst!(
@@ -8486,11 +9715,16 @@ impl NoteArchive {
   }
   fn display_fp_note_categories() {
     println_on_bg!("{:-^58}", "-");
-    println_on_bg!("{:-^58}", " FP Note Categories ");
+    println_on_bg!("{:-^58}", " FP note categories ");
     println_on_bg!("{:-^58}", "-");
     println_on_bg!("{:-^5} | {:-^50}", " ID ", " Note category ");
     for (i, cat) in FPNoteCategory::iterator().enumerate() {
-      println_on_bg!("{:-^5} | {:-<50}", i, cat);
+      let num_remaining = 50 - format!("{}", cat.clone()).chars().count();
+      let mut spacer = String::new();
+      for _ in 0..num_remaining {
+        spacer.push_str(" ");
+      }
+      println_on_bg!("{:-^5} | {:-<50}{}", i, cat, spacer);
     }
     println_on_bg!("{:-^58}", "-");
     println_inst!(
@@ -8539,7 +9773,7 @@ impl NoteArchive {
                 match iccncat {
                   Some(icccat) => return Some(ICCNote(icccat)),
                   None => {
-                    println_err!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
+                    println_err!("Index out of bounds for available note categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
@@ -8550,7 +9784,7 @@ impl NoteArchive {
                 match fpncat {
                   Some(fpcat) => return Some(FPNote(fpcat)),
                   None => {
-                    println_err!("Index out of bounds for available Note Categories. Please identify a note category by valid ID.");
+                    println_err!("Index out of bounds for available Notn categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
                   }
@@ -8562,7 +9796,7 @@ impl NoteArchive {
       }
     }
   }
-  fn autofill_current_note_blanks(&mut self) {
+  fn autofill_note_blanks(&mut self, mut n: Note) -> Note {
     let current_client = self.current_client().clone();
     let current_collaterals = self.get_owned_current_collaterals();
     let current_collaterals_len = current_collaterals.len();
@@ -8570,7 +9804,6 @@ impl NoteArchive {
     let nd = self.current_note_day().clone();
     let up = self.get_pronouns_by_id(u.pronouns).unwrap().clone();
     let cp = self.get_pronouns_by_id(current_client.pronouns).unwrap().clone();
-    let n = self.current_note_mut();
     let empty_blanks = n.get_empty_blanks_and_indexes();
     for (i, b) in empty_blanks {
       let i = i as u32;
@@ -8651,9 +9884,216 @@ impl NoteArchive {
           let id_vec = vec![nd.id.clone()];
           n.blanks.insert(i, (b.clone(), blank_string, id_vec));
         },
+        // requires checking if the blank has been filled
+        Pronoun1ForBlank(b_id_opt) => {
+          let id_vec = vec![];
+          match b_id_opt {
+            Some(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentUser => {
+                      let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                      n.blanks.insert(i, (b.clone(), p.subject.clone(), id_vec));
+                    },
+                    CurrentClientName => {
+                      let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
+                        Some(p) => p.subject.clone(),
+                        None => panic!("The current user's pronouns cannot be entered due to a missing record."),
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Collaterals => {
+                      let collat_ids = b_tup.2.to_owned();
+                      let blank_string = if collat_ids.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collat_ids[0]) {
+                          Some(p) => p.subject.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client_collaterals();
+                      let blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collats[0].id) {
+                          Some(p) => p.subject.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                  continue;
+                },
+                None => (), 
+              }
+            }
+            None => (),
+          }
+        },
+        Pronoun2ForBlank(b_id_opt) => {
+          let id_vec = vec![];
+          match b_id_opt {
+            Some(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentUser => {
+                      let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                      n.blanks.insert(i, (b.clone(), p.object.clone(), id_vec));
+                    },
+                    CurrentClientName => {
+                      let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
+                        Some(p) => p.object.clone(),
+                        None => panic!("The current user's pronouns cannot be entered due to a missing record."),
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Collaterals => {
+                      let collat_ids = b_tup.2.to_owned();
+                      let blank_string = if collat_ids.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collat_ids[0]) {
+                          Some(p) => p.object.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client_collaterals();
+                      let blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collats[0].id) {
+                          Some(p) => p.object.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            }
+            None => (),
+          }
+        },
+        Pronoun3ForBlank(b_id_opt) => {
+          let id_vec = vec![];
+          match b_id_opt {
+            Some(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentUser => {
+                      let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                      n.blanks.insert(i, (b.clone(), p.possessive_determiner.clone(), id_vec));
+                    },
+                    CurrentClientName => {
+                      let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
+                        Some(p) => p.possessive_determiner.clone(),
+                        None => panic!("The current user's pronouns cannot be entered due to a missing record."),
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Collaterals => {
+                      let collat_ids = b_tup.2.to_owned();
+                      let blank_string = if collat_ids.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collat_ids[0]) {
+                          Some(p) => p.possessive_determiner.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client_collaterals();
+                      let blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collats[0].id) {
+                          Some(p) => p.possessive_determiner.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            }
+            None => (),
+          }
+        },
+        Pronoun4ForBlank(b_id_opt) => {
+          let id_vec = vec![];
+          match b_id_opt {
+            Some(b_id) => {
+              match n.blanks.get(&b_id) {
+                Some(b_tup) => {
+                  match b_tup.0 {
+                    CurrentUser => {
+                      let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
+                      n.blanks.insert(i, (b.clone(), p.possessive.clone(), id_vec));
+                    },
+                    CurrentClientName => {
+                      let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
+                        Some(p) => p.possessive.clone(),
+                        None => panic!("The current user's pronouns cannot be entered due to a missing record."),
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Collaterals => {
+                      let collat_ids = b_tup.2.to_owned();
+                      let blank_string = if collat_ids.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collat_ids[0]) {
+                          Some(p) => p.possessive.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    AllCollaterals => {
+                      let collats = self.current_client_collaterals();
+                      let blank_string = if collats.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(collats[0].id) {
+                          Some(p) => p.possessive.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                  }
+                },
+                None => (), 
+              }
+            }
+            None => (),
+          }
+        },
         _ => (), // all others need to be filled in based on user input
       }
     }
+    n
   }
   fn create_note_from_template_get_id(&mut self, nt_id: Option<u32>) -> Option<u32> {
     let nt_id = match nt_id {
@@ -8784,13 +10224,10 @@ impl NoteArchive {
     let nd_date = nd.date;
     let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
 
-    // autofill blanks that do not require user input
-    // (can clearly determine output)
-    self.autofill_current_note_blanks();
-
     let mut focus_id_option: Option<u32> = None;
     'choice: loop {
-
+      n = self.autofill_note_blanks(n);
+      
       // increments the current blank by going to the next one only when the current is filled,
       // or alternatively when focus_id_option is set to Some(id) because the user selected it
 
@@ -8811,7 +10248,7 @@ impl NoteArchive {
 
       let choice = loop {
         let mut note_choice = String::new();
-
+        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
         n.display_content(Some(i), None);
         println_on_bg!("{:-^58}", "-");
         println_inst!(
@@ -8825,7 +10262,6 @@ impl NoteArchive {
         println_inst!("Choose blank by ID to switch current blank.");
 
         // display options here
-
 
         let note_attempt = io::stdin().read_line(&mut note_choice);
         match note_attempt {
@@ -9010,7 +10446,7 @@ impl NoteArchive {
                   },
                   "" => {
                     if collats.len() > 0 {
-                      self.autofill_current_note_blanks();
+                      n = self.autofill_note_blanks(n);
                       break;
                     } else {
                       println_err!("Please choose at least one collateral to add to the current blank.");
@@ -9028,6 +10464,9 @@ impl NoteArchive {
                         };
                         if !collats.iter().any(|co| co == &collat ) {
                           collats.push(collat);
+                          if collats.len() == self.current_client_collaterals().len() {
+                            break;
+                          }
                         } else {
                           collats.retain(|co| co != &collat );
                         }
@@ -9066,7 +10505,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -9095,7 +10534,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -9124,7 +10563,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -9182,7 +10621,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -9211,7 +10650,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -9246,212 +10685,6 @@ impl NoteArchive {
                 let id_vec = vec![];
                 n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                 break;
-              }
-            },
-            // requires checking if the blank has been filled
-            Pronoun1ForBlank(b_id_opt) => {
-              let id_vec = vec![];
-              match b_id_opt {
-                Some(b_id) => {
-                  match n.blanks.get(&b_id) {
-                    Some(b_tup) => {
-                      match b_tup.0 {
-                        CurrentUser => {
-                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
-                          n.blanks.insert(i, (b.clone(), p.subject.clone(), id_vec));
-                        },
-                        CurrentClientName => {
-                          let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
-                            Some(p) => p.subject.clone(),
-                            None => panic!("The current user's pronouns cannot be entered due to a missing record."),
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        Collaterals => {
-                          let collat_ids = b_tup.2.to_owned();
-                          let blank_string = if collat_ids.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collat_ids[0]) {
-                              Some(p) => p.subject.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        AllCollaterals => {
-                          let collats = self.current_client_collaterals();
-                          let blank_string = if collats.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collats[0].id) {
-                              Some(p) => p.subject.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
-                      }
-                      continue;
-                    },
-                    None => (), 
-                  }
-                }
-                None => (),
-              }
-            },
-            Pronoun2ForBlank(b_id_opt) => {
-              let id_vec = vec![];
-              match b_id_opt {
-                Some(b_id) => {
-                  match n.blanks.get(&b_id) {
-                    Some(b_tup) => {
-                      match b_tup.0 {
-                        CurrentUser => {
-                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
-                          n.blanks.insert(i, (b.clone(), p.object.clone(), id_vec));
-                        },
-                        CurrentClientName => {
-                          let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
-                            Some(p) => p.object.clone(),
-                            None => panic!("The current user's pronouns cannot be entered due to a missing record."),
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        Collaterals => {
-                          let collat_ids = b_tup.2.to_owned();
-                          let blank_string = if collat_ids.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collat_ids[0]) {
-                              Some(p) => p.object.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        AllCollaterals => {
-                          let collats = self.current_client_collaterals();
-                          let blank_string = if collats.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collats[0].id) {
-                              Some(p) => p.object.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
-                      }
-                    },
-                    None => (), 
-                  }
-                }
-                None => (),
-              }
-            },
-            Pronoun3ForBlank(b_id_opt) => {
-              let id_vec = vec![];
-              match b_id_opt {
-                Some(b_id) => {
-                  match n.blanks.get(&b_id) {
-                    Some(b_tup) => {
-                      match b_tup.0 {
-                        CurrentUser => {
-                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
-                          n.blanks.insert(i, (b.clone(), p.possessive_determiner.clone(), id_vec));
-                        },
-                        CurrentClientName => {
-                          let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
-                            Some(p) => p.possessive_determiner.clone(),
-                            None => panic!("The current user's pronouns cannot be entered due to a missing record."),
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        Collaterals => {
-                          let collat_ids = b_tup.2.to_owned();
-                          let blank_string = if collat_ids.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collat_ids[0]) {
-                              Some(p) => p.possessive_determiner.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        AllCollaterals => {
-                          let collats = self.current_client_collaterals();
-                          let blank_string = if collats.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collats[0].id) {
-                              Some(p) => p.possessive_determiner.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
-                      }
-                    },
-                    None => (), 
-                  }
-                }
-                None => (),
-              }
-            },
-            Pronoun4ForBlank(b_id_opt) => {
-              let id_vec = vec![];
-              match b_id_opt {
-                Some(b_id) => {
-                  match n.blanks.get(&b_id) {
-                    Some(b_tup) => {
-                      match b_tup.0 {
-                        CurrentUser => {
-                          let p = self.get_pronouns_by_id(self.current_user().pronouns).unwrap();
-                          n.blanks.insert(i, (b.clone(), p.possessive.clone(), id_vec));
-                        },
-                        CurrentClientName => {
-                          let blank_string = match self.get_pronouns_by_id(self.current_client().pronouns) {
-                            Some(p) => p.possessive.clone(),
-                            None => panic!("The current user's pronouns cannot be entered due to a missing record."),
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        Collaterals => {
-                          let collat_ids = b_tup.2.to_owned();
-                          let blank_string = if collat_ids.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collat_ids[0]) {
-                              Some(p) => p.possessive.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        AllCollaterals => {
-                          let collats = self.current_client_collaterals();
-                          let blank_string = if collats.len() > 1 {
-                            String::from("they")
-                          } else {
-                            match self.get_pronouns_by_id(collats[0].id) {
-                              Some(p) => p.possessive.clone(),
-                              None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                            }
-                          };
-                          n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                        },
-                        _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
-                      }
-                    },
-                    None => (), 
-                  }
-                }
-                None => (),
               }
             },
             _ => (),
@@ -9869,7 +11102,8 @@ impl NoteArchive {
     let mut hide = false;
     let mut youth_added = false;
     loop {
-      n.display_content(None, None);
+      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+      n.display_content(Some(0), None);
       if !hide {
         println_on_bg!("{:-^163}", " Collaterals ");
         for c_row in col_rows.clone() {
@@ -9982,7 +11216,7 @@ impl NoteArchive {
                   n.content = n.content[..idx].to_string();
                 },
               }
-              let mut new_ids = n.foreign_keys["collateral"].clone();
+              let mut new_ids = n.foreign_keys["collateral_ids"].clone();
               new_ids.retain(|co_id|
                 n.blanks.values()
                   .filter(|(b, s, ids)| *b == AllCollaterals || *b == Collaterals )
@@ -10010,7 +11244,9 @@ impl NoteArchive {
                       Some(collat) => {
                         let collateral_display_string = collat.full_name_and_title();
                         if n.content.trim_end() != n.content {
-                          n.content.push_str(&collateral_display_string[..]);
+                          n.add_blank(Collaterals);
+                          n.blanks.insert(current_blank, (Collaterals, collateral_display_string, vec![]));
+                          n.content.push_str(&Collaterals.to_string());
                         } else {
                           n.content.push_str(&format!("{}{}", " ", &collateral_display_string[..])[..]);
                         }
@@ -10045,8 +11281,43 @@ impl NoteArchive {
         Some((b, bf)) => (b, bf),
         None => continue,
       };
-      n.blanks.insert(current_blank, (blank, blank_fill, vec![]));
-      n.content.push_str(&format!(" {}", blank));
+      if n.content.chars().count() == 0 {
+        n.blanks.insert(current_blank, (blank, make_ascii_titlecase(blank_fill), vec![]));
+        n.content.push_str(&format!("{}", blank));
+      } else if n.content.chars().count() == 1 {
+        match &n.content[n.content.len()-1..] {
+          " " => {
+            n.blanks.insert(current_blank, (blank, make_ascii_titlecase(blank_fill), vec![]));
+            n.content = String::new();
+            n.content.push_str(&format!("{}", blank));
+          },
+          _ => {
+            n.blanks.insert(current_blank, (blank, make_ascii_titlecase(blank_fill), vec![]));
+            n.content.push_str(&format!(" {}", blank));
+          },
+        }
+      } else {
+        match &n.content[n.content.len()-2..] {
+          ". " => {
+            n.blanks.insert(current_blank, (blank, make_ascii_titlecase(blank_fill), vec![]));
+            n.content.push_str(&format!("{}", blank));
+          },
+          _ => match &n.content[n.content.len()-1..] {
+            " " => {
+              n.blanks.insert(current_blank, (blank, blank_fill, vec![]));
+              n.content.push_str(&format!("{}", blank));
+            },
+            "." => {
+              n.blanks.insert(current_blank, (blank, make_ascii_titlecase(blank_fill), vec![]));
+              n.content.push_str(&format!(" {}", blank));
+            },
+            _ => {
+              n.blanks.insert(current_blank, (blank, blank_fill, vec![]));
+              n.content.push_str(&format!(" {}", blank));
+            }
+          }
+        }
+      }
       current_blank += 1;
       continue;
     }
