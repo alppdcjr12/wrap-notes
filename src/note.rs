@@ -7,6 +7,7 @@
 
 use std::fmt;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::convert::TryFrom;
 use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White, RGB};
 use ansi_term::{Style, ANSIString};
@@ -974,7 +975,7 @@ impl fmt::Display for NoteTemplate {
   }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
 pub enum NoteCategory {
   ICCNote(ICCNoteCategory),
   FPNote(FPNoteCategory),
@@ -1002,7 +1003,7 @@ impl fmt::Display for NoteCategory {
 
 use NoteCategory::{ICCNote, FPNote};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, Eq)]
 pub enum ICCNoteCategory {
   FaceToFaceContactWithClient,
   TelephoneContactWithClient,
@@ -1060,7 +1061,7 @@ impl fmt::Display for ICCNoteCategory {
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient,
 CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
 pub enum FPNoteCategory {
   Tbd,
 }

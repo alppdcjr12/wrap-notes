@@ -88,6 +88,21 @@ impl NoteDay {
     let date: String = format!("{}, {} {}{}, {}", wd, month, &self.date.day(), suffix, &self.date.year());
     date
   }
+  pub fn fmt_date_short(&self) -> String {
+    self.date.format("%m-%d").to_string()
+  }
+  pub fn fmt_day(&self) -> String {
+    let wd = match self.date.weekday() {
+      Weekday::Mon => "Monday",
+      Weekday::Tue => "Tuesday",
+      Weekday::Wed => "Wednesday",
+      Weekday::Thu => "Thursday",
+      Weekday::Fri => "Friday",
+      Weekday::Sat => "Saturday",
+      Weekday::Sun => "Sunday",
+    };
+    format!("{}", wd)
+  }
 }
 
 impl fmt::Display for NoteDay {
