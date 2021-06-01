@@ -111,7 +111,6 @@ pub struct NoteArchive {
   pub filepaths: HashMap<String, String>,
 }
 
-
 // general functions
 
 #[macro_use] use std::format_args;
@@ -330,6 +329,39 @@ impl NoteArchive {
     );
     println_yel!("{:-^58}", "-");
 
+  }
+  fn delete_from_blanks(&mut self, data_type: String, id: u32) {
+    match &data_type[..] {
+      "client" => {
+        for n in self.current_client_notes_mut() {
+          let mut new_blanks = n.blanks.clone();
+          for (i, (b, s, v)) in n.blanks.clone() {
+            match b {
+              CurrentClientName | Pronoun1ForClient | Pronoun2ForClient | Pronoun3ForClient | Pronoun4ForClient => {
+                new_blanks.insert(i, (b, s, v.iter().cloned().filter(|c_id| c_id != &id ).collect() ) );
+              },
+              _ => (),
+            }
+          }
+          n.blanks = new_blanks;
+        }
+      },
+      "collateral" => {
+        for n in self.current_collateral_notes_mut() {
+          let mut new_blanks = n.blanks.clone();
+          for (i, (b, s, v)) in n.blanks.clone() {
+            match b {
+              Collaterals | AllCollaterals => {
+                new_blanks.insert(i, (b, s, v.iter().cloned().filter(|c_id| c_id != &id ).collect() ) );
+              },
+              _ => (),
+            }
+          }
+          n.blanks = new_blanks;
+        }
+      },
+      _ => panic!("String other than 'client' or 'collateral' passed to fn 'delete_from_blanks'."),
+    }
   }
   fn choose_decrypt_files(
     user_filepath: &str,
@@ -1436,13 +1468,14 @@ impl NoteArchive {
     println_on_bg!("{:-^79}", "-");
   }
   fn delete_current_user(&mut self) {
-    let id = self.foreign_key.get("current_user_id").unwrap();
-    self.users.retain(|u| u.id != *id);
+    let id = self.foreign_key.get("current_user_id").unwrap().to_owned();
+    self.users.retain(|u| u.id != id);
     self.reindex_users();
     self.foreign_key.remove("current_user_id");
     self.foreign_key.remove("current_client_id");
     self.foreign_key.remove("current_collateral_id");
-
+    self.note_days.retain(|nd| nd.foreign_key["user_id"] != id );
+    self.notes.retain(|n| n.foreign_key["user_id"] != id );
   }
   fn reindex_users(&mut self) {
     let mut i: u32 = 1;
@@ -2395,11 +2428,12 @@ impl NoteArchive {
     println_on_bg!("{:-^114}", "-");
   }
   fn delete_current_client(&mut self) {
-    let id = self.foreign_key.get("current_client_id").unwrap();
-    self.clients.retain(|c| c.id != *id);
+    let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
+    self.clients.retain(|c| c.id != id);
     self.reindex_clients();
     self.foreign_key.remove("current_client_id");
     self.foreign_key.remove("current_collateral_id");
+    self.delete_from_blanks(String::from("client"), id);
   }
   fn reindex_clients(&mut self) {
     let mut i: u32 = 1;
@@ -4072,10 +4106,11 @@ impl NoteArchive {
     println_on_bg!("{:-^162}", "-");
   }
   fn delete_current_collateral(&mut self) {
-    let id = self.foreign_key.get("current_collateral_id").unwrap();
-    self.collaterals.retain(|c| c.id != *id);
+    let id = self.foreign_key.get("current_collateral_id").unwrap().to_owned();
+    self.collaterals.retain(|c| c.id != id);
     self.reindex_collaterals();
     self.foreign_key.remove("current_collateral_id");
+    self.delete_from_blanks(String::from("collateral"), id);
   }
   fn reindex_collaterals(&mut self) {
     let mut i: u32 = 1;
@@ -5005,6 +5040,25 @@ impl NoteArchive {
   }
   fn current_user_note_days(&self) -> Vec<&NoteDay> {
     self.note_days.iter().filter(|nd| nd.foreign_key["user_id"] == self.current_user().id ).collect()
+  }
+  fn current_client_note_days(&self) -> Vec<&NoteDay> {
+    self.note_days.iter().filter(|nd| nd.foreign_key["client_id"] == self.current_client().id ).collect()
+  }
+  fn current_client_notes(&self) -> Vec<&Note> {
+    let nds = self.current_client_note_days();
+    self.notes.iter().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
+  }
+  fn current_client_note_days_mut(&mut self) -> Vec<&mut NoteDay> {
+    let cc_id = self.current_client().id;
+    self.note_days.iter_mut().filter(|nd| nd.foreign_key["client_id"] == cc_id ).collect()
+  }
+  fn current_client_notes_mut(&mut self) -> Vec<&mut Note> {
+    let nds: Vec<NoteDay> = self.current_client_note_days().iter().cloned().cloned().collect();
+    self.notes.iter_mut().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
+  }
+  fn current_collateral_notes_mut(&mut self) -> Vec<&mut Note> {
+    let co_id_b = &self.current_collateral().id.clone();
+    self.notes.iter_mut().filter(|n| n.foreign_keys["collateral_ids"].iter().any(|co_id| co_id == co_id_b ) ).collect()
   }
   /// returns the first 10 notedays for the current user
   /// completed within 4 days of the most recent date
@@ -9264,7 +9318,13 @@ impl NoteArchive {
                     };
                     let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
                     self.current_note_mut().blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
-                    self.current_note_mut().foreign_keys.insert(String::from("collateral_ids"), id_vec);
+                    let mut new_ids = self.current_note().foreign_keys["collateral_ids"].clone();
+                    for co_id in id_vec {
+                      if !new_ids.clone().iter().any(|old_id| old_id == &co_id ) {
+                        new_ids.push(co_id);
+                      }
+                    }
+                    self.current_note_mut().foreign_keys.insert(String::from("collateral_ids"), new_ids);
                   },
                   InternalDocument => {
                     let mut fill_ins: Vec<usize> = vec![];
