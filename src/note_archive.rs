@@ -1570,7 +1570,11 @@ impl NoteArchive {
   fn get_noncurrent_clients(&self) -> Vec<&Client> {
     self.clients.iter().filter(|client| !self.current_user().foreign_keys["client_ids"]
         .iter()
-        .any(|&id| id == client.id)
+        .any(|&id| id == client.id ||
+          (self.get_client_by_id(id).unwrap().first_name == client.first_name
+          && self.get_client_by_id(id).unwrap().last_name == client.last_name
+          && self.get_client_by_id(id).unwrap().dob == client.dob)
+        )
       )
       .collect()
   }
@@ -1683,8 +1687,17 @@ impl NoteArchive {
             } else {
               match self.load_client(num) {
                 Ok(_) => {
-                  self.current_user_mut().foreign_keys.get_mut("client_ids").unwrap().push(num);
-                  self.update_current_clients(num);
+                  let to_copy = self.get_client_by_id(num).unwrap().clone();
+                  let copied = Client::new(
+                    (self.clients.len() + 1) as u32,
+                    to_copy.first_name.clone(),
+                    to_copy.last_name.clone(),
+                    to_copy.dob.clone(),
+                    to_copy.pronouns,
+                    vec![],
+                  );
+                  self.update_current_clients(copied.id);
+                  self.save_client(copied);
                   break;
                 }
                 Err(e) => {
@@ -1696,6 +1709,7 @@ impl NoteArchive {
           },
           Err(e) => {
             println_err!("Failed to read input as a number.");
+            thread::sleep(time::Duration::from_secs(2));
             continue;
           }
         }
@@ -2430,11 +2444,11 @@ impl NoteArchive {
   }
   fn delete_current_client(&mut self) {
     let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
+    self.delete_from_blanks(String::from("client"), id);
     self.clients.retain(|c| c.id != id);
     self.reindex_clients();
     self.foreign_key.remove("current_client_id");
     self.foreign_key.remove("current_collateral_id");
-    self.delete_from_blanks(String::from("client"), id);
   }
   fn reindex_clients(&mut self) {
     let mut i: u32 = 1;
@@ -4134,10 +4148,10 @@ impl NoteArchive {
   }
   fn delete_current_collateral(&mut self) {
     let id = self.foreign_key.get("current_collateral_id").unwrap().to_owned();
+    self.delete_from_blanks(String::from("collateral"), id);
     self.collaterals.retain(|c| c.id != id);
     self.reindex_collaterals();
     self.foreign_key.remove("current_collateral_id");
-    self.delete_from_blanks(String::from("collateral"), id);
   }
   fn reindex_collaterals(&mut self) {
     let mut i: u32 = 1;
@@ -5996,7 +6010,7 @@ impl NoteArchive {
                 }
               }
             }
-          };
+          }
         }
       };
       let user_id = self.current_user().id;
@@ -6005,7 +6019,8 @@ impl NoteArchive {
         Ok(note_day) => break note_day,
         Err(e) => {
           println_err!("Failed to generate record for notes: {}", e);
-          continue;
+          thread::sleep(time::Duration::from_secs(2));
+          return None;
         }
       }
 
