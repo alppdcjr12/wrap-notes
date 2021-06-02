@@ -18,7 +18,7 @@ pub const FAMILY_ROLES: [&'static str; 110] = [
   "foster sibling", "former foster sibling", "bio mom", "bio dad", 
 ];
 
-pub const FORMAL_ROLES: [&'static str; 53] = [
+pub const FORMAL_ROLES: [&'static str; 54] = [
   "intensive care coordinator", "icc", "family partner", "fp", "in home therapist", "in-home therapist", "iht",
   "in home behavioral therapist", "in-home behavioral therapist", "ihbt", "therapeutic mentor", "tm", "ot", "occupational therapist",
   "psychiatrist", "outpatient therapist", "opt", "guidance counselor", "school social worker", "social worker", "dcf worker",
@@ -26,7 +26,7 @@ pub const FORMAL_ROLES: [&'static str; 53] = [
   "pcp", "therapeutic training and support", "therapeutic training & support", "tt&s", "tt and s", "dmh worker", "clinician",
   "teacher", "special education teacher", "school guidance counselor", "lifeset worker", "lifeset mentor", "bcba", "yapm", "young adult peer mentor",
   "case manager", "dds case manager", "dmh case manager", "dcf worker", "dcf social worker", "behavior monitor", "bm", "hospital case manager",
-  "mci family partner", "mobile crisis intervention family partner"
+  "mci family partner", "mobile crisis intervention family partner", "academic support"
 ];
 
 pub const INDIRECT_ROLES: [&'static str; 25] = [
@@ -35,7 +35,7 @@ pub const INDIRECT_ROLES: [&'static str; 25] = [
   "crisis support worker", "crisis clinician", "crisis response clinician", "mci worker", "mci clinician", "mobile crisis intervention",
   "emergency services clinician", "emergency services", "crisis assessment clinician",
   "mobile crisis intervention clinician", "mobile crisis intervention worker", "crisis support clinician", "crisis response worker",
-  "mobile crisis clinician", "intake coordinator", "supervisor"
+  "mobile crisis clinician", "intake coordinator", "supervisor",
 ];
 
 pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 1] = [

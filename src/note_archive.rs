@@ -1834,7 +1834,7 @@ impl NoteArchive {
     println_on_bg!("{:-^96}", "-");
     println_inst!("| {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "QUIT / Q: quit menu");
   }
-  fn specify_client(&mut self, purpose: String) -> u32 {
+  fn specify_client(&mut self, purpose: String) -> Option<u32> {
     let id: u32 = loop {
       let input = loop {
         self.display_specify_clients(purpose.clone());
@@ -1862,6 +1862,7 @@ impl NoteArchive {
           self.add_client();
           continue;
         },
+        "quit" | "q" => return None,
         _ => match input.parse() {
           Ok(num) => {
             if !self.get_current_clients()
@@ -1892,7 +1893,7 @@ impl NoteArchive {
         },
       }
     };
-    id
+    Some(id)
   }
   fn choose_client(&mut self) {
     loop {
@@ -2632,7 +2633,7 @@ impl NoteArchive {
   fn display_user_collaterals(&self) {
     let current = self.current_user();
     let heading = format!(
-      "{} {}, {} - All collateral records",
+      "{} {}, {} records",
       current.first_name,
       current.last_name,  
       current.role,
@@ -2642,14 +2643,15 @@ impl NoteArchive {
     println_on_bg!("{:-^146}", "-");
     println_on_bg!("{:-^146}", heading);
     println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", "Youth(s) ");
+    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<30}", " ID ", "Name ", "Title ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {: <100} | {: <30}",
+        "{: ^10} | {:-<50} | {:-<50} | {: <30}",
         co.id,
-        co.full_name_and_title(),
+        co.full_name(),
+        co.title(),
         self.collateral_clients_string(co.id),
       );
     }
@@ -2674,14 +2676,15 @@ impl NoteArchive {
     println_on_bg!("{:-^146}", "-");
     println_on_bg!("{:-^146}", heading);
     println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^10} | {:-<100} | {:-<30}", " ID ", "Info ", "Youths ");
+    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<30}", " ID ", "Name ", "Title ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {: <100} | {: <30}",
+        "{: ^10} | {:-<50} | {:-<50} | {: <30}",
         co.id,
-        co.full_name_and_title(),
+        co.full_name(),
+        co.title(),
         self.collateral_clients_string(co.id),
       );
     }
@@ -3066,7 +3069,10 @@ impl NoteArchive {
           break;
         }
         "client" | "c" => {
-          let c_id = self.specify_client(String::from("collateral"));
+          let c_id = match self.specify_client(String::from("collateral")) {
+            Some(id) => id,
+            None => continue,
+          };
           let collat_id = self.foreign_key["current_collateral_id"];
           if !self.get_client_by_id(c_id)
             .unwrap()
@@ -3349,7 +3355,28 @@ impl NoteArchive {
         }
       }
       None => {
-        let c_id = self.specify_client(String::from("collateral"));
+        let c_id = loop {
+          match self.specify_client(String::from("collateral")) {
+            Some(id) => break id,
+            None => {
+              println_yel!("A collateral must be connected with a client. Cancel creating collateral ( Y / N )?");
+              let mut answer = String::new();
+              let answer_attempt = io::stdin().read_line(&mut answer);
+              let final_answer = match answer_attempt {
+                Ok(_) => answer.trim().to_ascii_lowercase(),
+                Err(e) => {
+                  println_err!("Failed to read line: {}", e);
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+              };
+              match &final_answer[..] {
+                "yes" | "y" => return None,
+                _ => continue,
+              }
+            }
+          }
+        };
         if !self.get_client_by_id(c_id).unwrap().foreign_keys.get("collateral_ids").unwrap().iter().any(|co_id| co_id == &id ) {
           self.get_client_by_id_mut(c_id).unwrap().foreign_keys.get_mut("collateral_ids").unwrap().push(id);
         }
@@ -5947,7 +5974,30 @@ impl NoteArchive {
 
       let client_id = match self.foreign_key.get("current_client_id") {
         Some(c) => *c,
-        None => self.specify_client(String::from("note record")),
+        None => {
+          loop {
+            match self.specify_client(String::from("collateral")) {
+              Some(id) => break id,
+              None => {
+                println_yel!("A collateral must be connected with a client. Cancel creating collateral ( Y / N )?");
+                let mut answer = String::new();
+                let answer_attempt = io::stdin().read_line(&mut answer);
+                let final_answer = match answer_attempt {
+                  Ok(_) => answer.trim().to_ascii_lowercase(),
+                  Err(e) => {
+                    println_err!("Failed to read line: {}", e);
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
+                };
+                match &final_answer[..] {
+                  "yes" | "y" => return None,
+                  _ => continue,
+                }
+              }
+            }
+          };
+        }
       };
       let user_id = self.current_user().id;
 

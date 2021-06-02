@@ -98,6 +98,23 @@ impl Collateral {
       },
     }
   }
+  pub fn title(&self) -> String {
+    match self.support_type {
+      Natural => {
+        return format!("{}", &self.title);
+      },
+      Formal => {
+        match &self.institution {
+          Some(i) => {
+            return format!("{} at {}", &self.title, i);
+          },
+          None => {
+            return format!("{}", &self.title);
+          }
+        }
+      },
+    }
+  }
 }
 
 impl fmt::Display for Collateral {
