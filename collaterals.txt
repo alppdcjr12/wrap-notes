@@ -1,6 +1,7 @@
 ##### collaterals #####
-2 | Jack | Smith | OPT | --NONE-- | 1 | Natural | false
-1 | Sauron | Darklordson | Dark Lord | Mordor | 1 | Formal | false
-3 | Steven | Stevenson | FP | Riverside Community Care | 1 | Formal | false
-4 | Joe | Schmoe | OPT | The Edinburg Center | 3 | Formal | false
+1 | Jack | Smith | OPT | --NONE-- | 1 | Natural | false
+2 | Jack | Swanson | DDS Case Manager | DDS | 1 | Formal | false
+3 | Quentin | Tarantino | Director | Tarantino Films | 1 | Formal | true
+4 | Steven | Stevenson | FP | Riverside Community Care | 1 | Formal | false
+5 | Joe | Schmoe | OPT | The Edinburg Center | 3 | Formal | false
 ##### collaterals #####

@@ -26,7 +26,7 @@ use SupportType::{Natural, Formal};
 use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, Sncd, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral, CustomStructure};
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
-use FPNoteCategory::{Tbd};
+use FPNoteCategory::{Functioning, DescriptionOfInterventions, ResponseToInterventions, PlanAdditionalInformation};
 use Blank::{CurrentUser, CurrentClientName, Collaterals, AllCollaterals, Pronoun1ForBlank, Pronoun2ForBlank, Pronoun3ForBlank, Pronoun4ForBlank, Pronoun1ForUser, Pronoun2ForUser, Pronoun3ForUser, Pronoun4ForUser, Pronoun1ForClient, Pronoun2ForClient, Pronoun3ForClient, Pronoun4ForClient, TodayDate, NoteDayDate, InternalDocument, ExternalDocument, InternalMeeting, ExternalMeeting, Action, Phrase, CustomBlank};
 
 use crate::utils::*;
@@ -1847,7 +1847,7 @@ impl NoteArchive {
   fn choose_client(&mut self) {
     loop {
       self.display_client();
-      println_inst!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / COL: view/edit client collaterals", "QUIT / Q: quit menu");
+      println_inst!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / CO: view/edit client collaterals", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -1869,7 +1869,7 @@ impl NoteArchive {
         "edit" | "e" => {
           self.choose_edit_client();
         }
-        "collateral" | "collat" | "col" => {
+        "collateral" | "collat" | "col" | "co" => {
           self.choose_client_collaterals();
         }
         _ => println_err!("Invalid command."),
@@ -2761,7 +2761,7 @@ impl NoteArchive {
           println_on_bg!(
             "{: ^10} | {: <100}",
             c.id,
-            c.full_name_and_title(),
+            c.name_and_title(),
           );
         }
       }
@@ -3036,7 +3036,9 @@ impl NoteArchive {
             }
         }
         "delete" | "d" => {
-          self.choose_delete_collateral();
+          if self.choose_delete_collateral() {
+            break;
+          }
         }
         "edit" | "e" => {
           self.choose_edit_collateral();
@@ -3127,9 +3129,9 @@ impl NoteArchive {
         } 
       };
 
-      let (support_type, indirect_support, institution) = if FAMILY_ROLES.iter().any(|role| role == &title) {
+      let (support_type, indirect_support, institution) = if FAMILY_ROLES.iter().any(|role| role == &title.to_ascii_lowercase() ) {
         (Natural, false, None)
-      } else if FORMAL_ROLES.iter().any(|role| role == &title ) {
+      } else if FORMAL_ROLES.iter().any(|role| role == &title.to_ascii_lowercase() ) {
         let institution = loop {
           let mut institution_choice = String::new();
           println_inst!("Enter collateral's institution.");
@@ -3143,7 +3145,7 @@ impl NoteArchive {
           }
         };
         (Formal, false, Some(institution))
-      } else if INDIRECT_ROLES.iter().any(|role| role == &title ) {
+      } else if INDIRECT_ROLES.iter().any(|role| role == &title.to_ascii_lowercase() ) {
         let institution = loop {
           let mut institution_choice = String::new();
           println_inst!("Enter collateral's institution.");
@@ -4009,7 +4011,7 @@ impl NoteArchive {
     };
     result
   }
-  fn choose_delete_collateral(&mut self) {
+  fn choose_delete_collateral(&mut self) -> bool {
     loop {
       self.display_delete_collateral();
       println_yel!("Are you sure you want to delete this collateral?");
@@ -4028,10 +4030,10 @@ impl NoteArchive {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_collateral();
           self.write_collaterals().unwrap();
-          break;
+          break true;
         }
         _ => {
-          break;
+          break false;
         }
       }
     }
@@ -5069,6 +5071,7 @@ impl NoteArchive {
   }
   fn choose_edit_note_days(&mut self, mut display_all: bool) {
     loop {
+      self.foreign_key.remove("current_client_id");
       let input = loop {
         if display_all {
           self.display_user_all_note_days();
@@ -5341,6 +5344,7 @@ impl NoteArchive {
   fn choose_note_days(&mut self) {
     let mut display_all = false;
     loop {
+      self.foreign_key.remove("current_client_id");
       let input = loop {
         if display_all {
           self.display_user_all_note_days();
@@ -5354,12 +5358,21 @@ impl NoteArchive {
           "EDIT / E: Edit note days",
           "TEMPLATES / T: View/edit templates",
         );
-        println_inst!(
-          "| {} | {} | {}",
-          "ALL / A: View all notes",
-          "PRINT / P: Display all notes from most recent day",
-          "QUIT / Q: quit menu"
-        );
+        if display_all {
+          println_inst!(
+            "| {} | {} | {}",
+            "RECENT / R: View only recent notes",
+            "PRINT / P: Display all notes from most recent day",
+            "QUIT / Q: quit menu"
+          );
+        } else {
+          println_inst!(
+            "| {} | {} | {}",
+            "ALL / A: View all notes",
+            "PRINT / P: Display all notes from most recent day",
+            "QUIT / Q: quit menu"
+          );
+        }
         let mut choice = String::new();
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -5375,7 +5388,14 @@ impl NoteArchive {
         "new" | "n" => {
           let maybe_new_id = self.create_note_day_get_id();
           match maybe_new_id {
-            Some(_) => (),
+            Some(id) => {
+              match self.load_note_day(id) {
+                Ok(_) => self.choose_note_day(),
+                Err(e) => {
+                  panic!("Unable to load newly created record with ID '{}': {}", id, e);
+                }
+              }
+            },
             None => (),
           }
           continue;
@@ -5388,6 +5408,9 @@ impl NoteArchive {
         },
         "all" | "a" => {
           display_all = true;
+        },
+        "recent" | "r" => {
+          display_all = false;
         },
         "print" | "p" => {
           self.print_most_recent_note_days();
@@ -5463,9 +5486,12 @@ impl NoteArchive {
     }
   }
   fn print_note_day(&self, nd: NoteDay) {
+    let name = self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name();
+    let date: String = nd.heading_date();
+    println_suc!("Notes from {} for {}", date, name);
     for (k, v) in &self.get_note_day_notes_by_category(nd) {
       if v.len() > 0 {
-        println_inst!("{}", k);
+        println_suc!("{}", k);
         for n in v {
           let (output, _) = n.generate_display_content_string_with_blanks(None, None);
           println!("{}\n", output);
@@ -6993,7 +7019,7 @@ impl NoteArchive {
                 }
               },
               "insert" | "i" => { // in blanks choice
-                let mut blank_focus_id: Option<u32> = None;
+                let blank_focus_id: Option<u32> = None;
                 let mut content_focus_id: Option<u32> = Some(1);
                 let new_blank = match choose_blanks_option() {
                   Some(nb) => Blank::vector_of_variants()[nb],
@@ -7906,7 +7932,7 @@ impl NoteArchive {
                 }
               }
             },
-            Err(e) => {
+            Err(_) => {
               println_err!("Invalid command: '{}'", &user_choice);
               thread::sleep(time::Duration::from_secs(2));
               continue;
@@ -8444,19 +8470,55 @@ impl NoteArchive {
             }
             FP => {
               match structure {
-                CarePlan => FPNote(Tbd),
-                CarePlanVerbose => FPNote(Tbd),
-                Intake => FPNote(Tbd),
-                Assessment => FPNote(Tbd),
-                Sncd => FPNote(Tbd),
-                HomeVisit => FPNote(Tbd),
-                AgendaPrep => FPNote(Tbd),
-                Debrief => FPNote(Tbd),
-                PhoneCall => FPNote(Tbd),
-                Scheduling => FPNote(Tbd),
-                SentEmail => FPNote(Tbd),
-                Referral => FPNote(Tbd),
-                CustomStructure => FPNote(Tbd),
+                CarePlan => FPNote(DescriptionOfInterventions),
+                CarePlanVerbose => FPNote(DescriptionOfInterventions),
+                Intake => FPNote(DescriptionOfInterventions),
+                Assessment => FPNote(DescriptionOfInterventions),
+                Sncd => FPNote(DescriptionOfInterventions),
+                HomeVisit => FPNote(DescriptionOfInterventions),
+                AgendaPrep => FPNote(DescriptionOfInterventions),
+                Debrief => FPNote(DescriptionOfInterventions),
+                PhoneCall => FPNote(DescriptionOfInterventions),
+                Scheduling => FPNote(DescriptionOfInterventions),
+                SentEmail => FPNote(DescriptionOfInterventions),
+                Referral => FPNote(DescriptionOfInterventions),
+                CustomStructure => {
+                  loop {
+                    match self.choose_note_category() {
+                      Some(ncat) => break ncat,
+                      None => {
+                        let decision = loop {
+                          let mut cancel_choice = String::new();
+                          println_yel!("You must select a note category to fill in a custom note template.");
+                          println_inst!("Cancel writing note? ( Y / N )");
+                          let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+                          let cancel_choice_content = match cancel_choice_attempt {
+                            Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+                            Err(e) => {
+                              println_err!("Failed to read line: {}", e);
+                              thread::sleep(time::Duration::from_secs(2));
+                              continue;
+                            }
+                          };
+                          break cancel_choice_content;
+                        };
+                        match &decision[..] {
+                          "yes" | "y" => {
+                            continue 'choose_edit;
+                          },
+                          "no" | "n" => {
+                            continue;
+                          },
+                          _ => {
+                            println_err!("Invalid command.");
+                            continue;
+                          },
+                        }
+                      }
+                    }
+
+                  }
+                },
               }
             }
           };
@@ -8889,7 +8951,7 @@ impl NoteArchive {
                                 current_location = num;
                                 continue;
                               },
-                              Err(e) => {
+                              Err(_) => {
                                 println_err!("Invalid command.");
                                 thread::sleep(time::Duration::from_secs(2));
                                 continue;
@@ -10180,25 +10242,61 @@ impl NoteArchive {
       }
       FP => {
         match nst {
-          CarePlan => FPNote(Tbd),
-          CarePlanVerbose => FPNote(Tbd),
-          Intake => FPNote(Tbd),
-          Assessment => FPNote(Tbd),
-          Sncd => FPNote(Tbd),
-          HomeVisit => FPNote(Tbd),
-          AgendaPrep => FPNote(Tbd),
-          Debrief => FPNote(Tbd),
-          PhoneCall => FPNote(Tbd),
-          Scheduling => FPNote(Tbd),
-          SentEmail => FPNote(Tbd),
-          Referral => FPNote(Tbd),
-          CustomStructure => FPNote(Tbd),
+          CarePlan => FPNote(DescriptionOfInterventions),
+          CarePlanVerbose => FPNote(DescriptionOfInterventions),
+          Intake => FPNote(DescriptionOfInterventions),
+          Assessment => FPNote(DescriptionOfInterventions),
+          Sncd => FPNote(DescriptionOfInterventions),
+          HomeVisit => FPNote(DescriptionOfInterventions),
+          AgendaPrep => FPNote(DescriptionOfInterventions),
+          Debrief => FPNote(DescriptionOfInterventions),
+          PhoneCall => FPNote(DescriptionOfInterventions),
+          Scheduling => FPNote(DescriptionOfInterventions),
+          SentEmail => FPNote(DescriptionOfInterventions),
+          Referral => FPNote(DescriptionOfInterventions),
+          CustomStructure => {
+            loop {
+              match self.choose_note_category() {
+                Some(ncat) => break ncat,
+                None => {
+                  let decision = loop {
+                    let mut cancel_choice = String::new();
+                    println_yel!("You must select a note category to fill in a custom note template.");
+                    println_inst!("Cancel writing note? ( Y / N )");
+                    let cancel_choice_attempt = io::stdin().read_line(&mut cancel_choice);
+                    let cancel_choice_content = match cancel_choice_attempt {
+                      Ok(_) => cancel_choice.trim().to_ascii_lowercase(),
+                      Err(e) => {
+                        println_err!("Failed to read line: {}", e);
+                        thread::sleep(time::Duration::from_secs(2));
+                        continue;
+                      }
+                    };
+                    break cancel_choice_content;
+                  };
+                  match &decision[..] {
+                    "yes" | "y" => {
+                      continue;
+                    },
+                    "no" | "n" => {
+                      continue;
+                    },
+                    _ => {
+                      println_err!("Invalid command.");
+                      continue;
+                    },
+                  }
+                }
+              }
+
+            }
+          },
         }
       }
     };
 
-    let mut n = self.generate_note(ncat, nst, ncnt).unwrap();
-    let nd = self.current_note_day();
+    let date = self.current_note_day().date.clone();
+    let mut n = self.generate_note(date, ncat, nst, ncnt).unwrap();
 
     let mut focus_id_option: Option<u32> = None;
     'choice: loop {
@@ -11048,8 +11146,10 @@ impl NoteArchive {
         }
       }
     };
+
+    let date = self.current_note_day().date.clone();
     
-    let mut n = match self.generate_note(ncat, CustomStructure, String::new()) {
+    let mut n = match self.generate_note(date, ncat, CustomStructure, String::new()) {
       Ok(nopt) => nopt,
       Err(e) => panic!("Failed to generate Note with custom structure and '{}' as note category: {}.", format!("{}", ncat), e),
     };
@@ -11338,15 +11438,17 @@ impl NoteArchive {
   }
   fn generate_note(
     &mut self,
+    date: NaiveDate,
     category: NoteCategory,
     structure: StructureType,
     content: String,
   ) -> Result<Note, String> {
     let id: u32 = self.notes.len() as u32 + 1;
     let user_id = self.current_user().id;
+    let client_id = self.current_client().id;
     let collateral_ids: Vec<u32> = vec![];
 
-    Ok(Note::new(id, category, structure, content, user_id, collateral_ids))
+    Ok(Note::new(id, date, category, structure, content, user_id, client_id, collateral_ids))
   }
   pub fn read_notes(filepath: &str) -> Result<Vec<Note>, Error> {
     let file = OpenOptions::new()
@@ -11379,7 +11481,18 @@ impl NoteArchive {
 
       let id: u32 = values[0].parse().unwrap();
 
-      let category_strings: Vec<String> = values[1].split(" - ").map(|s| s.to_string()).collect();
+      let date_vec: Vec<i32> = match &values[1][..] {
+        "" => vec![],
+        _ => values[1]
+        .split("-")
+          .map(|val| val.parse().unwrap())
+          .collect(),
+      };
+
+      let (year, month, day): (i32, u32, u32) = (date_vec[0], date_vec[1] as u32, date_vec[2] as u32);
+      let date = NaiveDate::from_ymd(year, month, day);
+
+      let category_strings: Vec<String> = values[2].split(" - ").map(|s| s.to_string()).collect();
       let (category_string, subcategory_string) = (category_strings[0].clone(), category_strings[1].clone());
       
       let category = match &category_string[..] {
@@ -11401,7 +11514,10 @@ impl NoteArchive {
         },
         "FP Note" => {
           let subcategory = match &subcategory_string[..] {
-            "Tbd" => Tbd,
+            "Functioning" => Functioning,
+            "Description of interventions" => DescriptionOfInterventions,
+            "Response to interventions" => ResponseToInterventions,
+            "Plan / additional information" => PlanAdditionalInformation,
             _ => return Err(Error::new(
               ErrorKind::Other,
               "Unsupported FP note subcategory saved to file.",
@@ -11415,7 +11531,7 @@ impl NoteArchive {
         )),
       };
 
-      let structure = match &values[2][..] {
+      let structure = match &values[3][..] {
         "Care Plan Meeting" => CarePlan,
         "Care Plan Meeting Verbose" => CarePlanVerbose,
         "Intake" => Intake,
@@ -11435,9 +11551,9 @@ impl NoteArchive {
         )),
       };
 
-      let content = values[3].clone();
+      let content = values[4].clone();
 
-      let blanks_strings: Vec<String> = values[4].split("/#/").map(|s| s.to_string() ).collect();
+      let blanks_strings: Vec<String> = values[5].split("/#/").map(|s| s.to_string() ).collect();
       let mut blanks: HashMap<u32, (Blank, String, Vec<u32>)> = HashMap::new();
 
         // pub blanks: HashMap<u32, (Blank, String, Vec<u32>)> 
@@ -11460,9 +11576,10 @@ impl NoteArchive {
         }
       }
 
-      let note_user_id: u32 = values[5].parse().unwrap();
+      let note_user_id: u32 = values[6].parse().unwrap();
+      let note_client_id: u32 = values[7].parse().unwrap();
 
-      let collateral_ids: Vec<u32> = match &values[6][..] {
+      let collateral_ids: Vec<u32> = match &values[7][..] {
         "" => vec![],
         _ => values[6]
           .split("#")
@@ -11470,12 +11587,19 @@ impl NoteArchive {
           .collect(),
       };
 
-      let mut n = Note::new(id, category, structure, content, note_user_id, collateral_ids);
+      let mut n = Note::new(id, date, category, structure, content, note_user_id, note_client_id, collateral_ids);
       n.blanks = blanks;
 
       notes.push(n);
     }
     notes.sort_by(|a, b| a.id.cmp(&b.id));
+    notes.sort_by(|a, b|
+      a.foreign_key["user_id"].cmp(&b.foreign_key["user_id"])
+    );
+    notes.sort_by(|a, b|
+      a.foreign_key["client_id"].cmp(&b.foreign_key["client_id"])
+    );
+    notes.sort_by(|a, b| a.date.cmp(&b.date) );
     Ok(notes)
   }
   pub fn write_notes(&self) -> std::io::Result<()> {
@@ -11677,6 +11801,7 @@ mod tests {
     fs::remove_file("test_load_pronouns.txt").unwrap();
     fs::remove_file("test_load_note_days.txt").unwrap();
     fs::remove_file("test_load_note_templates.txt").unwrap();
+    fs::remove_file("test_load_note.txt").unwrap();
   }
   #[test]
   fn creates_unique_new_instances() {

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use ansi_term::Colour::{Black, Yellow, White, RGB};
 use ansi_term::{Style};
+use chrono::{NaiveDate, Datelike, Weekday};
 
 // bold, dimmed, italic, underline, blink, reverse, hidden, strikethrough, on
 
@@ -194,7 +195,6 @@ impl NoteTemplate {
     let mut typed_content_indices: Vec<(usize, usize)> = vec![];
     let mut prev_end_idx = 0;
     
-    let mut i = 1;
     loop {
       let find_match_string = content_string.clone();
       let m = RE_BLANK.find(&find_match_string);
@@ -217,7 +217,6 @@ impl NoteTemplate {
 
       typed_content_indices.push((prev_end_idx, m.start()));
       prev_end_idx = m.end();
-      i += 1;
     }
     if prev_end_idx < content_string.len() {
       typed_content_indices.push((prev_end_idx, content_string.len()))
@@ -1048,13 +1047,19 @@ CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutrea
 
 #[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
 pub enum FPNoteCategory {
-  Tbd,
+  Functioning,
+  DescriptionOfInterventions,
+  ResponseToInterventions,
+  PlanAdditionalInformation,
 }
 
 impl FPNoteCategory {
   pub fn iterator() -> impl Iterator<Item = FPNoteCategory> {
     [
-      Tbd,
+      Functioning,
+      DescriptionOfInterventions,
+      ResponseToInterventions,
+      PlanAdditionalInformation,
     ].iter().copied()
   }
 }
@@ -1062,7 +1067,10 @@ impl FPNoteCategory {
 impl fmt::Display for FPNoteCategory {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display = match self {
-      Tbd => "Tbd",
+      Functioning => "Functioning",
+      DescriptionOfInterventions => "Description of interventions",
+      ResponseToInterventions => "Response to interventions",
+      PlanAdditionalInformation => "Plan / additional information",
     };
     write!(f, "{}", display)
   }
@@ -1071,17 +1079,21 @@ impl fmt::Display for FPNoteCategory {
 impl PartialEq for FPNoteCategory {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
-      (&Tbd, &Tbd) => true,
+      (&Functioning, &Functioning) => true,
+      (&DescriptionOfInterventions, &DescriptionOfInterventions) => true,
+      (&ResponseToInterventions, &ResponseToInterventions) => true,
+      (&PlanAdditionalInformation, &PlanAdditionalInformation) => true,
       _ => false,
     }
   }
 }
 
-use FPNoteCategory::{Tbd};
+use FPNoteCategory::{Functioning, DescriptionOfInterventions, ResponseToInterventions, PlanAdditionalInformation};
 
 #[derive(Clone)]
 pub struct Note {
   pub id: u32,
+  pub date: NaiveDate,
   pub category: NoteCategory,
   pub structure: StructureType,
   pub content: String,
@@ -1093,21 +1105,25 @@ pub struct Note {
 impl Note {
   pub fn new(
     id: u32,
+    date: NaiveDate,
     category: NoteCategory,
     structure: StructureType,
     content: String,
     user_id: u32,
+    client_id: u32,
     collateral_ids: Vec<u32>
   ) -> Note {
     let blanks = HashMap::new();
     let foreign_key: HashMap<String, u32> = [
       (String::from("user_id"), user_id),
+      (String::from("client_id"), client_id),
     ].iter().cloned().collect();
     let foreign_keys: HashMap<String, Vec<u32>> = [
       (String::from("collateral_ids"), collateral_ids),
     ].iter().cloned().collect();
     Note {
       id,
+      date,
       category,
       structure,
       content,
@@ -1115,6 +1131,21 @@ impl Note {
       foreign_key,
       foreign_keys,
     }
+  }
+  pub fn fmt_date(&self) -> String {
+    self.date.format("%Y-%m-%d").to_string()
+  }
+  pub fn heading_date(&self) -> String {
+    let wd = match self.date.weekday() {
+      Weekday::Mon => "Monday",
+      Weekday::Tue => "Tuesday",
+      Weekday::Wed => "Wednesday",
+      Weekday::Thu => "Thursday",
+      Weekday::Fri => "Friday",
+      Weekday::Sat => "Saturday",
+      Weekday::Sun => "Sunday",
+    };
+    format!("{} {}/{}", wd, self.date.month(), self.date.day())
   }
   pub fn get_num_content_sections(&self) -> usize {
     self.get_content_section_indices().iter().count()
@@ -1681,13 +1712,17 @@ impl fmt::Display for Note {
     }
     write!(
       f,
-      "{} | {} | {} | {} | {} | {} | {}\n",
+      "{} | {}-{}-{} | {} | {} | {} | {} | {} | {} | {}\n",
       &self.id,
+      &self.date.year(),
+      &self.date.month(),
+      &self.date.day(),
       &self.category,
       &self.structure,
       &content,
       blanks_str,
       &self.foreign_key["user_id"],
+      &self.foreign_key["client_id"],
       &self
         .foreign_keys["collateral_ids"]
         .iter()

@@ -69,6 +69,13 @@ impl Collateral {
     name.push_str(&self.last_name);
     name
   }
+  pub fn name_and_title(&self) -> String {
+    format!(
+      "{} ({})",
+      &self.full_name(),
+      &self.title(),
+    )
+  }
   pub fn full_name_and_title(&self) -> String {
     match self.support_type {
       Natural => {
