@@ -1,20 +1,11 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(dead_code)]
-#![allow(unreachable_patterns)]
-#![allow(unused_variables)]
-#![allow(unused_comparisons)]
-#![allow(unused_attributes)]
-
-#[macro_use] use lazy_static::lazy_static;
+use lazy_static::lazy_static;
 use regex::Regex;
-use regex::Match;
 
-use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White, RGB};
+use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, RGB};
 use ansi_term::Style;
 
-use chrono::{Local, NaiveDate, Datelike, TimeZone, Utc, Weekday};
-use std::{fmt, fs, io};
+use chrono::{Local, NaiveDate, Datelike};
+use std::{fs, io};
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -38,62 +29,6 @@ use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, C
 use FPNoteCategory::{Tbd};
 use Blank::{CurrentUser, CurrentClientName, Collaterals, AllCollaterals, Pronoun1ForBlank, Pronoun2ForBlank, Pronoun3ForBlank, Pronoun4ForBlank, Pronoun1ForUser, Pronoun2ForUser, Pronoun3ForUser, Pronoun4ForUser, Pronoun1ForClient, Pronoun2ForClient, Pronoun3ForClient, Pronoun4ForClient, TodayDate, NoteDayDate, InternalDocument, ExternalDocument, InternalMeeting, ExternalMeeting, Action, Phrase, CustomBlank};
 
-// blank fill-ins (likely to be updated later on)
-use InternalDocumentFillIn::{
-  ReferralForm,
-  TelehealthConsent,
-  TechnologyPlan,
-  FinancialAgreement,
-  InformedConsent,
-  ComprehensiveAssessment,
-  ChildAndAdolescentNeedsAndStrengths,
-  StrengthsNeedsAndCulturalDiscovery,
-  IndividualCarePlan,
-  TransitionSummary,
-  OtherInternalDocument,
-};
-use ExternalDocumentFillIn::{
-  NeuropsychologicalAssessment,
-  SchoolAssessment,
-  IndividualEducationPlan,
-  OtherExternalDocument,
-};
-use InternalMeetingFillIn::{
-  IntakeMeeting,
-  AssessmentMeeting,
-  SncdMeeting,
-  HomeVisitMeeting,
-  AgendaPrepMeeting,
-  CarePlanMeeting,
-  DebriefMeeting,
-  CheckInMeeting,
-  TransitionMeeting,
-  OtherInternalMeeting
-};
-use ExternalMeetingFillIn::{
-  IEPMeeting,
-  SchoolAssessmentMeeting,
-  Consult,
-  TreatmentTeamMeeting,
-  OtherExternalMeeting,
-};
-use ActionFillIn::{
-  Called,
-  Emailed,
-  Texted,
-  Elicited,
-  Reflected,
-  Summarized,
-  Scheduled,
-  Affirmed,
-  Brainstormed,
-  Reviewed,
-};
-use PhraseFillIn::{
-  AllTeamMembersPresentAtMeeting,
-  AllTeamMembers,
-};
-
 use crate::utils::*;
 use crate::constants::*;
 
@@ -113,7 +48,7 @@ pub struct NoteArchive {
 
 // general functions
 
-#[macro_use] use std::format_args;
+use std::format_args;
 
 // macros for printing formatted stuff - print_on_bg duplicated in note.rs
 
@@ -205,7 +140,7 @@ fn choose_blanks() -> usize {
     match input_attempt {
       Ok(_) => (),
       Err(e) => {
-        println_err!("Failed to read input. Try again.");
+        println_err!("Failed to read input: {}.", e);
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -221,7 +156,7 @@ fn choose_blanks() -> usize {
         }
       },
       Err(e) => {
-        println_err!("Failed to read input as a number. Try again.");
+        println_err!("Failed to read input as a number: {}.", e);
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -237,7 +172,7 @@ fn choose_blanks_option() -> Option<usize> {
     match input_attempt {
       Ok(_) => (),
       Err(e) => {
-        println_err!("Failed to read input. Try again.");
+        println_err!("Failed to read input: {}.", e);
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -257,7 +192,7 @@ fn choose_blanks_option() -> Option<usize> {
         }
       },
       Err(e) => {
-        println_err!("Failed to read input as a number. Try again.");
+        println_err!("Failed to read input as a number: {}.", e);
         thread::sleep(time::Duration::from_secs(2));
         continue;
       }
@@ -378,7 +313,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println_err!("Failed to read input. Please try again.");
+          println_err!("Failed to read input: {}.", e);
         }
       }
       choice = choice.to_ascii_lowercase().trim().to_string();
@@ -390,7 +325,7 @@ impl NoteArchive {
           match pw_attempt {
             Ok(_) => (),
             Err(e) => {
-              println_err!("Failed to read input. Please try again.");
+              println_err!("Failed to read input: {}.", e);
             }
           }
           pw = pw.trim().to_string();
@@ -440,7 +375,7 @@ impl NoteArchive {
     let mut build_note_archive = true;
     match Self::read_users(&filepaths["user_filepath"]) {
       Ok(_) => (),
-      Err(e) => {
+      Err(_) => {
         build_note_archive = Self::choose_decrypt_files(
           &filepaths["user_filepath"],
           &filepaths["client_filepath"],
@@ -742,7 +677,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println_err!("Failed to read input. Please try again.");
+          println_err!("Failed to read input: {}.", e);
         }
       }
       choice = choice.to_ascii_lowercase().trim().to_string();
@@ -800,7 +735,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println_err!("Failed to read input. Please try again.");
+          println_err!("Failed to read input: {}.", e);
           continue;
         }
       }
@@ -856,7 +791,7 @@ impl NoteArchive {
       match choice_attempt {
         Ok(_) => (),
         Err(e) => {
-          println_err!("Failed to read input. Please try again.");
+          println_err!("Failed to read input: {}.", e);
           continue;
         }
       }
@@ -894,7 +829,7 @@ impl NoteArchive {
                 }
               },
               Err(e) => {
-                println_err!("Failed to read input. Please try again.");
+                println_err!("Failed to read input: {}.", e);
                 continue;
               }
             }
@@ -1131,7 +1066,7 @@ impl NoteArchive {
                   }
                 },
                 Err(e) => {
-                  println_err!("Failed to read input.");
+                  println_err!("Failed to read input: {}.", e);
                   continue;
                 }
               }
@@ -1356,7 +1291,7 @@ impl NoteArchive {
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
-        Err(e) => {
+        Err(_) => {
           println_err!("Failed to read input. Please try again.");
           continue;
         }
@@ -1585,7 +1520,7 @@ impl NoteArchive {
     println_on_bg!("{:-^96}", "-");
     println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
     match &self.foreign_key.get("current_user_id") {
-      Some(c_ids) => {
+      Some(_) => {
         for c in self.get_noncurrent_clients() {
           println_on_bg!(
             "{: ^10} | {: ^40} | {: <12} {: >26}",
@@ -1708,7 +1643,7 @@ impl NoteArchive {
             }
           },
           Err(e) => {
-            println_err!("Failed to read input as a number.");
+            println_err!("Failed to read input: {}.", e);
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
@@ -2095,7 +2030,7 @@ impl NoteArchive {
                   }
                 },
                 Err(e) => {
-                  println_err!("Failed to read line.");
+                  println_err!("Failed to read line: {}", e);
                   continue;
                 }
               }
@@ -2280,7 +2215,7 @@ impl NoteArchive {
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
-        Err(e) => {
+        Err(_) => {
           println_err!("Failed to read input. Please try again.");
           continue;
         }
@@ -2463,9 +2398,6 @@ impl NoteArchive {
       c.id = i;
       i += 1;
     }
-  }
-  fn get_client_option_by_id(&self, id: u32) -> Option<&Client> {
-    self.clients.iter().find(|c| c.id == id)
   }
   fn get_client_by_id(&self, id: u32) -> Option<&Client> {
     self.clients.iter().find(|c| c.id == id)
@@ -2657,12 +2589,12 @@ impl NoteArchive {
     println_on_bg!("{:-^146}", "-");
     println_on_bg!("{:-^146}", heading);
     println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<30}", " ID ", "Name ", "Title ", "Youth(s) ");
+    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<27}", " ID ", "Name ", "Title ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {:-<50} | {:-<50} | {: <30}",
+        "{: ^10} | {:-<50} | {:-<50} | {: <27}",
         co.id,
         co.full_name(),
         co.title(),
@@ -2690,12 +2622,12 @@ impl NoteArchive {
     println_on_bg!("{:-^146}", "-");
     println_on_bg!("{:-^146}", heading);
     println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<30}", " ID ", "Name ", "Title ", "Youth(s) ");
+    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<27}", " ID ", "Name ", "Title ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {:-<50} | {:-<50} | {: <30}",
+        "{: ^10} | {:-<50} | {:-<50} | {: <27}",
         co.id,
         co.full_name(),
         co.title(),
@@ -3185,7 +3117,7 @@ impl NoteArchive {
                   }
                 },
                 Err(e) => {
-                  println_err!("Failed to read input.");
+                  println_err!("Failed to read input: {}.", e);
                   continue;
                 }
               }
@@ -3244,7 +3176,7 @@ impl NoteArchive {
               }
             }
             Err(e) => {
-              println_err!("Failed to read input.");
+              println_err!("Failed to read input: {}.", e);
               continue;
             }
           };
@@ -3269,7 +3201,7 @@ impl NoteArchive {
                   }
                 }
                 Err(e) => {
-                  println_err!("Failed to read input.");
+                  println_err!("Failed to read input: {}.", e);
                   continue;
                 }
               };
@@ -3560,7 +3492,7 @@ impl NoteArchive {
       .map(|(index, client_id_option)| (self.collaterals[index].clone(), client_id_option) )
       .collect::<Vec<(Collateral, &Option<u32>)>>();
 
-    collaterals_and_client_ids.sort_by(|(i_a, u_a), (i_b, u_b)|
+    collaterals_and_client_ids.sort_by(|(_, u_a), (_, u_b)|
       u_a.cmp(&u_b)
     );
 
@@ -3580,7 +3512,7 @@ impl NoteArchive {
       .map(|(index, user_id)| (self.collaterals[index].clone(), user_id) )
       .collect::<Vec<(Collateral, &Option<u32>)>>();
 
-    collaterals_and_user_ids.sort_by(|(i_a, u_a), (i_b, u_b)| u_a.cmp(&u_b) );
+    collaterals_and_user_ids.sort_by(|(_, u_a), (_, u_b)| u_a.cmp(&u_b) );
 
     let collat_refs_by_user = collaterals_and_user_ids
       .iter()
@@ -3663,7 +3595,7 @@ impl NoteArchive {
             }
           },
           Err(e) => {
-            println_err!("Failed to read input as a number.");
+            println_err!("Failed to read input as a number: {}.", e);
             continue;
           }
         }
@@ -3678,7 +3610,7 @@ impl NoteArchive {
       match input_attempt {
         Ok(_) => (),
         Err(e) => {
-          println_err!("Failed to read input. Please try again.");
+          println_err!("Failed to read input: {}.", e);
           continue;
         }
       }
@@ -3759,7 +3691,7 @@ impl NoteArchive {
                 thread::sleep(time::Duration::from_secs(2));
                 continue;
               },
-              (Some(i), "NONE") => {
+              (Some(_), "NONE") => {
                 match self.change_collateral_institution(None) {
                   Ok(_) => (),
                   Err(e) => {
@@ -3837,8 +3769,8 @@ impl NoteArchive {
                     }
                   }
                 },
-                Err(_) => {
-                  println_err!("Failed to read line.");
+                Err(e) => {
+                  println_err!("Failed to read line: {}", e);
                   thread::sleep(time::Duration::from_secs(1));
                   continue;
                 },
@@ -3882,7 +3814,7 @@ impl NoteArchive {
                       }
                     }
                     Err(e) => {
-                      println_err!("Failed to read input.");
+                      println_err!("Failed to read input: {}.", e);
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
                     }
@@ -4170,9 +4102,6 @@ impl NoteArchive {
   fn get_collateral_by_id(&self, id: u32) -> Option<&Collateral> {
     self.collaterals.iter().find(|p| p.id == id)
   }
-  fn get_collateral_by_id_mut(&mut self, id: u32) -> Option<&mut Collateral> {
-    self.collaterals.iter_mut().find(|p| p.id == id)
-  }
 
   // pronouns
   pub fn read_pronouns(&mut self) -> Result<Vec<Pronouns>, Error> {
@@ -4318,18 +4247,12 @@ impl NoteArchive {
       // due to someone editing the default values,
       // change ID to last item in vector + 1, continuing count
         
-      let saved_id: u32 = values[0].parse().unwrap();
       let next_id = pronouns[pronouns.len() - 1].id + 1;
         
       let subject = String::from(&values[1]);
       let object = String::from(&values[2]);
       let possessive_determiner = String::from(&values[3]);
       let possessive = String::from(&values[4]);
-      
-      let s2 = subject.clone();
-      let o2 = object.clone();
-      let pd2 = possessive_determiner.clone();
-      let p2 = possessive.clone();
 
       let p = Pronouns::new(next_id, subject, object, possessive_determiner, possessive);
       pronouns.push(p);
@@ -4598,23 +4521,6 @@ impl NoteArchive {
       None => None,
     }
   }
-  fn pronouns_already_exist(&self, subject: String, object: String, possessive_determiner: String, possessive: String) -> Option<u32> {
-    let id: u32 = self.pronouns.len() as u32 + 1;
-
-    let new_pronouns = Pronouns::new(
-      id,
-      subject.to_lowercase(),
-      object.to_lowercase(),
-      possessive_determiner.to_lowercase(),
-      possessive.to_lowercase(),
-    );
-
-    match self.pronouns.iter().find(|p| p == &&new_pronouns) {
-      Some(p) => Some(p.id),
-      None => None,
-    }
-    
-  }
   fn generate_unique_new_pronouns(
     &mut self,
     subject: String,
@@ -4803,7 +4709,7 @@ impl NoteArchive {
         let input_attempt = io::stdin().read_line(&mut pronoun_to_edit);
         match input_attempt {
           Ok(_) => (),
-          Err(e) => {
+          Err(_) => {
             println_err!("Failed to read input. Please try again.");
             continue;
           }
@@ -4964,7 +4870,7 @@ impl NoteArchive {
       let input_attempt = io::stdin().read_line(&mut decision);
       match input_attempt {
         Ok(_) => (),
-        Err(e) => {
+        Err(_) => {
           println_err!("Failed to read input. Please try again.");
           continue;
         }
@@ -4985,7 +4891,7 @@ impl NoteArchive {
           let field_input = io::stdin().read_line(&mut pronoun_to_edit);
           match field_input {
             Ok(_) => (),
-            Err(e) => {
+            Err(_) => {
               println_err!("Failed to read input. Please try again.");
               continue;
             }
@@ -5043,7 +4949,7 @@ impl NoteArchive {
   fn delete_pronouns(&mut self, prns_id: u32) {
     self.pronouns.retain(|p| p.id != prns_id);
     match self.foreign_key.get("current_user_id") {
-      Some(id) => {
+      Some(_) => {
         if self.current_user().pronouns == prns_id {
           print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
           println_yel!("Please select new pronouns before continuing.");
@@ -5084,14 +4990,6 @@ impl NoteArchive {
   }
   fn current_client_note_days(&self) -> Vec<&NoteDay> {
     self.note_days.iter().filter(|nd| nd.foreign_key["client_id"] == self.current_client().id ).collect()
-  }
-  fn current_client_notes(&self) -> Vec<&Note> {
-    let nds = self.current_client_note_days();
-    self.notes.iter().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
-  }
-  fn current_client_note_days_mut(&mut self) -> Vec<&mut NoteDay> {
-    let cc_id = self.current_client().id;
-    self.note_days.iter_mut().filter(|nd| nd.foreign_key["client_id"] == cc_id ).collect()
   }
   fn current_client_notes_mut(&mut self) -> Vec<&mut Note> {
     let nds: Vec<NoteDay> = self.current_client_note_days().iter().cloned().cloned().collect();
@@ -5169,8 +5067,7 @@ impl NoteArchive {
       )),
     }
   }
-  fn choose_edit_note_days(&mut self, display_all: bool) {
-    let mut display_all = false;
+  fn choose_edit_note_days(&mut self, mut display_all: bool) {
     loop {
       let input = loop {
         if display_all {
@@ -5245,7 +5142,7 @@ impl NoteArchive {
               continue;
             }
           }
-          let date = match &today_choice.trim()[..] {
+          match &today_choice.trim()[..] {
             "Y" | "y" | "Yes" | "YES" | "yes" => {
               break 'main today;
             },
@@ -5257,7 +5154,7 @@ impl NoteArchive {
               println_err!("Please choose 'yes', 'no', or 'cancel'.");
               continue;
             }
-          };
+          }
         }
       } else {
         let mut same_year = false;
@@ -5437,6 +5334,9 @@ impl NoteArchive {
     println_inst!("{:-^150}", " Enter any input to return to the previous menu. ");
     let mut s = String::new();
     let input_attempt = io::stdin().read_line(&mut s);
+    match input_attempt {
+      _ => (),
+    }
   }
   fn choose_note_days(&mut self) {
     let mut display_all = false;
@@ -5558,6 +5458,9 @@ impl NoteArchive {
     println_inst!("{}", "Enter any input to return to the previous menu.");
     let mut s = String::new();
     let input_attempt = io::stdin().read_line(&mut s);
+    match input_attempt {
+      _ => (),
+    }
   }
   fn print_note_day(&self, nd: NoteDay) {
     for (k, v) in &self.get_note_day_notes_by_category(nd) {
@@ -5584,50 +5487,6 @@ impl NoteArchive {
     println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
     println_on_bg!("{:-^178}", "-");
     for n in notes {
-      let nt_opt = self.get_note_template_by_note_id(n.id);
-      let nt_display = match nt_opt {
-        Some(nt) => format!("{}", nt),
-        None => String::from("n/a"),
-      };
-
-      let words: Vec<&str> = n.content.split(" ").collect();
-      let (s, _) = n.generate_display_content_string_with_blanks(None, None);
-      let sample = if s.len() > 75 {
-        format!("{}{}", String::from(&s[..73]), String::from("..."))
-      } else {
-        s
-      };
-
-      let cat = match n.category {
-        ICCNote(c) => c.to_string(),
-        FPNote(c) => c.to_string(),
-      };
-      let n_structure = n.structure.to_string();
-      
-      println_on_bg!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
-    }
-    println_on_bg!("{:-^178}", "-");
-  }
-  fn display_edit_note_day(&self) {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^178}", "-");
-    
-    let notes = self.current_note_day_notes();
-    
-    let nd = self.current_note_day();
-    let c = self.get_client_by_note_day_id(nd.id).unwrap();
-    let heading = format!(" Edit notes for {} for {} ", c.full_name(), nd.fmt_date());
-    println_on_bg!("{:-^178}", heading);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
-    println_on_bg!("{:-^178}", "-");
-    for n in notes {
-      let nt_opt = self.get_note_template_by_note_id(n.id);
-      let nt_display = match nt_opt {
-        Some(nt) => format!("{}", nt),
-        None => String::from("n/a"),
-      };
-
       let words: Vec<&str> = n.content.split(" ").collect();
       let (s, _) = n.generate_display_content_string_with_blanks(None, None);
       let sample = if s.len() > 75 {
@@ -5660,12 +5519,6 @@ impl NoteArchive {
     println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
     println_on_bg!("{:-^178}", "-");
     for n in notes {
-      let nt_opt = self.get_note_template_by_note_id(n.id);
-      let nt_display = match nt_opt {
-        Some(nt) => format!("{}", nt),
-        None => String::from("n/a"),
-      };
-
       let words: Vec<&str> = n.content.split(" ").collect();
       let (s, _) = n.generate_display_content_string_with_blanks(None, None);
       let sample = if s.len() > 75 {
@@ -5776,7 +5629,7 @@ impl NoteArchive {
           continue;
         }
         "new" | "n" => {
-          let n_id = self.create_note_get_id(None);
+          self.create_note_get_id(None);
         }
         "print" | "p" => {
           self.print_current_note_day();
@@ -5795,7 +5648,7 @@ impl NoteArchive {
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   },
-                  Some(n) => {
+                  Some(_) => {
                     match self.load_note(num) {
                       Ok(_) => self.choose_note(),
                       Err(e) => {
@@ -5808,7 +5661,7 @@ impl NoteArchive {
                 }
               }
             },
-            Err(e) => {
+            Err(_) => {
               println_err!("Invalid command.");
               thread::sleep(time::Duration::from_secs(2));
               continue;
@@ -6053,7 +5906,7 @@ impl NoteArchive {
     let id: u32 = self.note_days.len() as u32 + 1;
 
     match self.note_day_dup_id_option(&date, user_id, client_id) {
-      Some(dup_id) => Err(String::from("A note record already exists for that client on the given date.")),
+      Some(_) => Err(String::from("A note record already exists for that client on the given date.")),
       None => Ok(NoteDay::new(id, date, user_id, client_id, vec![]))
     }
   }
@@ -6178,14 +6031,8 @@ impl NoteArchive {
       i += 1;
     }
   }
-  fn get_note_day_option_by_id(&self, id: u32) -> Option<&NoteDay> {
-    self.note_days.iter().find(|nd| nd.id == id)
-  }
   fn get_note_day_by_id(&self, id: u32) -> Option<&NoteDay> {
     self.note_days.iter().find(|nd| nd.id == id)
-  }
-  fn get_note_day_by_id_mut(&mut self, id: u32) -> Option<&mut NoteDay> {
-    self.note_days.iter_mut().find(|nd| nd.id == id)
   }
   /// assumes that the given note_day_id is valid
   fn get_client_by_note_day_id(&self, id: u32) -> Option<&Client> {
@@ -6219,7 +6066,7 @@ impl NoteArchive {
   fn current_user_note_templates(&self) -> Vec<&NoteTemplate> {
     self.note_templates.iter().filter(|nt|
       match nt.foreign_key.get("user_id") {
-        Some(u_id) => {
+        Some(_) => {
           nt.foreign_key["user_id"] == self.current_user().id
         },
         None => true, // because current_user_note_templates returns all for the current user
@@ -6230,23 +6077,11 @@ impl NoteArchive {
   fn current_user_personal_note_templates(&self) -> Vec<&NoteTemplate> {
     self.note_templates.iter().filter(|nt|
       match nt.foreign_key.get("user_id") {
-        Some(u_id) => {
+        Some(_) => {
           nt.foreign_key["user_id"] == self.current_user().id
         },
         None => false, // because current_user_note_templates returns all for the current user
                       // current_user_personal_note_templates returns the ones they should be able to edit
-      }
-    ).collect()
-  }
-  fn current_user_personal_note_templates_mut(&mut self) -> Vec<&mut NoteTemplate> {
-    let current_user_id = self.current_user().id;
-    self.note_templates.iter_mut().filter(|nt|
-      match nt.foreign_key.get("user_id") {
-        Some(u_id) => {
-          nt.foreign_key["user_id"] == current_user_id
-        },
-        None => false, // because current_user_note_templates returns all for the current user
-                      // current_user_personal_note_templates_mut returns the ones they should be able to edit
       }
     ).collect()
   }
@@ -6271,33 +6106,13 @@ impl NoteArchive {
     }
     println_on_bg!("{:-^156}", "-");
     if self.current_user_personal_note_templates().len() > 0 {
-      println_inst!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
-    } else {
-      println_inst!("{} | {}", "Choose template by ID.", "NEW / N: New template");
-    }
-  }
-  fn display_all_note_templates(&self) {
-    let heading = format!(" All note templates for all users ");
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^156}", "-");
-    println_on_bg!("{:-^156}", heading);
-    println_on_bg!("{:-^156}", "-");
-    println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
-    for nt in self.note_templates.clone() {
-      let mut type_string = format!("{}", nt.structure);
-      if nt.custom {
-        type_string.push_str(" (custom)");
-      }
-      println_on_bg!(
-        "{: ^10} | {: ^40} | {: ^100}",
-        nt.id,
-        type_string,
-        &nt.preview(),
+      println_inst!(
+        "{} | {} | {} | {}",
+        "Choose template by ID.",
+        "NEW / N: New template",
+        "EDIT / E: Edit custom note templates",
+        "COPY / C: Copy template"
       );
-    }
-    println_on_bg!("{:-^156}", "-");
-    if self.current_user_personal_note_templates().len() > 0 {
-      println_inst!("{} | {} | {}", "Choose template by ID.", "NEW / N: New template", "EDIT / E: Edit custom note templates");
     } else {
       println_inst!("{} | {}", "Choose template by ID.", "NEW / N: New template");
     }
@@ -6354,7 +6169,7 @@ impl NoteArchive {
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
-        Err(e) => {
+        Err(_) => {
           println_err!("Failed to read input. Please try again.");
           continue;
         }
@@ -6366,11 +6181,11 @@ impl NoteArchive {
         }
         _ => match field_to_edit.parse() {
           Ok(num) => match self.get_note_template_option_by_id(num) {
-            Some(nt) => {
+            Some(_) => {
               if self.current_user_personal_note_templates().iter().any(|no_t| no_t.id == num ) {
                 match self.load_note_template(num) {
                   Ok(_) => self.choose_edit_note_template(),
-                  Err(e) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
+                  Err(_) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
                 }
               } else {
                 println_err!("Please choose from among the listed note templates.");
@@ -6398,7 +6213,6 @@ impl NoteArchive {
   }
   fn choose_edit_note_template(&mut self) {
     loop {
-      let num_blanks = self.current_note_template().get_ordered_blanks().len() as u32;
       self.display_edit_note_template();
       println_inst!(
         "{} | {} | {} | {}",
@@ -6412,7 +6226,7 @@ impl NoteArchive {
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
-        Err(e) => {
+        Err(_) => {
           println_err!("Failed to read input. Please try again.");
           continue;
         }
@@ -6681,11 +6495,6 @@ impl NoteArchive {
                           println_on_bg!("{}", &pointer_string);
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
-                          let num_vecs = if num_chars % 163 == 0 {
-                            num_chars / 163
-                          } else {
-                            (num_chars / 163) + 1
-                          };
 
                           let mut display_content = self.current_note_template().generate_display_content_string_with_blanks(None, None).0.clone();
                           while display_content.chars().count() > 163 {
@@ -6761,13 +6570,11 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
                               };
-
-                              let current_content = self.current_note_template().content.clone();
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
@@ -6810,13 +6617,11 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
                               };
-
-                              let current_content = self.current_note_template().content.clone();
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
@@ -6879,7 +6684,7 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -6916,7 +6721,7 @@ impl NoteArchive {
                                 current_location = num;
                                 continue;
                               },
-                              Err(e) => {
+                              Err(_) => {
                                 println_err!("Invalid command.");
                                 thread::sleep(time::Duration::from_secs(2));
                                 continue;
@@ -6944,8 +6749,6 @@ impl NoteArchive {
                     }
                   }
                 }
-                let blank_focus_id: Option<u32> = Some(1);
-                let content_focus_id: Option<u32> = None;
                 self.write_note_templates().unwrap();
               },
               _ => {
@@ -7073,7 +6876,7 @@ impl NoteArchive {
                           let input = match input_result {
                             Ok(_) => input_string.trim(),
                             Err(e) => {
-                              println_err!("Failed to read input.");
+                              println_err!("Failed to read input: {}.", e);
                               thread::sleep(time::Duration::from_secs(1));
                               continue;
                             }
@@ -7091,7 +6894,7 @@ impl NoteArchive {
                                 break Some(num);
                               }
                             },
-                            Err(e) => {
+                            Err(_) => {
                               println_err!("Invalid command.");
                               thread::sleep(time::Duration::from_secs(1));
                               continue;
@@ -7190,7 +6993,7 @@ impl NoteArchive {
                 }
               },
               "insert" | "i" => { // in blanks choice
-                let blank_focus_id: Option<u32> = None;
+                let mut blank_focus_id: Option<u32> = None;
                 let mut content_focus_id: Option<u32> = Some(1);
                 let new_blank = match choose_blanks_option() {
                   Some(nb) => Blank::vector_of_variants()[nb],
@@ -7238,11 +7041,6 @@ impl NoteArchive {
                           println_on_bg!("{}", &pointer_string);
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
-                          let num_vecs = if num_chars % 163 == 0 {
-                            num_chars / 163
-                          } else {
-                            (num_chars / 163) + 1
-                          };
 
                           let mut display_content = self.current_note_template().content[idx1..idx2].to_string();
                           while display_content.chars().count() > 163 {
@@ -7330,7 +7128,7 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -7396,13 +7194,7 @@ impl NoteArchive {
                                 &bfrs.1,
                                 &display_string[..]
                               );
-                              let new_content = format!(
-                                "{}{}{}{}",
-                                &bfrs.0,
-                                new_blank,
-                                &bfrs.1,
-                                &display_string[..]
-                              );
+
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
                               println_inst!("{}", &new_display_content);
 
@@ -7411,7 +7203,7 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -7455,13 +7247,6 @@ impl NoteArchive {
                               };
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
-                              let new_display_content = format!(
-                                "{}{}{}{}",
-                                &display_string[..],
-                                &bfrs.0,
-                                &new_blank.display_to_user_empty()[..],
-                                &bfrs.1
-                              );
                               let new_content = format!(
                                 "{}{}{}{}",
                                 &display_string[..],
@@ -7477,7 +7262,7 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -7518,7 +7303,7 @@ impl NoteArchive {
                                 }
                                 continue;
                               },
-                              Err(e) => {
+                              Err(_) => {
                                 println_err!("Invalid command.");
                                 thread::sleep(time::Duration::from_secs(2));
                                 continue;
@@ -7549,8 +7334,6 @@ impl NoteArchive {
                     }
                   }
                 }
-                let blank_focus_id: Option<u32> = Some(1);
-                let content_focus_id: Option<u32> = None;
                 self.write_note_templates().unwrap();
 
 
@@ -7622,6 +7405,9 @@ impl NoteArchive {
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
+        },
+        "copy" | "c" => {
+          self.choose_copy_note_template();
         },
         "quit" | "q" => {
           break;
@@ -7956,7 +7742,7 @@ impl NoteArchive {
                   let input = match input_result {
                     Ok(_) => input_string.trim(),
                     Err(e) => {
-                      println_err!("Failed to read input.");
+                      println_err!("Failed to read input: {}.", e);
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
                     }
@@ -7974,7 +7760,7 @@ impl NoteArchive {
                         break Some(num);
                       }
                     },
-                    Err(e) => {
+                    Err(_) => {
                       println_err!("Invalid command.");
                       thread::sleep(time::Duration::from_secs(1));
                       continue;
@@ -8085,13 +7871,13 @@ impl NoteArchive {
   }
   fn choose_copy_note_template(&mut self) {
     loop {
-      self.display_all_note_templates();
+      self.display_copy_user_note_templates();
       let mut input_string = String::new();
       let input_result = io::stdin().read_line(&mut input_string);
       let user_choice = match input_result {
         Ok(_) => input_string.trim(),
         Err(e) => {
-          println_err!("Failed to read input.");
+          println_err!("Failed to read input: {}.", e);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         },
@@ -8113,7 +7899,7 @@ impl NoteArchive {
                     self.copy_note_template(num);
                   }
                 },
-                Err(e) => {
+                Err(_) => {
                   println_err!("Please choose from among the listed templates.");
                   thread::sleep(time::Duration::from_secs(2));
                   continue;
@@ -8203,7 +7989,7 @@ impl NoteArchive {
     let id = (self.note_templates.len() + 1) as u32;
 
     match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
-      Some(dup_id) => Err(
+      Some(_) => Err(
         (
           NoteTemplate::new(id, structure, true, content, Some(user_id)),
           String::from("match") // must remain "match" in order to be caught in error handling for when copying a note template intentionally
@@ -8292,13 +8078,16 @@ impl NoteArchive {
 
       let user_id = Some(values[3].parse().unwrap());
 
-      let note_ids: Vec<u32> = match &values[4][..] {
-        "" => vec![],
-        _ => values[4]
-          .split("#")
-          .map(|val| val.parse().unwrap())
-          .collect(),
-      };
+      // let note_ids: Vec<u32> = match &values[4][..] {
+      //   "" => vec![],
+      //   _ => values[4]
+      //     .split("#")
+      //     .map(|val| val.parse().unwrap())
+      //     .collect(),
+      // };
+
+      // ^^ possibly use again to store which note came from which template
+
       let nt = NoteTemplate::new(id, structure, true, content, user_id);
       note_templates.push(nt);
     }
@@ -8354,13 +8143,13 @@ impl NoteArchive {
     self.note_templates.insert(pos, note_template);
     self.write_note_templates().unwrap();
   }
-  fn current_user_custom_note_templates(&self) -> Vec<&NoteTemplate> {
-    self.note_templates.iter().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == self.current_user().id).collect()
-  }
-  fn current_user_custom_note_templates_mut(&mut self) -> Vec<&mut NoteTemplate> {
-    let current_id = self.current_user().id;
-    self.note_templates.iter_mut().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == current_id).collect()
-  }
+  // fn current_user_custom_note_templates(&self) -> Vec<&NoteTemplate> {
+  //   self.note_templates.iter().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == self.current_user().id).collect()
+  // }
+  // fn current_user_custom_note_templates_mut(&mut self) -> Vec<&mut NoteTemplate> {
+  //   let current_id = self.current_user().id;
+  //   self.note_templates.iter_mut().filter(|nt| nt.custom ).filter(|nt| nt.foreign_key["user_id"] == current_id).collect()
+  // }
   fn choose_delete_note_template(&mut self) {
     loop {
       self.display_delete_note_template();
@@ -8415,9 +8204,9 @@ impl NoteArchive {
   fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nt| nt.id == id)
   }
-  fn get_note_template_option_by_id_mut(&mut self, id: u32) -> Option<&mut NoteTemplate> {
-    self.note_templates.iter_mut().find(|nt| nt.id == id)
-  }
+  // fn get_note_template_option_by_id_mut(&mut self, id: u32) -> Option<&mut NoteTemplate> {
+  //   self.note_templates.iter_mut().find(|nt| nt.id == id)
+  // }
 
 // notes
 
@@ -8463,9 +8252,9 @@ impl NoteArchive {
   fn get_note_day_by_note_id(&self, id: u32) -> Option<&NoteDay> {
     self.note_days.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &id) )
   }
-  fn get_note_template_by_note_id(&self, id: u32) -> Option<&NoteTemplate> {
-    self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &id) )
-  }
+  // fn get_note_template_by_note_id(&self, id: u32) -> Option<&NoteTemplate> {
+  //   self.note_templates.iter().find(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &id) )
+  // }
   fn display_note(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^163}", "-");
@@ -8474,42 +8263,17 @@ impl NoteArchive {
     let nd = self.get_note_day_by_note_id(n.id).unwrap();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     
-    let nt_string = match self.get_note_template_by_note_id(n.id) {
-      Some(nt) => nt.display_short(),
-      None => String::from("n/a"),
-    };
+    // let nt_string = match self.get_note_template_by_note_id(n.id) {
+    //   Some(nt) => nt.display_short(),
+    //   None => String::from("n/a"),
+    // };
 
-    let cat_string = match n.category {
-      ICCNote(ncat) => format!("'{}' by ICC", ncat),
-      FPNote(ncat) => format!("'{}' by FP", ncat),
-    };
+    // let cat_string = match n.category {
+    //   ICCNote(ncat) => format!("'{}' by ICC", ncat),
+    //   FPNote(ncat) => format!("'{}' by FP", ncat),
+    // };
 
     let heading = format!(" {} {} note for {} ", nd.heading_date(), n.structure, c.full_name());
-    println_on_bg!("{:-^163}", heading);
-    let heading2 = format!(" ({}) ", n.category);
-    println_on_bg!("{:-^163}", heading2);
-    println_on_bg!("{:-^163}", "-");
-    n.display_content(Some(0), None);
-  }
-  fn display_edit_note(&self) {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^163}", "-");
-    
-    let n = self.current_note();
-    let nd = self.get_note_day_by_note_id(n.id).unwrap();
-    let c = self.get_client_by_note_day_id(nd.id).unwrap();
-    
-    let nt_string = match self.get_note_template_by_note_id(n.id) {
-      Some(nt) => nt.display_short(),
-      None => String::from("n/a"),
-    };
-
-    let cat_string = match n.category {
-      ICCNote(ncat) => format!("'{}' by ICC", ncat),
-      FPNote(ncat) => format!("'{}' by FP", ncat),
-    };
-
-    let heading = format!(" Edit {} {} note for {} ", nd.heading_date(), n.structure, c.full_name());
     println_on_bg!("{:-^163}", heading);
     let heading2 = format!(" ({}) ", n.category);
     println_on_bg!("{:-^163}", heading2);
@@ -8563,7 +8327,6 @@ impl NoteArchive {
     let mut blank_focus_id: Option<u32> = None;
     let mut content_focus_id: Option<u32> = None;
     'choose_edit: loop {
-      let num_blanks = self.current_note().blanks.len() as u32;
       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
       self.current_note().display_content(blank_focus_id, content_focus_id);
       println_inst!(
@@ -8578,7 +8341,7 @@ impl NoteArchive {
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
       match input_attempt {
         Ok(_) => (),
-        Err(e) => {
+        Err(_) => {
           println_err!("Failed to read input. Please try again.");
           continue;
         }
@@ -8900,11 +8663,6 @@ impl NoteArchive {
                           println_on_bg!("{}", &pointer_string);
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
-                          let num_vecs = if num_chars % 163 == 0 {
-                            num_chars / 163
-                          } else {
-                            (num_chars / 163) + 1
-                          };
 
                           let mut display_content = self.current_note().generate_display_content_string_with_blanks(None, None).0.clone();
                           while display_content.chars().count() > 163 {
@@ -8980,13 +8738,11 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
                               };
-
-                              let current_content = self.current_note().content.clone();
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
@@ -9029,13 +8785,11 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
                               };
-
-                              let current_content = self.current_note().content.clone();
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
@@ -9098,7 +8852,7 @@ impl NoteArchive {
                               let confirm = match confirm_attempt {
                                 Ok(_) => confirm_insert.trim(),
                                 Err(e) => {
-                                  println_err!("Failed to read input.");
+                                  println_err!("Failed to read input: {}.", e);
                                   thread::sleep(time::Duration::from_secs(2));
                                   continue;
                                 }
@@ -9335,7 +9089,6 @@ impl NoteArchive {
                         },
                         "" => {
                           if collats.len() > 0 {
-                            let current_note_id = self.current_note().id;
                             let new_note = self.autofill_note_blanks(self.current_note_copy());
                             self.current_note_mut().blanks = new_note.blanks.clone();
                             break;
@@ -9763,7 +9516,7 @@ impl NoteArchive {
       let selected_content: usize = match blank_type {
         InternalMeeting => {
           match InternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => chosen_id,
+            Some(_) => chosen_id,
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -9773,7 +9526,7 @@ impl NoteArchive {
         },
         ExternalMeeting => {
           match ExternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => chosen_id,
+            Some(_) => chosen_id,
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -9783,7 +9536,7 @@ impl NoteArchive {
         },
         InternalDocument => {
           match InternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => chosen_id,
+            Some(_) => chosen_id,
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -9793,7 +9546,7 @@ impl NoteArchive {
         },
         ExternalDocument => {
           match ExternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => chosen_id,
+            Some(_) => chosen_id,
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -9803,7 +9556,7 @@ impl NoteArchive {
         },
         Action => {
           match ActionFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => chosen_id,
+            Some(_) => chosen_id,
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -9813,7 +9566,7 @@ impl NoteArchive {
         },
         Phrase => {
           match PhraseFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => chosen_id,
+            Some(_) => chosen_id,
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
               thread::sleep(time::Duration::from_secs(2));
@@ -9978,7 +9731,7 @@ impl NoteArchive {
       let ncat_input = match ncat_attempt {
         Ok(_) => ncat_choice.trim().to_ascii_lowercase(),
         Err(e) => {
-          println_err!("Failed to read input.");
+          println_err!("Failed to read input: {}.", e);
           thread::sleep(time::Duration::from_secs(1));
           continue;
         }
@@ -10446,8 +10199,6 @@ impl NoteArchive {
 
     let mut n = self.generate_note(ncat, nst, ncnt).unwrap();
     let nd = self.current_note_day();
-    let nd_date = nd.date;
-    let nd_date_string = format!("{}, {}-{}-{}", nd_date.weekday(), nd_date.year(), nd_date.month(), nd_date.day());
 
     let mut focus_id_option: Option<u32> = None;
     'choice: loop {
@@ -10537,7 +10288,7 @@ impl NoteArchive {
                     match current_blank_type {
                       Collaterals | AllCollaterals => {
                         let mut collat_ids_included_elsewhere: Vec<u32> = vec![];
-                        for (idx, blank_tup) in &n.blanks {
+                        for (_idx, blank_tup) in &n.blanks {
                           match blank_tup.0 {
                             Collaterals | AllCollaterals => {
                               for co_id in &blank_tup.2 {
@@ -10918,7 +10669,7 @@ impl NoteArchive {
         _ => {
           let blank_id: usize = match choice.parse() {
             Ok(num) => num,
-            Err(e) => {
+            Err(_) => {
               match b {
                 CustomBlank => {
                   loop {
@@ -10977,7 +10728,7 @@ impl NoteArchive {
               }
             },
           };
-          if blank_id < 0 || blank_id > n.number_of_blanks() {
+          if blank_id > n.number_of_blanks() {
             println_err!("Invalid blank ID.");
             thread::sleep(time::Duration::from_secs(2));
             continue;
@@ -11146,7 +10897,7 @@ impl NoteArchive {
       let idx = match idx_attempt {
         Ok(_) => buffer.trim().to_ascii_lowercase(),
         Err(e) => {
-          println_err!("Failed to read line.");
+          println_err!("Failed to read line: {}", e);
           thread::sleep(time::Duration::from_secs(2));
           continue;
         }
@@ -11215,7 +10966,7 @@ impl NoteArchive {
             let num_result = last_part.parse();
             let num = match num_result {
               Ok(num) => num,
-              Err(e) => {
+              Err(_) => {
                 println_err!("Invalid index.");
                 thread::sleep(time::Duration::from_secs(2));
                 continue 'main;
@@ -11408,10 +11159,10 @@ impl NoteArchive {
               } else if num_collats > 1 {
                 let part1 = current_collaterals[..num_collats-2].to_owned().iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", ");
                 let part2 = current_collaterals[num_collats-1].full_name_and_title();
-                format!("{} and {}", part1, part1)
+                format!("{} and {}", part1, part2)
               } else {
                 // else condition is impossible because vec must have positive length
-                String::from("")
+                String::new()
               };
               n.add_blank(AllCollaterals);
               n.blanks.insert(current_blank, (AllCollaterals, all_collaterals_string, vec![]));
@@ -11445,7 +11196,7 @@ impl NoteArchive {
               let mut new_ids = n.foreign_keys["collateral_ids"].clone();
               new_ids.retain(|co_id|
                 n.blanks.values()
-                  .filter(|(b, s, ids)| *b == AllCollaterals || *b == Collaterals )
+                  .filter(|(b, _s, _ids)| *b == AllCollaterals || *b == Collaterals )
                   .any(|(_, _, ids)| ids.iter().any(|id| id == co_id ) )
               );
               n.foreign_keys.insert(
@@ -11754,10 +11505,10 @@ impl NoteArchive {
   fn current_user_notes(&self) -> Vec<&Note> {
     self.notes.iter().filter(|n| n.foreign_key["user_id"] == self.current_user().id).collect()
   }
-  fn current_user_notes_mut(&mut self) -> Vec<&mut Note> {
-    let current_id = self.current_user().id;
-    self.notes.iter_mut().filter(|n| n.foreign_key["user_id"] == current_id).collect()
-  }
+  // fn current_user_notes_mut(&mut self) -> Vec<&mut Note> {
+  //   let current_id = self.current_user().id;
+  //   self.notes.iter_mut().filter(|n| n.foreign_key["user_id"] == current_id).collect()
+  // }
   fn choose_delete_note(&mut self) {
     loop {
       self.display_delete_note();
@@ -11813,9 +11564,9 @@ impl NoteArchive {
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
     self.notes.iter().find(|n| n.id == id)
   }
-  fn get_note_option_by_id_mut(&mut self, id: u32) -> Option<&mut Note> {
-    self.notes.iter_mut().find(|n| n.id == id)
-  }
+  // fn get_note_option_by_id_mut(&mut self, id: u32) -> Option<&mut Note> {
+  //   self.notes.iter_mut().find(|n| n.id == id)
+  // }
 }
 
 #[cfg(test)]

@@ -1,13 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(dead_code)]
-#![allow(unreachable_patterns)]
-#![allow(unused_variables)]
-#![allow(unused_comparisons)]
-#![allow(unused_attributes)]
-
-// use std::fs::File;
-// use std::io::prelude::*;
 pub mod note_archive;
 pub use note_archive::*;
 
@@ -29,11 +19,8 @@ pub const ND_FL: &str = "note_days.txt";
 pub const NT_FL: &str = "note_templates.txt";
 pub const N_FL: &str = "note.txt";
 
-use std::{thread, time};
-use ansi_term::Colour::{Blue, Red, Green, Yellow, Cyan};
-
 fn main() {
-  let enabled = ansi_term::enable_ansi_support();
+  let _enabled = ansi_term::enable_ansi_support();
   let filepaths = [
     (String::from("user_filepath"), String::from(USR_FL),),
     (String::from("client_filepath"), String::from(CLT_FL),),

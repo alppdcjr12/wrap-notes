@@ -1,28 +1,17 @@
-// #![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unreachable_patterns)]
-#![allow(unused_variables)]
-#![allow(unused_comparisons)]
-#![allow(unused_attributes)]
-
 use std::fmt;
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::convert::TryFrom;
-use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, Purple, Cyan, White, RGB};
-use ansi_term::{Style, ANSIString};
-
-use std::{thread, time};
+use ansi_term::Colour::{Black, Yellow, White, RGB};
+use ansi_term::{Style};
 
 // bold, dimmed, italic, underline, blink, reverse, hidden, strikethrough, on
 
 use crate::constants::*;
 
-#[macro_use] use lazy_static::lazy_static;
+use lazy_static::lazy_static;
 use regex::Regex;
-use regex::Match;
 
-#[macro_use] use std::format_args;
+use std::format_args;
 
 // print on default background
 pub fn print_on_bg(s: String) {
@@ -149,7 +138,13 @@ pub struct NoteTemplate {
 }
 
 impl NoteTemplate {
-  pub fn new(id: u32, structure: StructureType, custom: bool, content: String, user_id: Option<u32>) -> NoteTemplate {
+  pub fn new(
+    id: u32,
+    structure: StructureType,
+    custom: bool,
+    content: String,
+    user_id: Option<u32>,
+  ) -> NoteTemplate {
     let mut foreign_key: HashMap<String, u32> = HashMap::new();
     match user_id {
       Some(num) => {
@@ -208,10 +203,8 @@ impl NoteTemplate {
         Some(m) => m,
       };
 
-      let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
-
       let mut display_blank = String::new();
-      for i in m.start()..m.end() {
+      for _i in m.start()..m.end() {
         display_blank.push_str("X");
       }
 
@@ -238,7 +231,7 @@ impl NoteTemplate {
       match b {
         Pronoun1ForBlank(id) => {
           if id.unwrap() + 1 >= position {
-            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+            blanks = blanks.iter().enumerate().map(|(oi, _ob)| 
               if oi == i {
                 Pronoun1ForBlank(Some(id.unwrap()+1))
               } else {
@@ -250,7 +243,7 @@ impl NoteTemplate {
         },
         Pronoun2ForBlank(id) => {
           if id.unwrap() + 1 >= position {
-            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+            blanks = blanks.iter().enumerate().map(|(oi, _ob)| 
               if oi == i {
                 Pronoun2ForBlank(Some(id.unwrap()+1))
               } else {
@@ -261,7 +254,7 @@ impl NoteTemplate {
         },
         Pronoun3ForBlank(id) => {
           if id.unwrap() + 1 >= position {
-            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+            blanks = blanks.iter().enumerate().map(|(oi, _ob)| 
               if oi == i {
                 Pronoun3ForBlank(Some(id.unwrap()+1))
               } else {
@@ -272,7 +265,7 @@ impl NoteTemplate {
         },
         Pronoun4ForBlank(id) => {
           if id.unwrap() + 1 >= position {
-            blanks = blanks.iter().enumerate().map(|(oi, ob)| 
+            blanks = blanks.iter().enumerate().map(|(oi, _ob)| 
               if oi == i {
                 Pronoun4ForBlank(Some(id.unwrap()+1))
               } else {
@@ -295,7 +288,7 @@ impl NoteTemplate {
       } else {
         NoteTemplate::get_sentence_end_indices(0, String::from(&self.content[i1..i2+1]))
       };
-      for idcs in sentence_indices {
+      for _idcs in sentence_indices {
         num_contents += 1;
       }
     }
@@ -440,7 +433,6 @@ impl NoteTemplate {
                     format!("{}", &find_match_string[prev_end_idx..]),
                   );
                   let last_tuple = sentence_indices[sentence_indices.len()-1].clone();
-                  let num_sentences = sentence_indices.len();
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
                     let num_to_add = match &end_string[end_string.len()-1..] {
@@ -502,11 +494,6 @@ impl NoteTemplate {
             prev_end_idx,
             format!("{}", &content_string[prev_end_idx..m.start()]),
           );
-          let last_tuple = if sentence_indices.len() > 0 {
-            sentence_indices[sentence_indices.len()-1]
-          } else {
-            (0, 0)
-          };
           for (idx1, idx2) in sentence_indices.clone() {
             let num_to_add = if idx1 == idx2 && idx1 == 0 {
               0
@@ -586,8 +573,6 @@ impl NoteTemplate {
                 .filter(|(_, i1, i2)| i1 >= &current_idx && i2 <= &(sentence.chars().count() + current_idx + 1) )
                 .map(|(s, i1, i2)| (s.to_string(), i1-current_idx, i2-current_idx) )
                 .collect();
-
-              let last_chars = sentence.clone().chars().rev().take(2).map(|c| c.to_string() ).collect::<Vec<String>>().join("");
 
               let only_one = sf1.len() == 1;
               
@@ -674,11 +659,11 @@ impl NoteTemplate {
                     };
                     match rightmost_space {
                       None => {
-                        let last_divider_idx = f.iter().find(|(s, i1, i2)| i1 > &current_idx && i2 >= &(current_idx+140) );
+                        let last_divider_idx = f.iter().find(|(_s, i1, i2)| i1 > &current_idx && i2 >= &(current_idx+140) );
                         match last_divider_idx {
                           None => {
                             let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                              .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140+1) )
+                              .filter(|(_s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140+1) )
                               .map(|(s, i1, i2)|
                                 if i2 <= &(current_idx+140) {
                                   (s.to_string(), i1-current_idx, i2-current_idx)
@@ -695,7 +680,7 @@ impl NoteTemplate {
                           Some(idx_tup) => {
                             let pos = idx_tup.1 - current_idx;
                             let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                              .filter(|(s, i1, i2)| i1 >= &current_idx && i2 <= &(current_idx+pos) )
+                              .filter(|(_s, i1, i2)| i1 >= &current_idx && i2 <= &(current_idx+pos) )
                               .map(|(s, i1, i2)|
                                 if i2 <= &(current_idx+pos) {
                                   (s.to_string(), i1-current_idx, i2-current_idx)
@@ -712,7 +697,7 @@ impl NoteTemplate {
                       },
                       Some(spc) => {
                         let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                          .filter(|(s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140) )
+                          .filter(|(_s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140) )
                           .map(|(s, i1, i2)|
                             if i2 > &(current_idx+spc) {
                               (s.to_string(), i1-current_idx, spc)
@@ -721,7 +706,7 @@ impl NoteTemplate {
                             }
                           )
                           .collect();
-                        length_adjusted_vec.push((i, String::from(&long_sent[..spc]), None));
+                        length_adjusted_vec.push((i, String::from(&long_sent[..spc]), Some(sentence_formatting)));
                         long_sent = String::from(&long_sent[spc..]);
                         current_idx += 140;
                       },
@@ -920,7 +905,7 @@ impl fmt::Display for NoteTemplate {
     let mut changed_content = self.content.clone();
     for m in matches {
       let mut replacement = String::new();
-      for i in m.start()..m.end() {
+      for _i in m.start()..m.end() {
         replacement.push_str("X");
       }
       changed_content = format!(
@@ -1144,7 +1129,6 @@ impl Note {
     let mut typed_content_indices: Vec<(usize, usize)> = vec![];
     let mut prev_end_idx = 0;
     
-    let mut i = 1;
     loop {
       let find_match_string = content_string.clone();
       let m = RE_BLANK.find(&find_match_string);
@@ -1153,10 +1137,8 @@ impl Note {
         Some(m) => m,
       };
 
-      let b: Blank = Blank::get_blank_from_str(&content_string[m.start()..m.end()]);
-
       let mut display_blank = String::new();
-      for i in m.start()..m.end() {
+      for _ in m.start()..m.end() {
         display_blank.push_str("X");
       }
 
@@ -1169,7 +1151,6 @@ impl Note {
 
       typed_content_indices.push((prev_end_idx, m.start()));
       prev_end_idx = m.end();
-      i += 1;
     }
     if prev_end_idx < content_string.len() {
       typed_content_indices.push((prev_end_idx, content_string.len()))
@@ -1385,7 +1366,6 @@ impl Note {
                     format!("{}", &find_match_string[prev_end_idx..]),
                   );
                   let last_tuple = sentence_indices[sentence_indices.len()-1].clone();
-                  let num_sentences = sentence_indices.len();
                   content.push_str(&end_string);
                   for (idx1, idx2) in sentence_indices {
                     let num_to_add = match &end_string[end_string.len()-1..] {
@@ -1458,11 +1438,11 @@ impl Note {
             prev_end_idx,
             format!("{}", &content_string[prev_end_idx..m.start()]),
           );
-          let last_tuple = if sentence_indices.len() > 0 {
-            sentence_indices[sentence_indices.len()-1]
-          } else {
-            (0, 0)
-          };
+          // let last_tuple = if sentence_indices.len() > 0 {
+          //   sentence_indices[sentence_indices.len()-1]
+          // } else {
+          //   (0, 0)
+          // };
           for (idx1, idx2) in sentence_indices.clone() {
             let num_to_add = if idx1 == idx2 && idx1 == 0 {
               0
@@ -1535,7 +1515,7 @@ impl Note {
     for i in 0..num_total_blanks {
       let idx = i as u32 + 1;
       match self.blanks.get(&idx) {
-        Some(b_tup) => (),
+        Some(_b_tup) => (),
         None => {
           blanks.push((idx, ordered_blanks[i as usize]));
         }
@@ -1660,7 +1640,7 @@ impl fmt::Display for Note {
     let mut changed_content = self.content.clone();
     for m in matches {
       let mut replacement = String::new();
-      for i in m.start()..m.end() {
+      for _i in m.start()..m.end() {
         replacement.push_str("X");
       }
       changed_content = format!(

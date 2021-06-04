@@ -1,9 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-
-#[macro_use] extern crate lazy_static;
-
 pub mod user;
 pub use user::*;
 pub use crate::EmployeeRole::{FP, ICC};
