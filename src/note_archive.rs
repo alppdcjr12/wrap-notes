@@ -26,7 +26,23 @@ use SupportType::{Natural, Formal};
 use StructureType::{CarePlan, CarePlanVerbose, Intake, Assessment, Sncd, HomeVisit, AgendaPrep, Debrief, PhoneCall, Scheduling, SentEmail, Referral, CustomStructure};
 use NoteCategory::{ICCNote, FPNote};
 use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient, CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
-use FPNoteCategory::{Functioning, DescriptionOfInterventions, ResponseToInterventions, PlanAdditionalInformation};
+use FPNoteCategory::{DescriptionOfIntervention, ResponseToIntervention, Functioning, PlanAdditionalInformation};
+use FPIntervention::{
+  FaceToFaceContact,
+  CollateralContact,
+  CrisisSupport,
+  TelephoneSupport,
+  DirectTimeWithProviders,
+  EducatingCoachingModelingAndGuiding,
+  EngageParentCaregiverInAddressingGoals,
+  TeachAdvocacyGuideLinkageToResources,
+  TeachNetworkingInCommunityAndWithProviders,
+  ProviderOutreachToPerson,
+  MemberTransportationByStaff,
+  NoShowLateCancellation,
+  FPInterventionDocumentation,
+  Other,
+};
 use Blank::{CurrentUser, CurrentClientName, Collaterals, AllCollaterals, Pronoun1ForBlank, Pronoun2ForBlank, Pronoun3ForBlank, Pronoun4ForBlank, Pronoun1ForUser, Pronoun2ForUser, Pronoun3ForUser, Pronoun4ForUser, Pronoun1ForClient, Pronoun2ForClient, Pronoun3ForClient, Pronoun4ForClient, TodayDate, NoteDayDate, InternalDocument, ExternalDocument, InternalMeeting, ExternalMeeting, Action, Phrase, CustomBlank};
 
 use crate::utils::*;
@@ -8470,18 +8486,18 @@ impl NoteArchive {
             }
             FP => {
               match structure {
-                CarePlan => FPNote(DescriptionOfInterventions),
-                CarePlanVerbose => FPNote(DescriptionOfInterventions),
-                Intake => FPNote(DescriptionOfInterventions),
-                Assessment => FPNote(DescriptionOfInterventions),
-                Sncd => FPNote(DescriptionOfInterventions),
-                HomeVisit => FPNote(DescriptionOfInterventions),
-                AgendaPrep => FPNote(DescriptionOfInterventions),
-                Debrief => FPNote(DescriptionOfInterventions),
-                PhoneCall => FPNote(DescriptionOfInterventions),
-                Scheduling => FPNote(DescriptionOfInterventions),
-                SentEmail => FPNote(DescriptionOfInterventions),
-                Referral => FPNote(DescriptionOfInterventions),
+                CarePlan => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                CarePlanVerbose => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                Intake => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                Assessment => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                Sncd => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                HomeVisit => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                AgendaPrep => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                Debrief => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+                PhoneCall => FPNote(DescriptionOfIntervention(Some(TelephoneSupport))),
+                Scheduling => FPNote(DescriptionOfIntervention(Some(ProviderOutreachToPerson))),
+                SentEmail => FPNote(DescriptionOfIntervention(Some(Other))),
+                Referral => FPNote(DescriptionOfIntervention(Some(TeachAdvocacyGuideLinkageToResources))),
                 CustomStructure => {
                   loop {
                     match self.choose_note_category() {
@@ -9773,6 +9789,46 @@ impl NoteArchive {
       "QUIT / Q: Quit menu",
     );
   }
+  fn display_fp_intervention_descriptions() {
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", " Intervention descriptions ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^5} | {:-^50}", " ID ", " Description category ");
+    for (i, cat) in FPNoteCategory::iterator_of_descriptions().enumerate() {
+      let num_remaining = 50 - format!("{}", cat.clone()).chars().count();
+      let mut spacer = String::new();
+      for _ in 0..num_remaining {
+        spacer.push_str(" ");
+      }
+      println_on_bg!("{:-^5} | {:-<50}{}", i, cat, spacer);
+    }
+    println_on_bg!("{:-^58}", "-");
+    println_inst!(
+      "| {} | {}",
+      "Enter ID to select an intervention category.",
+      "QUIT / Q: Quit menu",
+    );
+  }
+  fn display_fp_intervention_responses() {
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^58}", " Response descriptions ");
+    println_on_bg!("{:-^58}", "-");
+    println_on_bg!("{:-^5} | {:-^50}", " ID ", " Response category ");
+    for (i, cat) in FPNoteCategory::iterator_of_responses().enumerate() {
+      let num_remaining = 50 - format!("{}", cat.clone()).chars().count();
+      let mut spacer = String::new();
+      for _ in 0..num_remaining {
+        spacer.push_str(" ");
+      }
+      println_on_bg!("{:-^5} | {:-<50}{}", i, cat, spacer);
+    }
+    println_on_bg!("{:-^58}", "-");
+    println_inst!(
+      "| {} | {}",
+      "Enter ID to select an intervention category.",
+      "QUIT / Q: Quit menu",
+    );
+  }
   fn choose_note_category(&self) -> Option<NoteCategory> {
     let current_role = match self.current_user().role {
       ICC => ICC,
@@ -9822,14 +9878,75 @@ impl NoteArchive {
               FP => {
                 let fpncat = FPNoteCategory::iterator().nth(num);
                 match fpncat {
-                  Some(fpcat) => return Some(FPNote(fpcat)),
+                  Some(fpcat) => {
+                    match fpcat {
+                      Functioning | PlanAdditionalInformation => return Some(FPNote(fpcat)),
+                      _ => {
+                        let subcat = self.choose_fp_intervention(fpcat);
+                        match subcat.clone() {
+                          None => return None,
+                          Some(_) => match fpcat {
+                            DescriptionOfIntervention(_) => return Some(FPNote(DescriptionOfIntervention(subcat))),
+                            ResponseToIntervention(_) => return Some(FPNote(ResponseToIntervention(subcat))),
+                            Functioning | PlanAdditionalInformation => {
+                              panic!("Pattern 'Functioning' and 'PlanAdditionalInformation' should have already been handled.");
+                            },
+                          }
+                        }
+                      },
+                    }
+                  },
                   None => {
-                    println_err!("Index out of bounds for available Notn categories. Please identify a note category by valid ID.");
+                    println_err!("Index out of bounds for available note categories. Please identify a note category by valid ID.");
                     thread::sleep(time::Duration::from_secs(1));
                     continue;
-                  }
+                  },
                 }
               },
+            }
+          }
+        }
+      }
+    }
+  }
+  fn choose_fp_intervention(&self, ncat: FPNoteCategory) -> Option<FPIntervention> {
+    loop {
+      match ncat {
+        DescriptionOfIntervention(_) => NoteArchive::display_fp_intervention_descriptions(),
+        ResponseToIntervention(_) => NoteArchive::display_fp_intervention_responses(),
+        _ => panic!("Invalid FP note category sent to fn 'choose_fp_intervention': {}", ncat),
+      }
+
+      let mut ncat_choice = String::new();
+      let ncat_attempt = io::stdin().read_line(&mut ncat_choice);
+      let ncat_input = match ncat_attempt {
+        Ok(_) => ncat_choice.trim().to_ascii_lowercase(),
+        Err(e) => {
+          println_err!("Failed to read input: {}.", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      };
+      match &ncat_input[..] {
+        "quit" | "q" => return None,
+        _ => match ncat_input.parse::<usize>() {
+          Err(e) => {
+            println_err!("Failed to parse input as a number: {}. Try again.", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          },
+          Ok(num) => {
+            let intervention = match ncat {
+              DescriptionOfIntervention(_) | ResponseToIntervention(_) => FPIntervention::iterator().nth(num),
+              _ => panic!("Invalid FP note category sent to fn 'choose_fp_intervention': {}", ncat),
+            };
+            match intervention {
+              Some(interv) => return Some(interv),
+              None => {
+                println_err!("Index out of bounds for available interventions. Please identify an intervention by valid ID.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
             }
           }
         }
@@ -10242,18 +10359,18 @@ impl NoteArchive {
       }
       FP => {
         match nst {
-          CarePlan => FPNote(DescriptionOfInterventions),
-          CarePlanVerbose => FPNote(DescriptionOfInterventions),
-          Intake => FPNote(DescriptionOfInterventions),
-          Assessment => FPNote(DescriptionOfInterventions),
-          Sncd => FPNote(DescriptionOfInterventions),
-          HomeVisit => FPNote(DescriptionOfInterventions),
-          AgendaPrep => FPNote(DescriptionOfInterventions),
-          Debrief => FPNote(DescriptionOfInterventions),
-          PhoneCall => FPNote(DescriptionOfInterventions),
-          Scheduling => FPNote(DescriptionOfInterventions),
-          SentEmail => FPNote(DescriptionOfInterventions),
-          Referral => FPNote(DescriptionOfInterventions),
+          CarePlan => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          CarePlanVerbose => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          Intake => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          Assessment => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          Sncd => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          HomeVisit => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          AgendaPrep => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          Debrief => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          PhoneCall => FPNote(DescriptionOfIntervention(Some(TelephoneSupport))),
+          Scheduling => FPNote(DescriptionOfIntervention(Some(ProviderOutreachToPerson))),
+          SentEmail => FPNote(DescriptionOfIntervention(Some(Other))),
+          Referral => FPNote(DescriptionOfIntervention(Some(TeachAdvocacyGuideLinkageToResources))),
           CustomStructure => {
             loop {
               match self.choose_note_category() {
@@ -11515,9 +11632,35 @@ impl NoteArchive {
         "FP Note" => {
           let subcategory = match &subcategory_string[..] {
             "Functioning" => Functioning,
-            "Description of interventions" => DescriptionOfInterventions,
-            "Response to interventions" => ResponseToInterventions,
-            "Plan / additional information" => PlanAdditionalInformation,
+            "Plan/additional information" => PlanAdditionalInformation,
+            "Description of 'face to face contact'" => DescriptionOfIntervention(Some(FaceToFaceContact)),
+            "Description of 'collateral contact'" => DescriptionOfIntervention(Some(CollateralContact)),
+            "Description of 'crisis support'" => DescriptionOfIntervention(Some(CrisisSupport)),
+            "Description of 'telephone support'" => DescriptionOfIntervention(Some(TelephoneSupport)),
+            "Description of 'direct time with providers'" => DescriptionOfIntervention(Some(DirectTimeWithProviders)),
+            "Description of 'educationg, coaching, modeling and guiding'" => DescriptionOfIntervention(Some(EducatingCoachingModelingAndGuiding)),
+            "Description of 'engage parent/caregiver in addressing goals'" => DescriptionOfIntervention(Some(EngageParentCaregiverInAddressingGoals)),
+            "Description of 'teach advocacy, guide linkage to resources'" => DescriptionOfIntervention(Some(TeachAdvocacyGuideLinkageToResources)),
+            "Description of 'teach networking in community and with providers'" => DescriptionOfIntervention(Some(TeachNetworkingInCommunityAndWithProviders)),
+            "Description of 'provider outreach to person'" => DescriptionOfIntervention(Some(ProviderOutreachToPerson)),
+            "Description of 'member transportation by staff'" => DescriptionOfIntervention(Some(MemberTransportationByStaff)),
+            "Description of 'no show/late cancellation'" => DescriptionOfIntervention(Some(NoShowLateCancellation)),
+            "Description of 'documentation'" => DescriptionOfIntervention(Some(FPInterventionDocumentation)),
+            "Description of 'other'" => DescriptionOfIntervention(Some(Other)),
+            "Response to 'face to face contact'" => ResponseToIntervention(Some(FaceToFaceContact)),
+            "Response to 'collateral contact'" => ResponseToIntervention(Some(CollateralContact)),
+            "Response to 'crisis support'" => ResponseToIntervention(Some(CrisisSupport)),
+            "Response to 'telephone support'" => ResponseToIntervention(Some(TelephoneSupport)),
+            "Response to 'direct time with providers'" => ResponseToIntervention(Some(DirectTimeWithProviders)),
+            "Response to 'educating, coaching, modeling and guiding'" => ResponseToIntervention(Some(EducatingCoachingModelingAndGuiding)),
+            "Response to 'engage parent/caregiver in addressing goals'" => ResponseToIntervention(Some(EngageParentCaregiverInAddressingGoals)),
+            "Response to 'teach advocacy, guide linkage to resources'" => ResponseToIntervention(Some(TeachAdvocacyGuideLinkageToResources)),
+            "Response to 'teach networking in community and with providers'" => ResponseToIntervention(Some(TeachNetworkingInCommunityAndWithProviders)),
+            "Response to 'provider outreach to person'" => ResponseToIntervention(Some(ProviderOutreachToPerson)),
+            "Response to 'member transportation by staff'" => ResponseToIntervention(Some(MemberTransportationByStaff)),
+            "Response to 'no show/late cancellation'" => ResponseToIntervention(Some(NoShowLateCancellation)),
+            "Response to 'documentation" => ResponseToIntervention(Some(FPInterventionDocumentation)),
+            "Response to 'other'" => ResponseToIntervention(Some(Other)),
             _ => return Err(Error::new(
               ErrorKind::Other,
               "Unsupported FP note subcategory saved to file.",

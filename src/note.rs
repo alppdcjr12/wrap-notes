@@ -1046,20 +1046,163 @@ use ICCNoteCategory::{FaceToFaceContactWithClient, TelephoneContactWithClient,
 CareCoordination, Documentation, CarePlanningTeam, TransportClient, MemberOutreachNoShow};
 
 #[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
+pub enum FPIntervention {
+  FaceToFaceContact,
+  CollateralContact,
+  CrisisSupport,
+  TelephoneSupport,
+  DirectTimeWithProviders,
+  EducatingCoachingModelingAndGuiding,
+  EngageParentCaregiverInAddressingGoals,
+  TeachAdvocacyGuideLinkageToResources,
+  TeachNetworkingInCommunityAndWithProviders,
+  ProviderOutreachToPerson,
+  MemberTransportationByStaff,
+  NoShowLateCancellation,
+  FPInterventionDocumentation,
+  Other,
+}
+
+impl FPIntervention {
+  pub fn iterator() -> impl Iterator<Item = FPIntervention> {
+    [
+      FaceToFaceContact,
+      CollateralContact,
+      CrisisSupport,
+      TelephoneSupport,
+      DirectTimeWithProviders,
+      EducatingCoachingModelingAndGuiding,
+      EngageParentCaregiverInAddressingGoals,
+      TeachAdvocacyGuideLinkageToResources,
+      TeachNetworkingInCommunityAndWithProviders,
+      ProviderOutreachToPerson,
+      MemberTransportationByStaff,
+      NoShowLateCancellation,
+      FPInterventionDocumentation,
+      Other,
+    ].iter().copied()
+  }
+}
+
+impl fmt::Display for FPIntervention {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let display = match self {
+      FaceToFaceContact => "Face to face contact",
+      CollateralContact => "Collateral contact",
+      CrisisSupport => "Crisis support",
+      TelephoneSupport => "Telephone support",
+      DirectTimeWithProviders => "Direct time with providers",
+      EducatingCoachingModelingAndGuiding => "Educating, coaching, modeling and guiding",
+      EngageParentCaregiverInAddressingGoals => "Engage parent/caregiver in addressing goals",
+      TeachAdvocacyGuideLinkageToResources => "Teach advocacy, guide linkage to resources",
+      TeachNetworkingInCommunityAndWithProviders => "Teach networking in community and with providers",
+      ProviderOutreachToPerson => "Provider outreach to person",
+      MemberTransportationByStaff => "Member transportation by staff",
+      NoShowLateCancellation => "No show/late cancellation",
+      FPInterventionDocumentation => "Documentation",
+      Other => "Other",
+    };
+    write!(f, "{}", display)
+  }
+}
+
+use FPIntervention::{
+  FaceToFaceContact,
+  CollateralContact,
+  CrisisSupport,
+  TelephoneSupport,
+  DirectTimeWithProviders,
+  EducatingCoachingModelingAndGuiding,
+  EngageParentCaregiverInAddressingGoals,
+  TeachAdvocacyGuideLinkageToResources,
+  TeachNetworkingInCommunityAndWithProviders,
+  ProviderOutreachToPerson,
+  MemberTransportationByStaff,
+  NoShowLateCancellation,
+  FPInterventionDocumentation,
+  Other,
+};
+
+impl PartialEq for FPIntervention {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (&FaceToFaceContact, &FaceToFaceContact) => true,
+      (&CollateralContact, &CollateralContact) => true,
+      (&CrisisSupport, &CrisisSupport) => true,
+      (&TelephoneSupport, &TelephoneSupport) => true,
+      (&DirectTimeWithProviders, &DirectTimeWithProviders) => true,
+      (&EducatingCoachingModelingAndGuiding, &EducatingCoachingModelingAndGuiding) => true,
+      (&EngageParentCaregiverInAddressingGoals, &EngageParentCaregiverInAddressingGoals) => true,
+      (&TeachAdvocacyGuideLinkageToResources, &TeachAdvocacyGuideLinkageToResources) => true,
+      (&TeachNetworkingInCommunityAndWithProviders, &TeachNetworkingInCommunityAndWithProviders) => true,
+      (&ProviderOutreachToPerson, &ProviderOutreachToPerson) => true,
+      (&MemberTransportationByStaff, &MemberTransportationByStaff) => true,
+      (&NoShowLateCancellation, &NoShowLateCancellation) => true,
+      (&FPInterventionDocumentation, &FPInterventionDocumentation) => true,
+      (&Other, &Other) => true,
+      _ => false,
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialOrd, Ord)]
 pub enum FPNoteCategory {
+  DescriptionOfIntervention(Option<FPIntervention>),
+  ResponseToIntervention(Option<FPIntervention>),
   Functioning,
-  DescriptionOfInterventions,
-  ResponseToInterventions,
   PlanAdditionalInformation,
 }
+
+use FPNoteCategory::{
+  DescriptionOfIntervention,
+  ResponseToIntervention,
+  Functioning,
+  PlanAdditionalInformation,
+};
 
 impl FPNoteCategory {
   pub fn iterator() -> impl Iterator<Item = FPNoteCategory> {
     [
+      DescriptionOfIntervention(None),
+      ResponseToIntervention(None),
       Functioning,
-      DescriptionOfInterventions,
-      ResponseToInterventions,
       PlanAdditionalInformation,
+    ].iter().copied()
+  }
+  pub fn iterator_of_descriptions() -> impl Iterator<Item = FPNoteCategory> {
+    [
+      DescriptionOfIntervention(Some(FaceToFaceContact)),
+      DescriptionOfIntervention(Some(CollateralContact)),
+      DescriptionOfIntervention(Some(CrisisSupport)),
+      DescriptionOfIntervention(Some(TelephoneSupport)),
+      DescriptionOfIntervention(Some(DirectTimeWithProviders)),
+      DescriptionOfIntervention(Some(EducatingCoachingModelingAndGuiding)),
+      DescriptionOfIntervention(Some(EngageParentCaregiverInAddressingGoals)),
+      DescriptionOfIntervention(Some(TeachAdvocacyGuideLinkageToResources)),
+      DescriptionOfIntervention(Some(TeachNetworkingInCommunityAndWithProviders)),
+      DescriptionOfIntervention(Some(ProviderOutreachToPerson)),
+      DescriptionOfIntervention(Some(MemberTransportationByStaff)),
+      DescriptionOfIntervention(Some(NoShowLateCancellation)),
+      DescriptionOfIntervention(Some(FPInterventionDocumentation)),
+      DescriptionOfIntervention(Some(Other)),
+    ].iter().copied()
+  }
+  pub fn iterator_of_responses() -> impl Iterator<Item = FPNoteCategory> {
+    [
+      ResponseToIntervention(Some(FaceToFaceContact)),
+      ResponseToIntervention(Some(CollateralContact)),
+      ResponseToIntervention(Some(CrisisSupport)),
+      ResponseToIntervention(Some(TelephoneSupport)),
+      ResponseToIntervention(Some(DirectTimeWithProviders)),
+      ResponseToIntervention(Some(EducatingCoachingModelingAndGuiding)),
+      ResponseToIntervention(Some(EngageParentCaregiverInAddressingGoals)),
+      ResponseToIntervention(Some(TeachAdvocacyGuideLinkageToResources)),
+      ResponseToIntervention(Some(TeachNetworkingInCommunityAndWithProviders)),
+      ResponseToIntervention(Some(ProviderOutreachToPerson)),
+      ResponseToIntervention(Some(MemberTransportationByStaff)),
+      ResponseToIntervention(Some(NoShowLateCancellation)),
+      ResponseToIntervention(Some(FPInterventionDocumentation)),
+      ResponseToIntervention(Some(Other)),
     ].iter().copied()
   }
 }
@@ -1067,12 +1210,40 @@ impl FPNoteCategory {
 impl fmt::Display for FPNoteCategory {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display = match self {
-      Functioning => "Functioning",
-      DescriptionOfInterventions => "Description of interventions",
-      ResponseToInterventions => "Response to interventions",
-      PlanAdditionalInformation => "Plan / additional information",
+      ResponseToIntervention(fp_intervention) | DescriptionOfIntervention(fp_intervention) => {
+        let main_display = match self {
+          DescriptionOfIntervention(_) => String::from("Description of"),
+          ResponseToIntervention(_) => String::from("Response to"),
+          _ => panic!("Other FP Note Category patterns should already have been filtered out."),
+        };
+        match fp_intervention {
+          Some(intervention) => {
+            match intervention {
+              FaceToFaceContact => format!("{} 'face to face contact'", main_display),
+              CollateralContact => format!("{} 'collateral contact'", main_display),
+              CrisisSupport => format!("{} 'crisis support'", main_display),
+              TelephoneSupport => format!("{} 'telephone support'", main_display),
+              DirectTimeWithProviders => format!("{} 'direct time with providers'", main_display),
+              EducatingCoachingModelingAndGuiding => format!("{} 'educating, coaching, modeling and guiding'", main_display),
+              EngageParentCaregiverInAddressingGoals => format!("{} 'engage parent/caregiver in addressing goals'", main_display),
+              TeachAdvocacyGuideLinkageToResources => format!("{} 'teach advocacy, guide linkage to resources'", main_display),
+              TeachNetworkingInCommunityAndWithProviders => format!("{} 'teach networking in community and with providers'", main_display),
+              ProviderOutreachToPerson => format!("{} 'provider outreach to person'", main_display),
+              MemberTransportationByStaff => format!("{} 'member transportation by staff'", main_display),
+              NoShowLateCancellation => format!("{} 'no show/late cancellation'", main_display),
+              FPInterventionDocumentation => format!("{} 'documentation'", main_display),
+              Other => format!("{} 'other'", main_display),
+            }
+          },
+          None => {
+            format!("{} interventions", main_display)
+          },
+        }
+      }
+      Functioning => String::from("Functioning"),
+      PlanAdditionalInformation => String::from("Plan/additional information"),
     };
-    write!(f, "{}", display)
+    write!(f, "{}", &display)
   }
 }
 
@@ -1080,15 +1251,18 @@ impl PartialEq for FPNoteCategory {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
       (&Functioning, &Functioning) => true,
-      (&DescriptionOfInterventions, &DescriptionOfInterventions) => true,
-      (&ResponseToInterventions, &ResponseToInterventions) => true,
       (&PlanAdditionalInformation, &PlanAdditionalInformation) => true,
+      (&DescriptionOfIntervention(int_a), &DescriptionOfIntervention(int_b)) | (&ResponseToIntervention(int_a), &ResponseToIntervention(int_b)) => {
+        if int_a == int_b {
+          true
+        } else {
+          false
+        }
+      },
       _ => false,
     }
   }
 }
-
-use FPNoteCategory::{Functioning, DescriptionOfInterventions, ResponseToInterventions, PlanAdditionalInformation};
 
 #[derive(Clone)]
 pub struct Note {
