@@ -52,6 +52,7 @@ pub struct NoteArchive {
   pub users: Vec<User>,
   pub clients: Vec<Client>,
   pub collaterals: Vec<Collateral>,
+  pub general_collaterals: Vec<Collateral>,
   pub pronouns: Vec<Pronouns>,
   pub note_days: Vec<NoteDay>,
   pub note_templates: Vec<NoteTemplate>,
@@ -318,6 +319,7 @@ impl NoteArchive {
     user_filepath: &str,
     client_filepath: &str,
     collateral_filepath: &str,
+    general_collateral_filepath: &str,
     pronouns_filepath: &str,
     note_day_filepath: &str,
     note_template_filepath: &str,
@@ -349,6 +351,7 @@ impl NoteArchive {
             user_filepath,
             client_filepath,
             collateral_filepath,
+            general_collateral_filepath,
             pronouns_filepath,
             note_day_filepath,
             note_template_filepath,
@@ -367,6 +370,7 @@ impl NoteArchive {
           fs::remove_file(user_filepath).unwrap();
           fs::remove_file(client_filepath).unwrap();
           fs::remove_file(collateral_filepath).unwrap();
+          fs::remove_file(general_collateral_filepath).unwrap();
           fs::remove_file(pronouns_filepath).unwrap();
           fs::remove_file(note_day_filepath).unwrap();
           fs::remove_file(note_template_filepath).unwrap();
@@ -396,6 +400,7 @@ impl NoteArchive {
           &filepaths["user_filepath"],
           &filepaths["client_filepath"],
           &filepaths["collateral_filepath"],
+          &filepaths["general_collateral_filepath"],
           &filepaths["pronouns_filepath"],
           &filepaths["note_day_filepath"],
           &filepaths["note_template_filepath"],
@@ -408,6 +413,7 @@ impl NoteArchive {
         users: Self::read_users(&filepaths["user_filepath"]).unwrap(),
         clients: Self::read_clients(&filepaths["client_filepath"]).unwrap(),
         collaterals: Self::read_collaterals(&filepaths["collateral_filepath"]).unwrap(),
+        general_collaterals: Self::read_general_collaterals(&filepaths["general_collateral_filepath"]).unwrap(),
         pronouns: vec![],
         note_days: Self::read_note_days(&filepaths["note_day_filepath"]).unwrap(),
         note_templates: Self::read_note_templates(&filepaths["note_template_filepath"]).unwrap(),
@@ -569,6 +575,10 @@ impl NoteArchive {
       Ok(_) => encrypt_file(&self.filepaths["collateral_filepath"], pw)?,
       Err(_) => (),
     }
+    match Self::read_general_collaterals(&self.filepaths["general_collateral_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["general_collateral_filepath"], pw)?,
+      Err(_) => (),
+    }
     match Self::read_pronouns_from_file_without_reindexing(&self.filepaths["pronouns_filepath"]) {
       Ok(_) => encrypt_file(&self.filepaths["pronouns_filepath"], pw)?,
       Err(_) => (),
@@ -591,6 +601,7 @@ impl NoteArchive {
     user_filepath: &str,
     client_filepath: &str,
     collateral_filepath: &str,
+    general_collateral_filepath: &str,
     pronouns_filepath: &str,
     note_day_filepath: &str,
     note_template_filepath: &str,
@@ -599,6 +610,7 @@ impl NoteArchive {
     decrypt_file(user_filepath, "decrypt_attempt_user.txt", pw)?;
     decrypt_file(client_filepath, "decrypt_attempt_client.txt", pw)?;
     decrypt_file(collateral_filepath, "decrypt_attempt_collateral.txt", pw)?;
+    decrypt_file(general_collateral_filepath, "decrypt_attempt_general_collateral.txt", pw)?;
     decrypt_file(pronouns_filepath, "decrypt_attempt_pronouns.txt", pw)?;
     decrypt_file(note_day_filepath, "decrypt_attempt_note_day.txt", pw)?;
     decrypt_file(note_template_filepath, "decrypt_attempt_note_template.txt", pw)?;
@@ -606,6 +618,7 @@ impl NoteArchive {
     let user_result = Self::read_users("decrypt_attempt_user.txt");
     let client_result = Self::read_clients("decrypt_attempt_client.txt");
     let collateral_result = Self::read_collaterals("decrypt_attempt_collateral.txt");
+    let general_collateral_result = Self::read_general_collaterals("decrypt_attempt_collateral.txt");
     let pronouns_result = Self::read_pronouns_from_file_without_reindexing("decrypt_attempt_pronouns.txt");
     let note_day_result = Self::read_note_days("decrypt_attempt_note_day.txt");
     let note_template_result = Self::read_note_templates("decrypt_attempt_note_template.txt");
@@ -621,15 +634,17 @@ impl NoteArchive {
       user_result,
       client_result,
       collateral_result,
+      general_collateral_result,
       pronouns_result,
       note_day_result,
       note_template_result,
       note_result
     ) {
-      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
+      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
         decrypt_file(user_filepath, user_filepath, pw)?;
         decrypt_file(client_filepath, client_filepath, pw)?;
         decrypt_file(collateral_filepath, collateral_filepath, pw)?;
+        decrypt_file(general_collateral_filepath, general_collateral_filepath, pw)?;
         decrypt_file(pronouns_filepath, pronouns_filepath, pw)?;
         decrypt_file(note_day_filepath, note_day_filepath, pw)?;
         decrypt_file(note_template_filepath, note_template_filepath, pw)?;
@@ -2434,6 +2449,17 @@ impl NoteArchive {
       None => panic!("The loaded collateral ID does not match any saved collaterals."),
     }
   }
+  fn current_general_collateral_mut(&mut self) -> &mut Collateral {
+    let collateral_id = match self.foreign_key.get("current_general_collateral_id") {
+      Some(id) => id,
+      None => panic!("There is no current general collateral selected."),
+    };
+    let maybe_current: Option<&mut Collateral> = self.general_collaterals.iter_mut().find(|c| c.id == *collateral_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded general collateral ID does not match any saved collaterals."),
+    }
+  }
   fn current_collateral(&self) -> &Collateral {
     let collateral_id = match self.foreign_key.get("current_collateral_id") {
       Some(id) => id,
@@ -2443,6 +2469,17 @@ impl NoteArchive {
     match maybe_current {
       Some(c) => c,
       None => panic!("The loaded collateral ID does not match any saved collaterals."),
+    }
+  }
+  fn current_general_collateral(&self) -> &Collateral {
+    let collateral_id = match self.foreign_key.get("current_general_collateral_id") {
+      Some(id) => id,
+      None => panic!("There is no current general collateral selected."),
+    };
+    let maybe_current: Option<&Collateral> = self.general_collaterals.iter().find(|c| c.id == *collateral_id);
+    match maybe_current {
+      Some(c) => c,
+      None => panic!("The loaded general collateral ID does not match any saved general collaterals."),
     }
   }
   fn current_user_collaterals(&self) -> Vec<&Collateral> {
@@ -2605,12 +2642,12 @@ impl NoteArchive {
     println_on_bg!("{:-^146}", "-");
     println_on_bg!("{:-^146}", heading);
     println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<27}", " ID ", "Name ", "Title ", "Youth(s) ");
+    println_on_bg!("{:-^10} | {:-<30} | {:-<70} | {:-<27}", " ID ", "Name ", "Title ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {:-<50} | {:-<50} | {: <27}",
+        "{: ^10} | {:-<30} | {:-<70} | {: <27}",
         co.id,
         co.full_name(),
         co.title(),
@@ -2618,12 +2655,63 @@ impl NoteArchive {
       );
     }
     println_on_bg!("{:-^146}", "-");
-    println_inst!("| {} | {} | {} | {} | {}",
+    println_inst!("| {} | {} | {} | {} | {} | {}",
       "Enter ID to choose collateral.",
-      "EDIT / E: edit", "NEW / N: new collateral",
+      "EDIT / E: edit",
+      "NEW / N: new collateral",
       "ADD / A: Add from other user/client",
+      "GENERAL / G: View general collaterals",
       "QUIT / Q: quit menu"
     );
+  }
+  fn display_general_collaterals(&self) {
+    let heading = String::from(" General collaterals for Wraparound youth ");
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^116}", heading);
+    println_on_bg!("{:-^116}", " These collaterals can be selected for any youth. ");
+    println_on_bg!("{:-^116}", " (E.g. intake coordinators, insurance contacts, Office Managers extraordinaire.) ");
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^10} | {:-<30} | {:-<70}", " ID ", "Name ", "Title ");
+
+    for co in self.general_collaterals.clone() {
+
+      println_on_bg!(
+        "{: ^10} | {:-<30} | {:-<70}",
+        co.id,
+        co.full_name(),
+        co.title(),
+      );
+    }
+    println_on_bg!("{:-^116}", "-");
+    println_inst!("| {} | {} | {} | {}",
+      "Enter ID to choose collateral.",
+      "EDIT / E: edit",
+      "NEW / N: new general collateral",
+      "QUIT / Q: quit menu"
+    );
+  }
+  fn display_edit_general_collaterals(&self) {
+    let heading = String::from(" Edit general collaterals for Wraparound youth ");
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^116}", heading);
+    println_on_bg!("{:-^116}", "-");
+    println_on_bg!("{:-^10} | {:-<30} | {:-<70}", " ID ", "Name ", "Title ");
+
+    for co in self.current_user_collaterals() {
+
+      println_on_bg!(
+        "{: ^10} | {:-<30} | {:-<70}",
+        co.id,
+        co.full_name(),
+        co.title(),
+      );
+    }
+    println_on_bg!("{:-^116}", "-");
+    println_inst!("| {} | {}", "Enter ID of collateral to edit.", "QUIT / Q: quit menu");
   }
   fn display_edit_user_collaterals(&self) {
     let current = self.current_user();
@@ -2638,12 +2726,12 @@ impl NoteArchive {
     println_on_bg!("{:-^146}", "-");
     println_on_bg!("{:-^146}", heading);
     println_on_bg!("{:-^146}", "-");
-    println_on_bg!("{:-^10} | {:-<50} | {:-<50} | {:-<27}", " ID ", "Name ", "Title ", "Youth(s) ");
+    println_on_bg!("{:-^10} | {:-<30} | {:-<70} | {:-<27}", " ID ", "Name ", "Title ", "Youth(s) ");
 
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {:-<50} | {:-<50} | {: <27}",
+        "{: ^10} | {:-<30} | {:-<70} | {: <27}",
         co.id,
         co.full_name(),
         co.title(),
@@ -2702,6 +2790,56 @@ impl NoteArchive {
     );
     println_on_bg!("{:-^178}", "-");
     println_inst!("| {} | {} | {} | {}", "EDIT / E: edit collateral", "CLIENT / C: add client ", "DELETE: delete collateral", "QUIT / Q: quit menu");
+  }
+  fn display_general_collateral(&self) {
+    let current = self.current_general_collateral();
+
+    let pronouns_id = current.pronouns;
+    let pronouns_option = self.get_pronouns_by_id(pronouns_id);
+    let display_pronouns = match pronouns_option {
+      Some(p) => p.short_string(),
+      None => String::from("-----"),
+    };
+
+    let inst_option = &current.institution;
+    let display_inst = match inst_option {
+      Some(i) => i.to_string(),
+      None => String::from("n/a"),
+    };
+
+    let display_type = match current.support_type {
+      Natural => "Y",
+      Formal => "N",
+    };
+    let display_indirect = match current.indirect_support {
+      true => "N",
+      false => "Y",
+    };
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", " View general collateral record ");
+    println_on_bg!("{:-^178}", "-");
+    println_on_bg!(
+      "{:-^162} | {:-^13}",
+      "-", "Support type",
+    );
+    println_on_bg!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
+      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
+    );
+    println_on_bg!(
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      current.first_name,
+      current.last_name,
+      display_pronouns,
+      current.title,
+      display_inst,
+      display_type,
+      display_indirect,
+    );
+    println_on_bg!("{:-^178}", "-");
+    println_inst!("| {} | {} | {}", "EDIT / E: edit collateral", "DELETE: delete collateral", "QUIT / Q: quit menu");
   }
   fn display_edit_collateral(&self) {
     let current = self.current_collateral();
@@ -2765,6 +2903,58 @@ impl NoteArchive {
     );
     println_on_bg!("{:-^178}", "-");
   }
+  fn display_edit_general_collateral(&self) {
+    let current = self.current_general_collateral();
+
+    let pronouns_id = current.pronouns;
+    let pronouns_option = self.get_pronouns_by_id(pronouns_id);
+    let display_pronouns = match pronouns_option {
+      Some(p) => p.short_string(),
+      None => String::from("-----"),
+    };
+
+    let inst_option = &current.institution;
+    let display_inst = match inst_option {
+      Some(i) => i.to_string(),
+      None => String::from("n/a"),
+    };
+
+    let (display_indirect, opposite_indirect_command) = match current.indirect_support {
+      true => ("N", "DIRECT: Change to direct support (e.g., 'for youth')"),
+      false => ("Y", "INDIRECT: Change to indirect support (e.g., not 'for youth')"),
+    };
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^170}", "-");
+    println_on_bg!("{:-^170}", " Edit collateral record ");
+    println_on_bg!("{:-^170}", "-");
+    println_on_bg!(
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5}",
+      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Dir "
+    );
+    println_on_bg!(
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5}",
+      current.first_name,
+      current.last_name,
+      display_pronouns,
+      current.title,
+      display_inst,
+      display_indirect,
+    );
+    println_on_bg!("{:-^178}", "-");
+    println_inst!(
+      "| {} | {} | {} | {} | {} | {}",
+      "FIRST / F: edit first name",
+      "LAST / L: edit surname",
+      "TITLE / T: edit title/role",
+      "INST / I: edit institution",
+      "PRNS / P: edit pronouns",
+      "QUIT / Q: quit menu");
+    println_inst!(
+      "| {}",
+      opposite_indirect_command,
+    );
+    println_on_bg!("{:-^178}", "-");
+  }
   fn display_add_collateral(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^113}", "-");
@@ -2796,6 +2986,19 @@ impl NoteArchive {
       None => Err(Error::new(
         ErrorKind::Other,
         "Failed to find collateral.",
+      )),
+    }
+  }
+  fn load_general_collateral(&mut self, id: u32) -> std::io::Result<()> {
+    let current: Option<&Collateral> = self.general_collaterals.iter().find(|c| c.id == id);
+    match current {
+      Some(c) => {
+        self.foreign_key.insert(String::from("current_general_collateral_id"), c.id);
+        Ok(())
+      }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to find general collateral.",
       )),
     }
   }
@@ -2943,6 +3146,10 @@ impl NoteArchive {
           self.choose_edit_collaterals();
           continue;
         },
+        "general" | "g" => {
+          self.choose_general_collaterals();
+          continue;
+        }
         "quit" | "q" => {
           break;
         },
@@ -2955,6 +3162,61 @@ impl NoteArchive {
           }
             match self.load_collateral(num) {
               Ok(_) => self.choose_collateral(),
+              Err(e) => {
+                println_err!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println_err!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_general_collaterals(&mut self) {
+    loop {
+      let input = loop {
+        self.display_general_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "new" | "n" => {
+          let maybe_new_id = self.create_general_collateral_get_id();
+          match maybe_new_id {
+            Some(_) => (),
+            None => (),
+          }
+          continue;
+        },
+        "edit" | "e" => {
+          self.choose_edit_general_collaterals();
+          continue;
+        },
+        "quit" | "q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.general_collaterals.iter().any(|gco| gco.id == num) {
+            println_err!("Please select one of the listed IDs.");
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+            match self.load_general_collateral(num) {
+              Ok(_) => self.choose_general_collateral(),
               Err(e) => {
                 println_err!("Unable to load collateral with id {}: {}", num, e);
                 continue;
@@ -2998,6 +3260,49 @@ impl NoteArchive {
           }
             match self.load_collateral(num) {
               Ok(_) => self.choose_edit_collateral(),
+              Err(e) => {
+                println_err!("Unable to load collateral with id {}: {}", num, e);
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println_err!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn choose_edit_general_collaterals(&mut self) {
+    loop {
+      let input = loop {
+        self.display_edit_general_collaterals();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice,
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "quit" | "q" => {
+          break;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.general_collaterals.iter().any(|gco| gco.id == num) {
+            println_err!("Please select one of the listed IDs.");
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+            match self.load_general_collateral(num) {
+              Ok(_) => self.choose_edit_general_collateral(),
               Err(e) => {
                 println_err!("Unable to load collateral with id {}: {}", num, e);
                 continue;
@@ -3058,6 +3363,38 @@ impl NoteArchive {
         }
         "edit" | "e" => {
           self.choose_edit_collateral();
+        }
+        _ => {
+          println_err!("Invalid command.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
+      }
+    }
+  }
+  fn choose_general_collateral(&mut self) {
+    loop {
+      self.display_general_collateral();
+      let mut choice = String::new();
+      let read_attempt = io::stdin().read_line(&mut choice);
+      let input = match read_attempt {
+        Ok(_) => choice.to_ascii_lowercase(),
+        Err(e) => {
+          println_err!("Could not read input; try again ({}).", e);
+          continue;
+        }
+      };
+      let input = input.trim();
+      match input {
+        "quit" | "q" => {
+          break;
+        }
+        "delete" | "d" => {
+          if self.choose_delete_general_collateral() {
+            break;
+          }
+        }
+        "edit" | "e" => {
+          self.choose_edit_general_collateral();
         }
         _ => {
           println_err!("Invalid command.");
@@ -3352,9 +3689,210 @@ impl NoteArchive {
     }
     Some(id)
   }
+  fn create_general_collateral_get_id(&mut self) -> Option<u32> {
+    let collateral = loop {
+      let first_name = loop {
+        let mut first_name_choice = String::new();
+        print_inst!("Enter 'CANCEL' at any time to cancel.");
+        print!("\n");
+        print_inst!("General collateral's first name:");
+        print!("\n");
+        let first_name_attempt = io::stdin().read_line(&mut first_name_choice);
+        match first_name_attempt {
+          Ok(_) => break String::from(first_name_choice.trim()),
+          Err(e) => {
+            println_err!("Invalid first name: {}", e);
+            continue;
+          }
+        };
+      };
+      if first_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
+      let last_name = loop {
+        let mut last_name_choice = String::new();
+        println_inst!("General collateral's last name:");
+        let last_name_attempt = io::stdin().read_line(&mut last_name_choice);
+        match last_name_attempt {
+          Ok(_) => break String::from(last_name_choice.trim()),
+          Err(e) => {
+            println_err!("Invalid last name: {}", e);
+            continue;
+          }
+        };
+      };
+      if last_name.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
+      let title = loop {
+        let mut title_choice = String::new();
+        println_inst!("Enter general collateral's role/title.");
+        let title_attempt = io::stdin().read_line(&mut title_choice);
+        match title_attempt {
+          Ok(_) => break String::from(title_choice.trim()),
+          Err(e) => {
+            println_err!("Invalid title: {}", e);
+            continue;
+          }
+        };
+      };
+      if title.to_ascii_lowercase() == String::from("cancel") {
+        return None;
+      }
+
+      let pronouns = 'pronouns: loop {
+        match self.choose_pronouns_option() {
+          Some(p) => break p,
+          None => {
+            loop {
+              println_yel!("Cancel? (Y/N)");
+              let mut cancel = String::new();
+              let cancel_attempt = io::stdin().read_line(&mut cancel);
+              match cancel_attempt {
+                Ok(_) => match &cancel.trim().to_lowercase()[..] {
+                  "yes" | "y" => return None,
+                  "no" | "n" | "cancel" => continue 'pronouns,
+                  _ => {
+                    println_err!("Please choose either 'yes/y' or 'no/n'.");
+                    continue;
+                  }
+                },
+                Err(e) => {
+                  println_err!("Failed to read input: {}.", e);
+                  continue;
+                }
+              }
+  
+            }
+          }
+        } 
+      };
+
+      let support_type = Formal;
+
+      let (indirect_support, institution) = if FAMILY_ROLES.iter().any(|role| role == &title.to_ascii_lowercase() ) {
+        (false, None)
+      } else if FORMAL_ROLES.iter().any(|role| role == &title.to_ascii_lowercase() ) {
+        let institution = loop {
+          let mut institution_choice = String::new();
+          println_inst!("Enter general collateral's institution.");
+          let institution_attempt = io::stdin().read_line(&mut institution_choice);
+          match institution_attempt {
+            Ok(_) => break String::from(institution_choice.trim()),
+            Err(e) => {
+              println_err!("Invalid institution: {}", e);
+              continue;
+            }
+          }
+        };
+        (false, Some(institution))
+      } else if INDIRECT_ROLES.iter().any(|role| role == &title.to_ascii_lowercase() ) {
+        let institution = loop {
+          let mut institution_choice = String::new();
+          println_inst!("Enter general collateral's institution.");
+          let institution_attempt = io::stdin().read_line(&mut institution_choice);
+          match institution_attempt {
+            Ok(_) => break String::from(institution_choice.trim()),
+            Err(e) => {
+              println_err!("Invalid institution: {}", e);
+              continue;
+            }
+          }
+        };
+        (true, Some(institution))
+      } else {
+        loop {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut indirect_choice = String::new();
+          println_inst!("Should this general collateral be displayed as if a direct provider for every youth, e.g., '[some role] for youth'?");
+          println_inst!("YES / Y | NO / N");
+          let indirect_attempt = io::stdin().read_line(&mut indirect_choice);
+          let i = match indirect_attempt {
+            Ok(_) => match indirect_choice.to_ascii_lowercase().trim() {
+              "yes" | "y" => false,
+              "no" | "n" => true,
+              "cancel" => return None,
+              _ => {
+                println_err!("Please choose YES or NO.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println_err!("Failed to read input: {}.", e);
+              continue;
+            }
+          };
+          let institution = loop {
+            let mut institution_choice = String::new();
+            println_inst!("Enter general collateral's institution.");
+            let institution_attempt = io::stdin().read_line(&mut institution_choice);
+            match institution_attempt {
+              Ok(_) => {
+                if institution_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                  return None;
+                } else {
+                  break Some(String::from(institution_choice.trim()));
+                }
+              }
+              Err(e) => {
+                println_err!("Invalid institution: {}", e);
+                continue;
+              }
+            }
+          };
+          break (i, institution)
+        }
+      };
+
+      let collateral_attempt = self.generate_unique_new_general_collateral(
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+        support_type,
+        indirect_support,
+      );
+      match collateral_attempt {
+        Ok(collateral) => break collateral,
+        Err(error_hash) => {
+          println_err!(
+            "General collateral could not be generated. Errors: '{}'.",
+            error_hash.keys().cloned().collect::<Vec<String>>().join(", "),
+          );
+          continue;
+        }
+      }
+    };
+    let id = collateral.id;
+    match self.get_general_collateral_by_id(id) {
+      Some(_) => (),
+      None => self.save_general_collateral(collateral),
+    }
+    Some(id)
+  }
   fn collateral_dup_id_option(&self, first_name: &str, last_name: &str, title: &str, institution: &Option<String>) -> Option<u32> {
     let names_and_roles: Vec<(&str, &str, &str, &Option<String>, u32)> = self
       .collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution, c.id))
+      .collect();
+
+    let maybe_id = match names_and_roles
+      .iter()
+      .find(|(f, l, t, i, _)| f == &first_name && l == &last_name && t == &title && i == &institution) {
+        Some(name_and_role_tup) => Some(name_and_role_tup.4),
+        None => None,
+      };
+
+    maybe_id
+
+  }
+  fn general_collateral_dup_id_option(&self, first_name: &str, last_name: &str, title: &str, institution: &Option<String>) -> Option<u32> {
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>, u32)> = self
+      .general_collaterals
       .iter()
       .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution, c.id))
       .collect();
@@ -3396,6 +3934,38 @@ impl NoteArchive {
     let id: u32 = self.collaterals.len() as u32 + 1;
 
     match self.collateral_dup_id_option(&first_name, &last_name, &title, &institution) {
+      Some(match_id) => Err([(String::from("duplicate"), match_id)].iter().cloned().collect::<HashMap<String, u32>>()),
+      None => Ok(Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support))
+    }
+
+  }
+  fn generate_unique_new_general_collateral(
+    &mut self,
+    first_name: String,
+    last_name: String,
+    title: String,
+    institution: Option<String>,
+    pronouns: u32,
+    support_type: SupportType,
+    indirect_support: bool,
+  ) -> Result<Collateral, HashMap<String, u32>> {
+
+    if first_name.contains(" | ") || last_name.contains(" | ") || title.contains(" | ") {
+      return Err([(String::from("invalid character string: ' | ' "), 0)].iter().cloned().collect::<HashMap<String, u32>>());
+    }
+    
+    match institution.clone() {
+      None => (),
+      Some(s) => {
+        if s.contains(" | ") {
+          return Err([(String::from("invalid character string: ' | ' "), 0)].iter().cloned().collect::<HashMap<String, u32>>());
+        }
+      }
+    }
+
+    let id: u32 = self.general_collaterals.len() as u32 + 1;
+
+    match self.general_collateral_dup_id_option(&first_name, &last_name, &title, &institution) {
       Some(match_id) => Err([(String::from("duplicate"), match_id)].iter().cloned().collect::<HashMap<String, u32>>()),
       None => Ok(Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support))
     }
@@ -3458,6 +4028,63 @@ impl NoteArchive {
     }
     Ok(collaterals)
   }
+  pub fn read_general_collaterals(filepath: &str) -> Result<Vec<Collateral>, Error> {
+    let file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .open(filepath)
+      .unwrap();
+
+    let reader = BufReader::new(file);
+
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
+
+    if lines.len() > 0 {
+      lines.remove(0)?;
+    }
+    if lines.len() > 0 {
+      lines.remove(lines.len() - 1)?;
+    }
+
+    let mut general_collaterals: Vec<Collateral> = vec![];
+
+    for line in lines {
+      let line_string = line?;
+      let values: Vec<String> = line_string
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
+
+      if values.len() < 8 {
+        return Err(Error::new(ErrorKind::Other, "Failed to read general_collaterals from filepath."));
+      }
+
+      let id: u32 = values[0].parse().unwrap();
+      let first_name = String::from(&values[1]);
+      let last_name = String::from(&values[2]);
+      let title = String::from(&values[3]);
+      let institution = match &values[4][..] {
+        "--NONE--" => None,
+        _ => Some(String::from(&values[4])),
+      };
+      let pronouns: u32 = values[5].parse().unwrap();
+      let support_type = match &values[6][..] {
+        "Natural" => Natural,
+        "Formal" => Formal,
+        _ => panic!("Invalid SupportType saved in file."),
+      };
+      let indirect_support = match &values[7][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'indirect support boolean' value stored in file."),
+      };
+
+      let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
+      general_collaterals.push(c);
+    }
+    Ok(general_collaterals)
+  }
   pub fn write_collaterals(&self) -> std::io::Result<()> {
     let mut lines = String::from("##### collaterals #####\n");
     for c in &self.collaterals {
@@ -3465,6 +4092,16 @@ impl NoteArchive {
     }
     lines.push_str("##### collaterals #####");
     let mut file = File::create(self.filepaths["collateral_filepath"].clone()).unwrap();
+    file.write_all(lines.as_bytes()).unwrap();
+    Ok(())
+  }
+  pub fn write_general_collaterals(&self) -> std::io::Result<()> {
+    let mut lines = String::from("##### global collaterals #####\n");
+    for c in &self.general_collaterals {
+      lines.push_str(&c.to_string()[..]);
+    }
+    lines.push_str("##### global collaterals #####");
+    let mut file = File::create(self.filepaths["general_collateral_filepath"].clone()).unwrap();
     file.write_all(lines.as_bytes()).unwrap();
     Ok(())
   }
@@ -3547,6 +4184,18 @@ impl NoteArchive {
 
     self.current_user_mut().foreign_keys.insert(String::from("collateral_ids"), current_user_sorted_collateral_ids);
   }
+  fn sort_general_collaterals(&mut self) {
+
+    // sort by institution
+
+    self.general_collaterals.sort_by(|a, b|
+      match (a.institution.as_ref(), b.institution.as_ref()) {
+        (Some(a_i), Some(b_i)) => a_i.cmp(&b_i),
+        _ => a.institution.cmp(&b.institution),
+      }
+    );
+
+  }
   pub fn save_collateral(&mut self, collateral: Collateral) {
     let collat_id = collateral.id;
     self.collaterals.push(collateral);
@@ -3554,6 +4203,12 @@ impl NoteArchive {
 
     self.sort_collaterals();
     self.write_collaterals().unwrap();
+  }
+  pub fn save_general_collateral(&mut self, collateral: Collateral) {
+    self.general_collaterals.push(collateral);
+
+    self.sort_general_collaterals();
+    self.write_general_collaterals().unwrap();
   }
   fn update_current_collaterals(&mut self, id: u32) {
     self.current_client_mut().foreign_keys.get_mut("collateral_ids").unwrap().push(id);
@@ -3870,6 +4525,168 @@ impl NoteArchive {
       }
     }
   }
+  fn choose_edit_general_collateral(&mut self) {
+    loop {
+      self.display_edit_general_collateral();
+      let mut field_to_edit = String::new();
+      let input_attempt = io::stdin().read_line(&mut field_to_edit);
+      match input_attempt {
+        Ok(_) => (),
+        Err(e) => {
+          println_err!("Failed to read input: {}.", e);
+          continue;
+        }
+      }
+      field_to_edit = field_to_edit.to_ascii_lowercase().trim().to_string();
+      match &field_to_edit[..] {
+        "quit" | "q" => {
+          break ();
+        }
+        _ => (),
+      }
+      match &field_to_edit[..] {
+        "first" | "fst" | "f" | "1st" | "first name" => {
+          println_inst!("Enter new first name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => match self.change_general_collateral_first_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println_err!("Error: {}", e);
+              }
+            },
+            Err(e) => {
+              println_err!("Error: {}", e);
+              continue;
+            }
+          }
+        },
+        "last" | "lst" | "l" | "last name" => {
+          println_inst!("Enter new last name:");
+          let mut name_choice = String::new();
+          let name_attempt = io::stdin().read_line(&mut name_choice);
+          match name_attempt {
+            Ok(_) => match self.change_general_collateral_last_name(name_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println_err!("Error: {}", e);
+                thread::sleep(time::Duration::from_secs(1));
+              }
+            },
+            Err(e) => {
+              println_err!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        },
+        "title" | "t" => {
+          println_inst!("Enter new title:");
+          let mut title_choice = String::new();
+          let title_attempt = io::stdin().read_line(&mut title_choice);
+          match title_attempt {
+            Ok(_) => match self.change_general_collateral_title(title_choice.trim()) {
+              Ok(_) => (),
+              Err(e) => {
+                println_err!("Error: {}", e);
+                thread::sleep(time::Duration::from_secs(1));
+              }
+            },
+            Err(e) => {
+              println_err!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        },
+        "institution" | "inst" | "i" => {
+          if self.current_general_collateral().support_type == Natural {
+            println_err!("Unable to add institution for a natural support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          println_inst!("Enter new institution or NONE to remove:");
+          let mut inst_choice = String::new();
+          let inst_attempt = io::stdin().read_line(&mut inst_choice);
+          match inst_attempt {
+            Ok(_) => match (self.current_general_collateral().institution.as_ref(), &inst_choice.trim()[..]) {
+              (None, "NONE") => {
+                println_err!("General collateral currently has no institution.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              },
+              (Some(_), "NONE") => {
+                match self.change_general_collateral_institution(None) {
+                  Ok(_) => (),
+                  Err(e) => {
+                    println_err!("Error: {}", e);
+                    thread::sleep(time::Duration::from_secs(1));
+                  }
+                }
+              },
+              (Some(i), inst_choice_slice) => {
+                if &i[..] == inst_choice_slice {
+                  println_err!("General collateral institution already matches.");
+                  thread::sleep(time::Duration::from_secs(2));
+                } else {
+                  let new_inst = String::from(inst_choice.trim());
+                  match self.change_general_collateral_institution(Some(new_inst)) {
+                    Ok(_) => (),
+                    Err(e) => {
+                      println_err!("Error: {}", e);
+                      thread::sleep(time::Duration::from_secs(1));
+                    }
+                  }
+                }
+              },
+              (None, &_) => {
+                let new_inst = String::from(inst_choice.trim());
+                match self.change_general_collateral_institution(Some(new_inst)) {
+                  Ok(_) => (),
+                  Err(e) => {
+                    println_err!("Error: {}", e);
+                    thread::sleep(time::Duration::from_secs(1));
+                  }
+                }
+              }
+            }
+            Err(e) => {
+              println_err!("Error: {}", e);
+              thread::sleep(time::Duration::from_secs(1));
+            }
+          }
+        },
+        "prns" | "p" | "pronouns" => {
+          let maybe_pronouns = self.choose_pronouns_option();
+          match maybe_pronouns {
+            Some(p) => self.current_general_collateral_mut().pronouns = p,
+            None => (),
+          }
+        },
+        "indirect" => {
+          if self.current_general_collateral().indirect_support == true {
+            println_err!("Collateral is already an indirect support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            self.current_general_collateral_mut().indirect_support = true;
+          }
+        },
+        "direct" => {
+          if self.current_general_collateral().indirect_support == false {
+            println_err!("Collateral is already a direct support.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          } else {
+            self.current_general_collateral_mut().indirect_support = false;
+          }
+        },
+        _ => {
+          println_err!("Invalid entry.");
+          thread::sleep(time::Duration::from_secs(1));
+        }
+      }
+    }
+  }
   fn change_collateral_first_name(&mut self, new_name: &str) -> Result<(), String> {
     let current = self.current_collateral();
     let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
@@ -4027,6 +4844,163 @@ impl NoteArchive {
     };
     result
   }
+  fn change_general_collateral_first_name(&mut self, new_name: &str) -> Result<(), String> {
+    let current = self.current_general_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
+      .general_collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      new_name,
+      &current.last_name,
+      &current.title,
+      &current.institution,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      match &current.institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+
+        }
+      }
+    } else {
+      self.current_general_collateral_mut().first_name = String::from(new_name);
+      Ok(())
+    };
+    result
+  }
+  fn change_general_collateral_last_name(&mut self, new_name: &str) -> Result<(), String> {
+    let current = &self.current_general_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
+      .general_collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      &current.first_name,
+      new_name,
+      &current.title,
+      &current.institution,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      match &current.institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+        }
+      }
+    } else {
+      self.current_general_collateral_mut().last_name = String::from(new_name);
+      Ok(())
+    };
+    result
+  }
+  fn change_general_collateral_title(&mut self, new_title: &str) -> Result<(), String> {
+    let current = &self.current_general_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
+      .general_collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      &current.first_name,
+      &current.last_name,
+      new_title,
+      &current.institution,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      match &current.institution {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+        }
+      }
+    } else {
+      self.current_general_collateral_mut().title = String::from(new_title);
+      Ok(())
+    };
+    result
+  }
+  fn change_general_collateral_institution(&mut self, new_inst: Option<String>) -> Result<(), String> {
+    let current = self.current_general_collateral();
+    let names_and_roles: Vec<(&str, &str, &str, &Option<String>)> = self
+      .general_collaterals
+      .iter()
+      .map(|c| (&c.first_name[..], &c.last_name[..], &c.title[..], &c.institution))
+      .collect();
+
+    let (cf, cl, ct, ci): (&str, &str, &str, &Option<String>) = (
+      &current.first_name,
+      &current.last_name,
+      &current.title,
+      &new_inst,
+    );
+
+    let result = if names_and_roles
+      .iter()
+      .any(|(f, l, t, i)| f == &cf && l == &cl && t == &ct && i == &ci)
+    {
+      match new_inst {
+        Some(i) => {
+          Err(format!(
+            "There is already a {} at {} named '{} {}.'",
+            ct, i, cf, cl
+          ))
+        },
+        None => {
+          Err(format!(
+            "There is already a {} named '{} {}.'",
+            ct, cf, cl
+          ))
+        },
+      }
+    } else {
+      self.current_general_collateral_mut().institution = new_inst;
+      Ok(())
+    };
+    result
+  }
   fn choose_delete_collateral(&mut self) -> bool {
     loop {
       self.display_delete_collateral();
@@ -4046,6 +5020,33 @@ impl NoteArchive {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_collateral();
           self.write_collaterals().unwrap();
+          break true;
+        }
+        _ => {
+          break false;
+        }
+      }
+    }
+  }
+  fn choose_delete_general_collateral(&mut self) -> bool {
+    loop {
+      self.display_delete_general_collateral();
+      println_yel!("Are you sure you want to delete this general collateral?");
+      println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
+      let mut confirm = String::new();
+      let input_attempt = io::stdin().read_line(&mut confirm);
+      let command = match input_attempt {
+        Ok(_) => confirm.trim().to_string(),
+        Err(e) => {
+          println_err!("Failed to read input: {}", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
+        }
+      };
+      match &command[..] {
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          self.delete_current_general_collateral();
+          self.write_general_collaterals().unwrap();
           break true;
         }
         _ => {
@@ -4096,12 +5097,43 @@ impl NoteArchive {
     );
     println_on_bg!("{:-^162}", "-");
   }
+  fn display_delete_general_collateral(&self) {
+    let current = self.current_general_collateral();
+
+    let inst_option = &current.institution;
+    let display_inst = match inst_option {
+      Some(i) => i.to_string(),
+      None => String::from("n/a"),
+    };
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", " DELETE COLLATERAL ");
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!(
+      "{:-^30} | | {:-^30} | {:-^30}",
+      "Name", "Role/Title", "Institution",
+    );
+    println_on_bg!(
+      "{: ^30} | {: ^30} | {: ^30}",
+      current.full_name(),
+      current.title,
+      display_inst,
+    );
+    println_on_bg!("{:-^96}", "-");
+  }
   fn delete_current_collateral(&mut self) {
     let id = self.foreign_key.get("current_collateral_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("collateral"), id);
     self.collaterals.retain(|c| c.id != id);
     self.reindex_collaterals();
     self.foreign_key.remove("current_collateral_id");
+  }
+  fn delete_current_general_collateral(&mut self) {
+    let id = self.foreign_key.get("current_general_collateral_id").unwrap().to_owned();
+    self.general_collaterals.retain(|c| c.id != id);
+    self.reindex_general_collaterals();
+    self.foreign_key.remove("current_general_collateral_id");
   }
   fn reindex_collaterals(&mut self) {
     let mut i: u32 = 1;
@@ -4117,8 +5149,18 @@ impl NoteArchive {
       i += 1;
     }
   }
+  fn reindex_general_collaterals(&mut self) {
+    let mut i: u32 = 1;
+    for mut co in &mut self.general_collaterals {
+      co.id = i;
+      i += 1;
+    }
+  }
   fn get_collateral_by_id(&self, id: u32) -> Option<&Collateral> {
     self.collaterals.iter().find(|p| p.id == id)
+  }
+  fn get_general_collateral_by_id(&self, id: u32) -> Option<&Collateral> {
+    self.general_collaterals.iter().find(|p| p.id == id)
   }
 
   // pronouns
@@ -5345,7 +6387,7 @@ impl NoteArchive {
           println_suc!("{:-^150}", "-");
           let client = self.get_client_by_note_day_id(note_day.foreign_key["client_id"]).unwrap();
           let heading = format!(" {} ", &client.full_name());
-          println_inst!("{:-^150}", &heading);
+          println_suc!("{:-^150}", &heading);
           self.print_note_day(note_day);
         }
       }
@@ -5487,7 +6529,7 @@ impl NoteArchive {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     for (k, v) in &self.get_current_note_day_notes_by_category() {
       if v.len() > 0 {
-        println_inst!("{}", k);
+        println_suc!("{}", k);
         for n in v {
           let (output, _) = n.generate_display_content_string_with_blanks(None, None);
           println!("{}\n", output);
@@ -11847,6 +12889,7 @@ mod tests {
         (String::from("user_filepath"), String::from("some_random_blank_user_file_name.txt"),),
         (String::from("client_filepath"), String::from("some_random_blank_client_file_name.txt"),),
         (String::from("collateral_filepath"), String::from("some_random_blank_collateral_file_name.txt"),),
+        (String::from("general_collateral_filepath"), String::from("some_random_blank_general_collateral_file_name.txt"),),
         (String::from("pronouns_filepath"), String::from("some_random_blank_pronouns_file_name.txt"),),
         (String::from("note_day_filepath"), String::from("some_random_blank_note_day_file_name.txt"),),
         (String::from("note_template_filepath"), String::from("some_random_blank_note_template_file_name.txt"),),
@@ -11921,6 +12964,7 @@ mod tests {
           (String::from("user_filepath"), String::from("test_load_user.txt"),),
           (String::from("client_filepath"), String::from("test_load_client.txt"),),
           (String::from("collateral_filepath"), String::from("test_load_collateral.txt"),),
+          (String::from("general_collateral_filepath"), String::from("test_load_general_collateral.txt"),),
           (String::from("pronouns_filepath"), String::from("test_load_pronouns.txt"),),
           (String::from("note_day_filepath"), String::from("test_load_note_days.txt"),),
           (String::from("note_template_filepath"), String::from("test_load_note_templates.txt"),),
@@ -11952,6 +12996,7 @@ mod tests {
       (String::from("user_filepath"), String::from("test_user_new_instance.txt"),),
       (String::from("client_filepath"), String::from("test_client_new_instance.txt"),),
       (String::from("collateral_filepath"), String::from("test_collateral_new_instance.txt"),),
+      (String::from("general_collateral_filepath"), String::from("test_general_collateral_new_instance.txt"),),
       (String::from("pronouns_filepath"), String::from("test_pronouns_new_instance.txt"),),
       (String::from("note_day_filepath"), String::from("test_note_days_new_instance.txt"),),
       (String::from("note_template_filepath"), String::from("test_note_templates_new_instance.txt"),),
@@ -12041,6 +13086,7 @@ mod tests {
       (String::from("user_filepath"), String::from("test_user_current_pronouns.txt"),),
       (String::from("client_filepath"), String::from("test_client_current_pronouns.txt"),),
       (String::from("collateral_filepath"), String::from("test_collateral_current_pronouns.txt"),),
+      (String::from("general_collateral_filepath"), String::from("test_glonal_collateral_current_pronouns.txt"),),
       (String::from("pronouns_filepath"), String::from("test_pronouns_current_pronouns.txt"),),
       (String::from("note_day_filepath"), String::from("test_note_days_current_pronouns.txt"),),
       (String::from("note_template_filepath"), String::from("test_note_templates_current_pronouns.txt"),),
@@ -12066,6 +13112,7 @@ mod tests {
       (String::from("user_filepath"), String::from("test_user_updates_pronouns.txt"),),
       (String::from("client_filepath"), String::from("test_client_updates_pronouns.txt"),),
       (String::from("collateral_filepath"), String::from("test_collateral_updates_pronouns.txt"),),
+      (String::from("general_collateral_filepath"), String::from("test_general_collateral_updates_pronouns.txt"),),
       (String::from("pronouns_filepath"), String::from("test_pronouns_updates_pronouns.txt"),),
       (String::from("note_day_filepath"), String::from("test_note_days_updates_pronouns.txt"),),
       (String::from("note_template_filepath"), String::from("test_note_templates_updates_pronouns.txt"),),
