@@ -532,14 +532,14 @@ impl NoteArchive {
       CarePlan,
       true,
       String::from("ICC met with (---co---) for a Care Plan Meeting for (---c---)."),
-      Some(2)
+      vec![2],
     );
     let nt2 = NoteTemplate::new(
       2,
       PhoneCall,
       true,
       String::from("ICC called (---co---) to discuss a referral for IHT services."),
-      Some(1),
+      vec![1],
     );
 
     let note_templates = vec![nt1, nt2];
@@ -2574,6 +2574,46 @@ impl NoteArchive {
       "Enter ID to choose collateral.",
       "NEW / N: new collateral",
       "ADD / A: add from other client/user",
+      "EDIT / E: edit",
+      "QUIT / Q: quit menu",
+    );
+  }
+  fn display_select_general_collaterals(&self, selected: Option<Vec<u32>>) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^113}", " Select general collaterals ");
+    println_on_bg!("{:-^113}", "-");
+    println_on_bg!("{:-^10} | {:-<100}", " ID ", "Info ");
+    for c in self.general_collaterals.clone() {
+      match selected.clone() {
+        None => {
+          println_on_bg!(
+            "{: ^10} | {: <100}",
+            c.id,
+            c.full_name_and_title(),
+          );
+        },
+        Some(ids) => {
+          if ids.iter().any(|id| *id == c.id ) {
+            println_suc!(
+              "{: ^10} | {: <100}",
+              c.id,
+              c.full_name_and_title(),
+            );
+          } else {
+            println_on_bg!(
+              "{: ^10} | {: <100}",
+              c.id,
+              c.full_name_and_title(),
+            );
+          }
+        }
+      }
+    }
+    println_on_bg!("{:-^113}", "-");
+    println_inst!("| {} | {} | {} | {}",
+      "Enter ID to choose collateral.",
+      "NEW / N: new collateral",
       "EDIT / E: edit",
       "QUIT / Q: quit menu",
     );
@@ -7149,23 +7189,11 @@ impl NoteArchive {
   }
   fn current_user_note_templates(&self) -> Vec<&NoteTemplate> {
     self.note_templates.iter().filter(|nt|
-      match nt.foreign_key.get("user_id") {
+      match nt.foreign_keys.get("user_ids") {
         Some(_) => {
-          nt.foreign_key["user_id"] == self.current_user().id
+          nt.foreign_keys["user_ids"].iter().any(|id| id  == &self.current_user().id )
         },
-        None => true, // because current_user_note_templates returns all for the current user
-                      // current_user_personal_note_templates returns the ones they should be able to edit
-      }
-    ).collect()
-  }
-  fn current_user_personal_note_templates(&self) -> Vec<&NoteTemplate> {
-    self.note_templates.iter().filter(|nt|
-      match nt.foreign_key.get("user_id") {
-        Some(_) => {
-          nt.foreign_key["user_id"] == self.current_user().id
-        },
-        None => false, // because current_user_note_templates returns all for the current user
-                      // current_user_personal_note_templates returns the ones they should be able to edit
+        None => false,
       }
     ).collect()
   }
@@ -7189,7 +7217,8 @@ impl NoteArchive {
       );
     }
     println_on_bg!("{:-^156}", "-");
-    if self.current_user_personal_note_templates().len() > 0 {
+    let current_templates = self.current_user_note_templates().clone();
+    if current_templates.iter().filter(|nt| nt.custom ).count() > 0 {
       println_inst!(
         "{} | {} | {} | {}",
         "Choose template by ID.",
@@ -7198,7 +7227,12 @@ impl NoteArchive {
         "COPY / C: Copy template"
       );
     } else {
-      println_inst!("{} | {}", "Choose template by ID.", "NEW / N: New template");
+      println_inst!(
+        "{} | {} | {}",
+        "Choose template by ID.",
+        "NEW / N: New template",
+        "COPY / C: Copy template"
+      );
     }
   }
   fn display_copy_user_note_templates(&self) {
@@ -7208,7 +7242,7 @@ impl NoteArchive {
     println_on_bg!("{:-^156}", heading);
     println_on_bg!("{:-^156}", "-");
     println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
-    for nt in self.current_user_note_templates() {
+    for nt in self.note_templates.clone() {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
@@ -7230,17 +7264,16 @@ impl NoteArchive {
     println_on_bg!("{:-^156}", heading);
     println_on_bg!("{:-^156}", "-");
     println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
-    for nt in self.current_user_personal_note_templates() {
-      let mut type_string = format!("{}", nt.structure);
+    for nt in self.current_user_note_templates() {
       if nt.custom {
-        type_string.push_str(" (custom)");
+        let type_string = format!("{} (custom)", nt.structure);
+        println_on_bg!(
+          "{: ^10} | {: ^40} | {: ^100}",
+          nt.id,
+          &type_string,
+          &nt.preview(),
+        );
       }
-      println_on_bg!(
-        "{: ^10} | {: ^40} | {: ^100}",
-        nt.id,
-        type_string,
-        &nt.preview(),
-      );
     }
     println_on_bg!("{:-^156}", "-");
     println_inst!("Choose template to edit by ID.");
@@ -7266,9 +7299,15 @@ impl NoteArchive {
         _ => match field_to_edit.parse() {
           Ok(num) => match self.get_note_template_option_by_id(num) {
             Some(_) => {
-              if self.current_user_personal_note_templates().iter().any(|no_t| no_t.id == num ) {
+              if self.current_user_note_templates().iter().any(|no_t| no_t.id == num ) {
                 match self.load_note_template(num) {
-                  Ok(_) => self.choose_edit_note_template(),
+                  Ok(_) => {
+                    if self.current_note_template().custom {
+                      self.choose_edit_note_template();
+                    } else {
+                      panic!("Failed to load a note template by ID listed in the current user's note templates.");
+                    }
+                  }
                   Err(_) => panic!("Failed to load a note template by ID listed in the current user's note templates."),
                 }
               } else {
@@ -7464,7 +7503,7 @@ impl NoteArchive {
 
                 for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
                   if i + 1 == content_focus_id.unwrap() as usize {
-                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1+1..]);
                   }
                 }
 
@@ -7855,7 +7894,7 @@ impl NoteArchive {
                       };
                     };
 
-                    match &new_section[..] {
+                    match &new_section_choice[..] {
                       "" => {
                         let n_content = self.current_note_template().content.clone();
     
@@ -7863,7 +7902,7 @@ impl NoteArchive {
     
                         for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
                           if i + 1 == content_focus_id.unwrap() as usize {
-                            new_content = format!("{}{}{}", &n_content[..idxs.0], &new_section_choice[..], &n_content[idxs.1..]);
+                            new_content = format!("{}{}{}", &n_content[..idxs.0], &content[..], &n_content[idxs.1+1..]);
                           }
                         }
     
@@ -8482,7 +8521,8 @@ impl NoteArchive {
           }
         },
         "edit" | "e" => {
-          if self.current_user_personal_note_templates().len() > 0 {
+          let current_templates = self.current_user_note_templates().clone();
+          if current_templates.iter().filter(|nt| nt.custom ).count() > 0 {
             self.choose_edit_note_templates();
           } else {
             println_err!("There are no custom templates to edit.");
@@ -8732,7 +8772,7 @@ impl NoteArchive {
       };
       let mut content = String::new();
       let mut display_content = String::new();
-      let mut nt = NoteTemplate::new(0, structure.clone(), true, String::new(), None);
+      let mut nt = NoteTemplate::new(0, structure.clone(), true, String::new(), vec![]);
       loop {
         nt.content = content.clone();
         nt.clean_spacing();
@@ -9064,7 +9104,7 @@ impl NoteArchive {
     if changed_content.contains(" | ") || changed_content.contains("(---") || changed_content.contains("---)") {
       return Err(
         (
-          NoteTemplate::new(0, structure, true, content, Some(user_id)),
+          NoteTemplate::new(0, structure, true, content, vec![user_id]),
           String::from("The following strings are not allowed: ' | ', '(---', and '---)'. ")
         )
       );
@@ -9075,11 +9115,11 @@ impl NoteArchive {
     match self.note_template_dup_id_option(&structure, content.clone(), user_id) {
       Some(_) => Err(
         (
-          NoteTemplate::new(id, structure, true, content, Some(user_id)),
+          NoteTemplate::new(id, structure, true, content, vec![user_id]),
           String::from("match") // must remain "match" in order to be caught in error handling for when copying a note template intentionally
         )
       ),
-      None => Ok(NoteTemplate::new(id, structure, true, content, Some(user_id)))
+      None => Ok(NoteTemplate::new(id, structure, true, content, vec![user_id]))
     }
   }
   pub fn read_note_templates(filepath: &str) -> Result<Vec<NoteTemplate>, Error> {
@@ -9124,7 +9164,7 @@ impl NoteArchive {
         }
       };
       let content = String::from(def.1);
-      let nt = NoteTemplate::new(i, structure, false, content, None);
+      let nt = NoteTemplate::new(i, structure, false, content, vec![]);
       note_templates.push(nt);
     }
 
@@ -9160,7 +9200,13 @@ impl NoteArchive {
 
       let content = values[2].clone();
 
-      let user_id = Some(values[3].parse().unwrap());
+      let user_ids: Vec<u32> = match &values[3][..] {
+        "" => vec![],
+        _ => values[3]
+          .split("#")
+          .map(|val| val.parse().unwrap())
+          .collect()
+      };
 
       // let note_ids: Vec<u32> = match &values[4][..] {
       //   "" => vec![],
@@ -9172,7 +9218,7 @@ impl NoteArchive {
 
       // ^^ possibly use again to store which note came from which template
 
-      let nt = NoteTemplate::new(id, structure, true, content, user_id);
+      let nt = NoteTemplate::new(id, structure, true, content, user_ids);
       note_templates.push(nt);
     }
 
@@ -9668,7 +9714,7 @@ impl NoteArchive {
 
                 for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
                   if i + 1 == content_focus_id.unwrap() as usize {
-                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1+1..]);
                   }
                 }
 
@@ -10061,7 +10107,7 @@ impl NoteArchive {
                       };
                     };
 
-                    match &new_section[..] {
+                    match &new_section_choice[..] {
                       "" => {
                         let n_content = self.current_note().content.clone();
     
@@ -10069,7 +10115,7 @@ impl NoteArchive {
     
                         for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
                           if i + 1 == content_focus_id.unwrap() as usize {
-                            new_content = format!("{}{}{}", &n_content[..idxs.0], &new_section_choice[..], &n_content[idxs.1..]);
+                            new_content = format!("{}{}{}", &n_content[..idxs.0], &content[..], &n_content[idxs.1+1..]);
                           }
                         }
     
@@ -12764,9 +12810,9 @@ impl NoteArchive {
       let note_user_id: u32 = values[6].parse().unwrap();
       let note_client_id: u32 = values[7].parse().unwrap();
 
-      let collateral_ids: Vec<u32> = match &values[7][..] {
+      let collateral_ids: Vec<u32> = match &values[8][..] {
         "" => vec![],
-        _ => values[6]
+        _ => values[8]
           .split("#")
           .map(|val| val.parse().unwrap())
           .collect(),
@@ -13162,7 +13208,7 @@ mod tests {
         Phrase,
         CustomBlank,
       ),
-      Some(1)
+      vec![],
     );
 
     let nt2 = NoteTemplate::new(
@@ -13180,7 +13226,7 @@ mod tests {
         Collaterals,
         Pronoun4ForBlank(Some(7)),
       ),
-      Some(1)
+      vec![1],
     );
     
     // (String, Vec<(String, usize, usize)>)
@@ -13273,7 +13319,7 @@ mod tests {
         Pronoun2ForUser,
         AllCollaterals,
       ),
-      None
+      vec![],
     );
     
     let s1a = String::from("[1]: Here is a sentence. ");
@@ -13306,7 +13352,7 @@ mod tests {
         Pronoun1ForUser,
         Pronoun2ForUser,
       ),
-      None
+      vec![],
     );
 
     let s1a = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count();
@@ -13340,7 +13386,7 @@ mod tests {
         Pronoun2ForUser,
         AllCollaterals,
       ),
-      None
+      vec![],
     );
     
     let s1a = String::from("Here is a sentence. ").chars().count();
@@ -13378,7 +13424,7 @@ mod tests {
       Sncd,
       true,
       String::from("Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool."),
-      None
+      vec![],
     );
     
     let s1a = String::from("Here is a sentence. ").chars().count();
@@ -13411,7 +13457,7 @@ mod tests {
         Pronoun1ForUser,
         Pronoun2ForUser,
       ),
-      None
+      vec![],
     );
     
     let s1a = String::from("[1]: ").chars().count();
@@ -13447,7 +13493,7 @@ mod tests {
         Pronoun2ForUser,
         AllCollaterals,
       ),
-      None
+      vec![],
     );
     
     let s1a = String::from("[1]: Here is a sentence. ").chars().count();
@@ -13485,7 +13531,7 @@ mod tests {
       Sncd,
       true,
       String::from("Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool."),
-      None
+      vec![],
     );
     
     let s1a = String::from("[1]: Here is a sentence. ").chars().count();
@@ -13514,7 +13560,7 @@ mod tests {
         "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
         ExternalDocument,
       ),
-      None
+      vec![],
     );
     
     let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, Some(1));
@@ -13545,7 +13591,7 @@ mod tests {
         "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, rightt",
         ExternalDocument,
       ),
-      None
+      vec![],
     );
     
     let (nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, Some(1));
@@ -13576,7 +13622,7 @@ mod tests {
         "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right.",
         ExternalDocument,
       ),
-      None
+      vec![],
     );
     
     let (nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, Some(1));
@@ -13611,7 +13657,7 @@ mod tests {
         Pronoun1ForUser,
         Pronoun2ForUser,
       ),
-      None
+      vec![],
     );
 
     let s1a = CurrentUser.display_to_user().chars().count();
@@ -13649,7 +13695,7 @@ mod tests {
         Pronoun2ForUser,
         AllCollaterals,
       ),
-      None
+      vec![],
     );
     
     let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(Some(1), None);
@@ -13752,7 +13798,7 @@ mod tests {
         "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
         ExternalDocument,
       ),
-      None
+      vec![],
     );
     
     let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, Some(1));
@@ -13834,7 +13880,7 @@ mod tests {
         "ICC called a bunch of people. They didn't answer. ICC then decided to {}.",
         Action,
       ),
-      None
+      vec![],
     );
 
     let sentence_indices = vec![
@@ -13855,7 +13901,7 @@ mod tests {
         "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
         ExternalDocument,
       ),
-      None
+      vec![],
     );
     
     let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None);

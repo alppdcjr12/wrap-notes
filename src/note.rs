@@ -144,17 +144,12 @@ impl NoteTemplate {
     structure: StructureType,
     custom: bool,
     content: String,
-    user_id: Option<u32>,
+    user_ids: Vec<u32>,
   ) -> NoteTemplate {
-    let mut foreign_key: HashMap<String, u32> = HashMap::new();
-    match user_id {
-      Some(num) => {
-        foreign_key.insert(String::from("user_id"), num);
-      },
-      None => (),
-    }
+    let foreign_key: HashMap<String, u32> = HashMap::new();
     let foreign_keys: HashMap<String, Vec<u32>> = [
       (String::from("note_ids"), vec![]),
+      (String::from("user_ids"), user_ids),
     ].iter().cloned().collect();
     NoteTemplate {
       id,
@@ -949,7 +944,11 @@ impl fmt::Display for NoteTemplate {
       &self.id,
       &self.structure,
       &content,
-      &self.foreign_key["user_id"],
+      &self.foreign_keys["user_ids"]
+        .iter()
+        .map(|id| format!("{}", id))
+        .collect::<Vec<String>>()
+        .join("#"),
       &self.foreign_keys["note_ids"]
         .iter()
         .map(|id| format!("{}", id))
