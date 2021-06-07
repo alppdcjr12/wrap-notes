@@ -3,6 +3,7 @@ pub use note_archive::*;
 
 pub mod user;
 pub mod client;
+pub mod goal;
 pub mod collateral;
 pub mod pronouns;
 pub mod note_day;
@@ -13,6 +14,7 @@ pub mod blank_enums;
 
 pub const USR_FL: &str = "users.txt";
 pub const CLT_FL: &str = "clients.txt";
+pub const G_FL: &str = "goals.txt";
 pub const COL_FL: &str = "collaterals.txt";
 pub const GCOL_FL: &str = "general_collaterals.txt";
 pub const PRN_FL: &str = "pronouns.txt";
@@ -25,6 +27,7 @@ fn main() {
   let filepaths = [
     (String::from("user_filepath"), String::from(USR_FL),),
     (String::from("client_filepath"), String::from(CLT_FL),),
+    (String::from("goal_filepath"), String::from(G_FL),),
     (String::from("collateral_filepath"), String::from(COL_FL),),
     (String::from("general_collateral_filepath"), String::from(GCOL_FL),),
     (String::from("pronouns_filepath"), String::from(PRN_FL),),

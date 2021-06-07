@@ -27,6 +27,9 @@ pub use client::*;
 pub mod collateral;
 pub use collateral::*;
 
+pub mod goal;
+pub use goal::*;
+
 pub mod pronouns;
 pub use pronouns::*;
 

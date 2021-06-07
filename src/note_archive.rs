@@ -16,6 +16,7 @@ use std::collections::{HashMap, BTreeMap};
 
 use crate::user::*;
 use crate::client::*;
+use crate::goal::*;
 use crate::collateral::*;
 use crate::pronouns::*;
 use crate::note_day::*;
@@ -51,6 +52,7 @@ use crate::constants::*;
 pub struct NoteArchive {
   pub users: Vec<User>,
   pub clients: Vec<Client>,
+  pub goals: Vec<Goal>,
   pub collaterals: Vec<Collateral>,
   pub general_collaterals: Vec<Collateral>,
   pub pronouns: Vec<Pronouns>,
@@ -318,6 +320,7 @@ impl NoteArchive {
   fn choose_decrypt_files(
     user_filepath: &str,
     client_filepath: &str,
+    goal_filepath: &str,
     collateral_filepath: &str,
     general_collateral_filepath: &str,
     pronouns_filepath: &str,
@@ -350,6 +353,7 @@ impl NoteArchive {
           break match Self::decrypt_all_files(
             user_filepath,
             client_filepath,
+            goal_filepath,
             collateral_filepath,
             general_collateral_filepath,
             pronouns_filepath,
@@ -369,6 +373,7 @@ impl NoteArchive {
         "delete" => {
           fs::remove_file(user_filepath).unwrap();
           fs::remove_file(client_filepath).unwrap();
+          fs::remove_file(goal_filepath).unwrap();
           fs::remove_file(collateral_filepath).unwrap();
           fs::remove_file(general_collateral_filepath).unwrap();
           fs::remove_file(pronouns_filepath).unwrap();
@@ -399,6 +404,7 @@ impl NoteArchive {
         build_note_archive = Self::choose_decrypt_files(
           &filepaths["user_filepath"],
           &filepaths["client_filepath"],
+          &filepaths["goal_filepath"],
           &filepaths["collateral_filepath"],
           &filepaths["general_collateral_filepath"],
           &filepaths["pronouns_filepath"],
@@ -412,6 +418,7 @@ impl NoteArchive {
       let mut a = NoteArchive {
         users: Self::read_users(&filepaths["user_filepath"]).unwrap(),
         clients: Self::read_clients(&filepaths["client_filepath"]).unwrap(),
+        goals: Self::read_goals(&filepaths["goal_filepath"]).unwrap(),
         collaterals: Self::read_collaterals(&filepaths["collateral_filepath"]).unwrap(),
         general_collaterals: Self::read_general_collaterals(&filepaths["general_collateral_filepath"]).unwrap(),
         pronouns: vec![],
@@ -557,7 +564,9 @@ impl NoteArchive {
   fn write_to_files(&mut self) {
     self.write_users().unwrap();
     self.write_clients().unwrap();
+    self.write_goals().unwrap();
     self.write_collaterals().unwrap();
+    self.write_general_collaterals().unwrap();
     self.write_pronouns().unwrap();
     self.write_note_days().unwrap();
     self.write_note_templates().unwrap();
@@ -569,6 +578,10 @@ impl NoteArchive {
     }
     match Self::read_clients(&self.filepaths["client_filepath"]) {
       Ok(_) => encrypt_file(&self.filepaths["client_filepath"], pw)?,
+      Err(_) => (),
+    }
+    match Self::read_goals(&self.filepaths["goal_filepath"]) {
+      Ok(_) => encrypt_file(&self.filepaths["goal_filepath"], pw)?,
       Err(_) => (),
     }
     match Self::read_collaterals(&self.filepaths["collateral_filepath"]) {
@@ -600,6 +613,7 @@ impl NoteArchive {
   fn decrypt_all_files(
     user_filepath: &str,
     client_filepath: &str,
+    goal_filepath: &str,
     collateral_filepath: &str,
     general_collateral_filepath: &str,
     pronouns_filepath: &str,
@@ -609,6 +623,7 @@ impl NoteArchive {
     pw: &str) -> Result<(), Error> {
     decrypt_file(user_filepath, "decrypt_attempt_user.txt", pw)?;
     decrypt_file(client_filepath, "decrypt_attempt_client.txt", pw)?;
+    decrypt_file(goal_filepath, "decrypt_attempt_goal.txt", pw)?;
     decrypt_file(collateral_filepath, "decrypt_attempt_collateral.txt", pw)?;
     decrypt_file(general_collateral_filepath, "decrypt_attempt_general_collateral.txt", pw)?;
     decrypt_file(pronouns_filepath, "decrypt_attempt_pronouns.txt", pw)?;
@@ -617,6 +632,7 @@ impl NoteArchive {
     decrypt_file(note_filepath, "decrypt_attempt_note.txt", pw)?;
     let user_result = Self::read_users("decrypt_attempt_user.txt");
     let client_result = Self::read_clients("decrypt_attempt_client.txt");
+    let goal_result = Self::read_goals("decrypt_attempt_goal.txt");
     let collateral_result = Self::read_collaterals("decrypt_attempt_collateral.txt");
     let general_collateral_result = Self::read_general_collaterals("decrypt_attempt_collateral.txt");
     let pronouns_result = Self::read_pronouns_from_file_without_reindexing("decrypt_attempt_pronouns.txt");
@@ -633,6 +649,7 @@ impl NoteArchive {
     match (
       user_result,
       client_result,
+      goal_result,
       collateral_result,
       general_collateral_result,
       pronouns_result,
@@ -640,9 +657,10 @@ impl NoteArchive {
       note_template_result,
       note_result
     ) {
-      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
+      (Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_)) => {
         decrypt_file(user_filepath, user_filepath, pw)?;
         decrypt_file(client_filepath, client_filepath, pw)?;
+        decrypt_file(goal_filepath, goal_filepath, pw)?;
         decrypt_file(collateral_filepath, collateral_filepath, pw)?;
         decrypt_file(general_collateral_filepath, general_collateral_filepath, pw)?;
         decrypt_file(pronouns_filepath, pronouns_filepath, pw)?;
@@ -1879,6 +1897,7 @@ impl NoteArchive {
     loop {
       self.display_client();
       println_inst!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / CO: view/edit client collaterals", "QUIT / Q: quit menu");
+      println_on_bg!("| {}", "GOALS / G: View and edit client goals");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -1902,6 +1921,9 @@ impl NoteArchive {
         }
         "collateral" | "collat" | "col" | "co" => {
           self.choose_client_collaterals();
+        }
+        "goals" | "g" => {
+          self.choose_client_goals();
         }
         _ => println_err!("Invalid command."),
       }
@@ -5375,8 +5397,9 @@ impl NoteArchive {
       let input = loop {
         let mut choice = String::new();
         println_inst!(
-          "| {} | {} | {}",
+          "| {} | {} | {} | {}",
           "Enter ID to choose pronouns.",
+          "NEW / N: create new pronouns",
           "EDIT / E: edit pronouns",
           "DELETE: delete pronouns",
         );
@@ -6060,6 +6083,535 @@ impl NoteArchive {
       },
       None => (),
     }
+  }
+
+  // goals
+  pub fn read_goals(filepath: &str) -> Result<Vec<Goal>, Error> {
+    let file = OpenOptions::new()
+      .read(true)
+      .write(true)
+      .create(true)
+      .open(filepath)
+      .unwrap();
+
+    let reader = BufReader::new(file);
+
+    let mut lines: Vec<std::io::Result<String>> = reader.lines().collect();
+
+    if lines.len() > 0 {
+      lines.remove(0)?;
+    }
+    if lines.len() > 0 {
+      lines.remove(lines.len() - 1)?;
+    }
+
+    let mut goals: Vec<Goal> = vec![];
+
+    for line in lines {
+      let line_string = line?;
+      let values: Vec<String> = line_string
+        .split(" | ")
+        .map(|val| val.to_string())
+        .collect();
+
+      let id: u32 = values[0].parse().unwrap();
+      let client_id: u32 = values[1].parse().unwrap();
+      let subject = String::from(&values[2]);
+        
+      
+      let g = Goal::new(id, client_id, subject);
+      goals.push(g);
+    }
+      
+    Ok(goals)
+  }
+  fn select_all_goals(&mut self, selected: Option<Vec<u32>>) -> Option<u32> {
+    let chosen_id = loop {
+      self.display_goals(selected.clone());
+      let input = loop {
+        let mut choice = String::new();
+        println_inst!("Enter ID to choose goal, or 'CANCEL' to cancel.");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+
+      match input {
+        "cancel" | "c" => return None,
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println_err!("Could not read input as a number; try again ({}).", e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          };
+          match self.load_goal(id) {
+            Ok(_) => {
+              if self.current_client_goals().iter().any(|g| g.id == id)
+              || self.current_client_goals().iter().any(|g| g.goal == self.get_goal_by_id(id).unwrap().goal) {
+                println_err!("Please choose from among the listed IDs.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+              break id;
+            }
+            Err(e) => {
+              println_err!("Unable to load goal with id {}: {}", input, e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
+        },
+      }
+    };
+    Some(chosen_id)
+  }
+  fn select_client_goals(&mut self, selected: Option<Vec<u32>>) -> Option<u32> {
+    let chosen_id = loop {
+      self.display_current_client_goals(selected.clone());
+      let input = loop {
+        let mut choice = String::new();
+        println_inst!("Enter ID to choose goal.");
+        println_inst!("| {} | {} | {}", "NEW / N: Create a new goal", "ADD / A: Add a goal from the collective list", "CANCEL / C: cancel");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+
+      match input {
+        "new" | "n" => {
+          let goal_option = self.create_get_goal();
+          match goal_option {
+            Some(g) => {
+              let new_id = g.id;
+              break new_id;
+            },
+            None => continue,
+          }
+        },
+        "add" | "a" => {
+          let added_g_id = self.select_all_goals(None);
+          match added_g_id {
+            None => (),
+            Some(g_id) => {
+              let g_copy = self.get_goal_by_id(g_id).unwrap().clone();
+              let new_goal = self.generate_unique_new_goal(g_copy.goal.clone());
+              match new_goal {
+                Err(_) => {
+                  println_err!("Failed to generate goal.");
+                  continue;
+                },
+                Ok(goal) => {
+                  let new_id = goal.id;
+                  self.save_goal(goal);
+                  break new_id;
+                }
+              }
+            }
+          }
+        }
+        "cancel" | "c" => return None,
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println_err!("Could not read input as a number; try again ({}).", e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          };
+          if !self.current_client_goals().iter().any(|g| g.client_id == self.current_client().id ) {
+            println_err!("Please select from among the listed IDs.");
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+          match self.load_goal(id) {
+            Ok(_) => break id,
+            Err(e) => {
+              println_err!("Unable to load goal with id {}: {}", input, e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
+        },
+      }
+    };
+    Some(chosen_id)
+  }
+  fn choose_client_goals(&mut self) {
+    loop {
+      self.display_current_client_goals(None);
+      let input = loop {
+        let mut choice = String::new();
+        println_inst!("Enter ID to edit or delete goal.");
+        println_inst!("| {} | {}", "NEW / N: Create a new goal", "ADD / A: Add a goal from the collective list");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+
+      match input {
+        "new" | "n" => {
+          let goal_option = self.create_get_goal();
+          match goal_option {
+            Some(_) => continue,
+            None => continue,
+          }
+        },
+        "add" | "a" => {
+          let added_g_id = self.select_all_goals(None);
+          match added_g_id {
+            None => (),
+            Some(g_id) => {
+              let g_copy = self.get_goal_by_id(g_id).unwrap().clone();
+              let new_goal = self.generate_unique_new_goal(g_copy.goal.clone());
+              match new_goal {
+                Err(_) => {
+                  println_err!("Failed to generate goal.");
+                  continue;
+                },
+                Ok(goal) => {
+                  self.save_goal(goal);
+                  continue;
+                }
+              }
+            }
+          }
+        }
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println_err!("Could not read input as a number; try again ({}).", e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          };
+          match self.load_goal(id) {
+            Ok(_) => self.choose_edit_goal(),
+            Err(e) => {
+              println_err!("Unable to load goal with id {}: {}", input, e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
+        },
+      }
+    }
+  }
+  fn display_goals(&self, selected: Option<Vec<u32>>) {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^161}", "-");
+    println_on_bg!("{:-^161}", " All goals ");
+    println_on_bg!("{:-^161}", "-");
+    println_on_bg!("{:->5} | {:-<30} | {:-<120}", "ID", "Client ", "Goal ");
+    for g in &self.goals.clone() {
+      if !self.current_client_goals().iter().any(|cg| cg.id == g.id) 
+      && !self.current_client_goals().iter().any(|cg| cg.goal == g.goal ) {
+        let client = self.get_client_by_id(g.client_id).unwrap().full_name();
+        match selected.clone() {
+          None => println_on_bg!("{: >5} | {: <30} | {: <120}", g.id, client, g.goal),
+          Some(sel) => {
+            if sel.iter().any(|id| id == &g.id ) {
+              println_suc!("{: >5} | {: <30} | {: <120}", g.id, client, g.goal);
+            } else {
+              println_on_bg!("{: >5} | {: <30} | {: <120}", g.id, client, g.goal);
+            }
+          }
+        }
+      }
+    }
+    println_on_bg!("{:-^161}", "-");
+  }
+  fn display_goal(&self) {
+    let g = self.current_goal().unwrap();
+    let client = self.get_client_by_id(g.client_id).unwrap().full_name();
+
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^161}", "-");
+    let heading = format!(" Goal for {} ", client);
+    println_on_bg!("{:-^161}", heading);
+    println_on_bg!("{:-^161}", "-");
+    println_on_bg!("{:->5} | {:-<120}", " ID", " Goal ");
+    println_on_bg!("{: >5} | {: <120}", g.id, g.goal);
+    println_on_bg!("{:-^161}", "-");
+  }
+  fn current_client_goals(&self) -> Vec<&Goal> {
+    self.goals.iter().filter(|g| g.client_id == self.foreign_key["current_client_id"] ).collect()
+  }
+  fn display_current_client_goals(&self, selected: Option<Vec<u32>>) {
+    let client = self.current_client();
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^161}", "-");
+    let heading = format!(" All goals for {} ", client.full_name());
+    println_on_bg!("{:-^161}", heading);
+    println_on_bg!("{:-^161}", "-");
+    println_on_bg!("{:->5} | {:-<120}", " ID", "Goal ");
+    for g in &self.current_client_goals() {
+      match selected.clone() {
+        None => println_on_bg!("{: >5} | {: <120}", g.id, g.goal),
+        Some(sel) => {
+          if sel.iter().any(|id| id == &g.id ) {
+            println_suc!("{: >5} | {: <120}", g.id, g.goal);
+          } else {
+            println_on_bg!("{: >5} | {: <120}", g.id, g.goal);
+          }
+        }
+      }
+    }
+    println_on_bg!("{:-^161}", "-");
+
+  }
+  fn create_get_goal(&mut self) -> Option<Goal> {
+    let goal_option = 'goal: loop {
+      let goal_string = loop {
+        let mut subject_choice = String::new();
+        println_inst!("Enter the client's goal.");
+        let subject_attempt = io::stdin().read_line(&mut subject_choice);
+        match subject_attempt {
+          Ok(_) => match subject_choice.to_ascii_lowercase().trim() {
+            "quit" | "q" => break 'goal None,
+            _ => break String::from(subject_choice.trim()),
+          }
+          Err(e) => {
+            println_err!("Failed to read line: {}", e);
+            continue;
+          }
+        };
+      };
+      let goal_attempt = self.generate_unique_new_goal(goal_string);
+      match goal_attempt {
+        Ok(goal) => break Some(goal),
+        Err(e) => {
+          println_err!("Goal could not be generated: {}.", e);
+          thread::sleep(time::Duration::from_secs(1));
+          break None;
+        }
+      }
+    };
+    match goal_option {
+      Some(g) => {
+        let new_goal = g.clone();
+        self.save_goal(g);
+        self.display_current_client_goals(None);
+        println_suc!("Goals updated.");
+        thread::sleep(time::Duration::from_secs(1));
+        Some(new_goal)
+      }
+      None => None,
+    }
+  }
+  fn generate_unique_new_goal(
+    &mut self,
+    goal_string: String,
+  ) -> Result<Goal, String> {
+
+    if goal_string.contains(" | ") {
+      return Err(String::from("Goal cannot contain ' | '."));
+    }
+
+    let id: u32 = self.goals.len() as u32 + 1;
+
+    let new_goal = Goal::new(
+      id,
+      self.foreign_key["current_client_id"],
+      goal_string,
+    );
+
+    let result = if self.goals.iter().any(|g| g == &new_goal) {
+      Err(format!(
+        "Goal already stored ({}).",
+        new_goal.goal,
+      ))
+    } else {
+      Ok(new_goal)
+    };
+
+    result
+  }
+  pub fn write_goals(&mut self) -> std::io::Result<()> {
+    let mut lines = String::from("##### goals #####\n");
+    for p in &self.goals {
+      lines.push_str(&p.to_string()[..]);
+    }
+    lines.push_str("##### goals #####");
+    let mut file = File::create(self.filepaths["goal_filepath"].clone()).unwrap();
+    file.write_all(lines.as_bytes()).unwrap();
+    Ok(())
+  }
+  pub fn save_goal(&mut self, goal: Goal) {
+    self.goals.push(goal);
+    self.write_goals().unwrap();
+  }
+  fn load_goal(&mut self, id: u32) -> std::io::Result<()> {
+    let current: Option<&Goal> = self.goals.iter().find(|c| c.id == id);
+    match current {
+      Some(c) => {
+        self.foreign_key.insert(String::from("current_goal_id"), c.id);
+        Ok(())
+      }
+      None => Err(Error::new(
+        ErrorKind::Other,
+        "Failed to read goal from filepath.",
+      )),
+    }
+  }
+  pub fn get_goal_by_id(&self, id: u32) -> Option<&Goal> {
+    self.goals.iter().find(|p| p.id == id)
+  }
+  pub fn get_goal_by_id_mut(&mut self, id: u32) -> Option<&mut Goal> {
+    self.goals.iter_mut().find(|p| p.id == id)
+  }
+  pub fn current_goal(&self) -> Option<&Goal> {
+    self.get_goal_by_id(self.foreign_key["current_goal_id"])
+  }
+  pub fn current_goal_mut(&mut self) -> Option<&mut Goal> {
+    self.get_goal_by_id_mut(self.foreign_key["current_goal_id"])
+  }
+  fn choose_edit_goal(&mut self) {
+    loop {
+      self.display_goal();
+      let input = loop {
+        let mut choice = String::new();
+        println_inst!("Enter new text for this goal, or 'CANCEL' to go back.");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.trim().to_string(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      match &input[..] {
+        "cancel" | "c" => {
+          break;
+        }
+        "delete" | "d" => {
+          self.choose_delete_goal();
+          break;
+        }
+        _ => (),
+      }
+      let confirm = loop {
+        let mut choice = String::new();
+        println_inst!("Change goal to '{}' ( Y / N )?", &input);
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.trim().to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      match &confirm[..] {
+        "no" | "n" => continue,
+        "yes" | "y" => {
+          self.current_goal_mut().unwrap().goal = input.to_string();
+          self.write_goals().unwrap();
+          break;
+        }
+        _ => {
+          println_err!("Please choose either 'yes' or 'no'.");
+          continue;
+        }
+      }
+    }
+  }
+  fn choose_delete_goal(&mut self) {
+    loop {
+      self.display_current_client_goals(None);
+      let input = loop {
+        let mut choice = String::new();
+        println_inst!("| {} | {}", "Enter ID to delete.", "CANCEL / C: cancel");
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            thread::sleep(time::Duration::from_millis(10000));
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+    
+      match input {
+        "cancel" | "c" => {
+          break;
+        },
+        _ => {
+          let id = match input.trim().parse::<u32>() {
+            Ok(num) => num,
+            Err(e) => {
+              println_err!("Could not read input as a number; try again ({}).", e);
+              continue;
+            }
+          };
+          match self.load_goal(id) {
+            Ok(_) => {
+              self.display_goal();
+              println_yel!("Are you sure you want to delete this goal?");
+              println_inst!("'YES'/'Y' to confirm.");
+              let mut confirm = String::new();
+              let input_attempt = io::stdin().read_line(&mut confirm);
+              let command = match input_attempt {
+                Ok(_) => confirm.trim().to_string(),
+                Err(e) => {
+                  println_err!("Failed to read input: {}", e);
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              };
+              match &command[..] {
+                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                  self.delete_current_goal();
+                  continue;
+                },
+                _ => {
+                  break;
+                },
+              }
+            },
+            Err(e) => {
+              println_err!("Unable to load goal with id {}: {}", input, e);
+              continue;
+            },
+          }
+        },
+      }
+    }
+  }
+  fn delete_goal(&mut self, g_id: u32) {
+    self.goals.retain(|g| g.id != g_id);
+    self.write_goals().unwrap();
+  }
+  fn delete_current_goal(&mut self) {
+    self.delete_goal(self.foreign_key["current_goal_id"]);
   }
 
   // note_days
@@ -12934,6 +13486,7 @@ mod tests {
       let filepaths: HashMap<String, String> = [
         (String::from("user_filepath"), String::from("some_random_blank_user_file_name.txt"),),
         (String::from("client_filepath"), String::from("some_random_blank_client_file_name.txt"),),
+        (String::from("goal_filepath"), String::from("some_random_blank_goal_file_name.txt"),),
         (String::from("collateral_filepath"), String::from("some_random_blank_collateral_file_name.txt"),),
         (String::from("general_collateral_filepath"), String::from("some_random_blank_general_collateral_file_name.txt"),),
         (String::from("pronouns_filepath"), String::from("some_random_blank_pronouns_file_name.txt"),),
@@ -13009,6 +13562,7 @@ mod tests {
         let filepaths: HashMap<String, String> = [
           (String::from("user_filepath"), String::from("test_load_user.txt"),),
           (String::from("client_filepath"), String::from("test_load_client.txt"),),
+          (String::from("goal_filepath"), String::from("test_load_goal.txt"),),
           (String::from("collateral_filepath"), String::from("test_load_collateral.txt"),),
           (String::from("general_collateral_filepath"), String::from("test_load_general_collateral.txt"),),
           (String::from("pronouns_filepath"), String::from("test_load_pronouns.txt"),),
@@ -13041,6 +13595,7 @@ mod tests {
     let filepaths: HashMap<String, String> = [
       (String::from("user_filepath"), String::from("test_user_new_instance.txt"),),
       (String::from("client_filepath"), String::from("test_client_new_instance.txt"),),
+      (String::from("goal_filepath"), String::from("test_goal_new_instance.txt"),),
       (String::from("collateral_filepath"), String::from("test_collateral_new_instance.txt"),),
       (String::from("general_collateral_filepath"), String::from("test_general_collateral_new_instance.txt"),),
       (String::from("pronouns_filepath"), String::from("test_pronouns_new_instance.txt"),),
@@ -13131,6 +13686,7 @@ mod tests {
     let filepaths: HashMap<String, String> = [
       (String::from("user_filepath"), String::from("test_user_current_pronouns.txt"),),
       (String::from("client_filepath"), String::from("test_client_current_pronouns.txt"),),
+      (String::from("goal_filepath"), String::from("test_goal_current_pronouns.txt"),),
       (String::from("collateral_filepath"), String::from("test_collateral_current_pronouns.txt"),),
       (String::from("general_collateral_filepath"), String::from("test_glonal_collateral_current_pronouns.txt"),),
       (String::from("pronouns_filepath"), String::from("test_pronouns_current_pronouns.txt"),),
@@ -13157,6 +13713,7 @@ mod tests {
     let filepaths: HashMap<String, String> = [
       (String::from("user_filepath"), String::from("test_user_updates_pronouns.txt"),),
       (String::from("client_filepath"), String::from("test_client_updates_pronouns.txt"),),
+      (String::from("goal_filepath"), String::from("test_goal_updates_pronouns.txt"),),
       (String::from("collateral_filepath"), String::from("test_collateral_updates_pronouns.txt"),),
       (String::from("general_collateral_filepath"), String::from("test_general_collateral_updates_pronouns.txt"),),
       (String::from("pronouns_filepath"), String::from("test_pronouns_updates_pronouns.txt"),),
