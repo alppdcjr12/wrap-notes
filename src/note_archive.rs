@@ -481,7 +481,10 @@ impl NoteArchive {
       Some(String::from("Kaleidoscope Family Solutions")),
       2,
       Formal,
-      false
+      false,
+      false,
+      false,
+      false,
     );
     let collateral_2 = Collateral::new(
       2,
@@ -491,7 +494,10 @@ impl NoteArchive {
       Some(String::from("Family Solutions, Inc.")),
       1,
       Formal,
-      false
+      false,
+      false,
+      false,
+      false,
     );
     let collaterals = vec![collateral_1, collateral_2];
     let p1 = Pronouns::new(
@@ -2738,7 +2744,6 @@ impl NoteArchive {
     println_on_bg!("{:-^10} | {:-<30} | {:-<70}", " ID ", "Name ", "Title ");
 
     for co in self.general_collaterals.clone() {
-
       println_on_bg!(
         "{: ^10} | {:-<30} | {:-<70}",
         co.id,
@@ -3650,6 +3655,91 @@ impl NoteArchive {
         }
       };
 
+      let primary_contact = match support_type {
+        Formal => false,
+        Natural => {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut primary_choice = String::new();
+          println_inst!("Is this collateral the primary contact for the family?");
+          println_inst!("YES / Y | NO / N");
+          let primary_attempt = io::stdin().read_line(&mut primary_choice);
+          match primary_attempt {
+            Ok(_) => match primary_choice.to_ascii_lowercase().trim() {
+              "yes" | "y" => true,
+              "no" | "n" => false,
+              "cancel" => return None,
+              _ => {
+                println_err!("Please choose YES or NO.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println_err!("Failed to read input: {}.", e);
+              continue;
+            }
+          }
+        }
+      };
+
+      let guardian = match support_type {
+        Formal => false,
+        Natural => {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut guardian_choice = String::new();
+          println_inst!("Is this collateral the youth's guardian?");
+          println_inst!("YES / Y | NO / N");
+          let guardian_attempt = io::stdin().read_line(&mut guardian_choice);
+          match guardian_attempt {
+            Ok(_) => match guardian_choice.to_ascii_lowercase().trim() {
+              "yes" | "y" => true,
+              "no" | "n" => false,
+              "cancel" => return None,
+              _ => {
+                println_err!("Please choose YES or NO.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println_err!("Failed to read input: {}.", e);
+              continue;
+            }
+          }
+        }
+      };
+
+      let care_plan_team = match support_type {
+        Formal => false,
+        Natural => {
+          if primary_contact || guardian {
+            true
+          } else {
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            let mut care_plan_team_choice = String::new();
+            println_inst!("Is this collateral on the youth's Care Plan Team?");
+            println_inst!("YES / Y | NO / N");
+            let care_plan_team_attempt = io::stdin().read_line(&mut care_plan_team_choice);
+            match care_plan_team_attempt {
+              Ok(_) => match care_plan_team_choice.to_ascii_lowercase().trim() {
+                "yes" | "y" => true,
+                "no" | "n" => false,
+                "cancel" => return None,
+                _ => {
+                  println_err!("Please choose YES or NO.");
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              }
+              Err(e) => {
+                println_err!("Failed to read input: {}.", e);
+                continue;
+              }
+            }
+          }
+        }
+      };
+
       let collateral_attempt = self.generate_unique_new_collateral(
         first_name,
         last_name,
@@ -3658,7 +3748,11 @@ impl NoteArchive {
         pronouns,
         support_type,
         indirect_support,
+        primary_contact,
+        guardian,
+        care_plan_team,
       );
+
       match collateral_attempt {
         Ok(collateral) => break collateral,
         Err(error_hash) => {
@@ -3908,6 +4002,91 @@ impl NoteArchive {
         }
       };
 
+      let primary_contact = match support_type {
+        Formal => false,
+        Natural => {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut primary_choice = String::new();
+          println_inst!("Is this collateral the primary contact for the family?");
+          println_inst!("YES / Y | NO / N");
+          let primary_attempt = io::stdin().read_line(&mut primary_choice);
+          match primary_attempt {
+            Ok(_) => match primary_choice.to_ascii_lowercase().trim() {
+              "yes" | "y" => true,
+              "no" | "n" => false,
+              "cancel" => return None,
+              _ => {
+                println_err!("Please choose YES or NO.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println_err!("Failed to read input: {}.", e);
+              continue;
+            }
+          }
+        }
+      };
+
+      let guardian = match support_type {
+        Formal => false,
+        Natural => {
+          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+          let mut guardian_choice = String::new();
+          println_inst!("Is this collateral the youth's guardian?");
+          println_inst!("YES / Y | NO / N");
+          let guardian_attempt = io::stdin().read_line(&mut guardian_choice);
+          match guardian_attempt {
+            Ok(_) => match guardian_choice.to_ascii_lowercase().trim() {
+              "yes" | "y" => true,
+              "no" | "n" => false,
+              "cancel" => return None,
+              _ => {
+                println_err!("Please choose YES or NO.");
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+            Err(e) => {
+              println_err!("Failed to read input: {}.", e);
+              continue;
+            }
+          }
+        }
+      };
+
+      let care_plan_team = match support_type {
+        Formal => false,
+        Natural => {
+          if primary_contact || guardian {
+            true
+          } else {
+            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+            let mut care_plan_team_choice = String::new();
+            println_inst!("Is this collateral on the youth's Care Plan Team?");
+            println_inst!("YES / Y | NO / N");
+            let care_plan_team_attempt = io::stdin().read_line(&mut care_plan_team_choice);
+            match care_plan_team_attempt {
+              Ok(_) => match care_plan_team_choice.to_ascii_lowercase().trim() {
+                "yes" | "y" => true,
+                "no" | "n" => false,
+                "cancel" => return None,
+                _ => {
+                  println_err!("Please choose YES or NO.");
+                  thread::sleep(time::Duration::from_secs(1));
+                  continue;
+                }
+              }
+              Err(e) => {
+                println_err!("Failed to read input: {}.", e);
+                continue;
+              }
+            }
+          }
+        }
+      };
+
       let collateral_attempt = self.generate_unique_new_general_collateral(
         first_name,
         last_name,
@@ -3916,7 +4095,11 @@ impl NoteArchive {
         pronouns,
         support_type,
         indirect_support,
+        primary_contact,
+        guardian,
+        care_plan_team,
       );
+      
       match collateral_attempt {
         Ok(collateral) => break collateral,
         Err(error_hash) => {
@@ -3978,6 +4161,9 @@ impl NoteArchive {
     pronouns: u32,
     support_type: SupportType,
     indirect_support: bool,
+    primary_contact: bool,
+    guardian: bool,
+    care_plan_team: bool,
   ) -> Result<Collateral, HashMap<String, u32>> {
 
     if first_name.contains(" | ") || last_name.contains(" | ") || title.contains(" | ") {
@@ -3997,7 +4183,19 @@ impl NoteArchive {
 
     match self.collateral_dup_id_option(&first_name, &last_name, &title, &institution) {
       Some(match_id) => Err([(String::from("duplicate"), match_id)].iter().cloned().collect::<HashMap<String, u32>>()),
-      None => Ok(Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support))
+      None => Ok(Collateral::new(
+        id,
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+        support_type,
+        indirect_support,
+        primary_contact,
+        guardian,
+        care_plan_team,
+      ))
     }
 
   }
@@ -4010,6 +4208,9 @@ impl NoteArchive {
     pronouns: u32,
     support_type: SupportType,
     indirect_support: bool,
+    primary_contact: bool,
+    guardian: bool,
+    care_plan_team: bool,
   ) -> Result<Collateral, HashMap<String, u32>> {
 
     if first_name.contains(" | ") || last_name.contains(" | ") || title.contains(" | ") {
@@ -4029,7 +4230,19 @@ impl NoteArchive {
 
     match self.general_collateral_dup_id_option(&first_name, &last_name, &title, &institution) {
       Some(match_id) => Err([(String::from("duplicate"), match_id)].iter().cloned().collect::<HashMap<String, u32>>()),
-      None => Ok(Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support))
+      None => Ok(Collateral::new(
+        id,
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+        support_type,
+        indirect_support,
+        primary_contact,
+        guardian,
+        care_plan_team,
+      ))
     }
 
   }
@@ -4084,8 +4297,35 @@ impl NoteArchive {
         "false" => false,
         _ => panic!("Invalid 'indirect support boolean' value stored in file."),
       };
+      let primary_contact = match &values[8][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'primary_contact boolean' value stored in file."),
+      };
+      let guardian = match &values[9][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'guardian boolean' value stored in file."),
+      };
+      let care_plan_team = match &values[10][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'care plan team boolean' value stored in file."),
+      };
 
-      let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
+      let c = Collateral::new(
+        id,
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+        support_type,
+        indirect_support,
+        primary_contact,
+        guardian,
+        care_plan_team
+      );
       collaterals.push(c);
     }
     Ok(collaterals)
@@ -4141,8 +4381,35 @@ impl NoteArchive {
         "false" => false,
         _ => panic!("Invalid 'indirect support boolean' value stored in file."),
       };
+      let primary_contact = match &values[8][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'primary_contact boolean' value stored in file."),
+      };
+      let guardian = match &values[9][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'guardian boolean' value stored in file."),
+      };
+      let care_plan_team = match &values[10][..] {
+        "true" => true,
+        "false" => false,
+        _ => panic!("Invalid 'care plan team boolean' value stored in file."),
+      };
 
-      let c = Collateral::new(id, first_name, last_name, title, institution, pronouns, support_type, indirect_support);
+      let c = Collateral::new(
+        id,
+        first_name,
+        last_name,
+        title,
+        institution,
+        pronouns,
+        support_type,
+        indirect_support,
+        primary_contact,
+        guardian,
+        care_plan_team
+      );
       general_collaterals.push(c);
     }
     Ok(general_collaterals)

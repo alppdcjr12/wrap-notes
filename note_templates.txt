@@ -1,6 +1,5 @@
 ##### note_templates #####
 2 | Debrief | what is up(---ndd---). What whaaat. And another one (---a---) for the sake of (---pu2---). | 1 | 
-3 | Sent Email | (---pc4---)attitude is pretty bad.. | 1 | 
-4 | Sent Email | (---pc4---) attitude is crap.. | 1 | 
-5 | Sent Email | (---pc4---)attitude is meh. | 1 | 
+3 | Sent Email | (---pc4---)is a client. | 1 | 
+4 | Sent Email | (---pc4---)attitude is wonderful! | 1 | 
 ##### note_templates #####

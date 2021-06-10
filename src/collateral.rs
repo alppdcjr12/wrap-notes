@@ -10,6 +10,9 @@ pub struct Collateral {
   pub pronouns: u32,
   pub support_type: SupportType,
   pub indirect_support: bool,
+  pub primary_contact: bool,
+  pub guardian: bool,
+  pub care_plan_team: bool,
 }
 
 impl PartialEq for Collateral {
@@ -50,7 +53,10 @@ impl Collateral {
     pronouns: u32,
     support_type: SupportType,
     indirect_support: bool,
-    ) -> Collateral {
+    primary_contact: bool,
+    guardian: bool,
+    care_plan_team: bool,
+  ) -> Collateral {
     Collateral {
       id,
       first_name,
@@ -60,6 +66,9 @@ impl Collateral {
       pronouns,
       support_type,
       indirect_support,
+      primary_contact,
+      guardian,
+      care_plan_team,
     }
   }
   pub fn full_name(&self) -> String {
@@ -138,11 +147,23 @@ impl fmt::Display for Collateral {
       true => "true",
       false => "false",
     };
+    let primary_contact = match self.primary_contact {
+      true => "true",
+      false => "false",
+    };
+    let guardian = match self.guardian {
+      true => "true",
+      false => "false",
+    };
+    let care_plan_team = match self.care_plan_team {
+      true => "true",
+      false => "false",
+    };
     let first_name = self.first_name.replace(" | ", " / ");
     let last_name = self.last_name.replace(" | ", " / ");
     write!(
       f,
-      "{} | {} | {} | {} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}\n",
       &self.id,
       &first_name[..],
       &last_name[..],
@@ -151,6 +172,9 @@ impl fmt::Display for Collateral {
       &self.pronouns,
       sup_type,
       indirect,
+      primary_contact,
+      guardian,
+      care_plan_team,
     )
   }
 }
@@ -169,6 +193,9 @@ mod tests {
       Some(String::from("Riverside Community Care")),
       2,
       Natural,
+      false,
+      false,
+      false,
       false,
     );
     assert_eq!(c1.id, 1);

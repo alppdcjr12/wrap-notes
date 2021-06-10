@@ -6,4 +6,5 @@
 5 | Frank | Lee | 2010-6-25 | 1 | 
 6 | Steve | Johnson | 2013-5-31 | 1 | 5#5#4#4#6#6
 7 | Steven | Paulson | 2010-1-5 | 1 | 
+8 | Bill | Johnson | 2011-5-5 | 1 | 
 ##### clients #####
