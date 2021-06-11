@@ -2828,32 +2828,53 @@ impl NoteArchive {
       Natural => "Y",
       Formal => "N",
     };
-    let display_indirect = match current.indirect_support {
+    let display_direct = match current.indirect_support {
       true => "N",
       false => "Y",
     };
 
+
+    let heading = format!(" {} ", current.full_name_and_title());
+
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", " View collateral record ");
+    println_on_bg!("{:-^178}", heading);
     println_on_bg!("{:-^178}", "-");
+    if current.primary_contact {
+      println_on_bg!("{: <178}", "*Primary contact");
+    }
+    if current.guardian {
+      println_on_bg!("{: <178}", "*Guardian");
+    }
+    if current.care_plan_team {
+      println_on_bg!("{: <178}", "*Care Plan Team member");
+    }
+    if current.primary_contact || current.guardian || current.care_plan_team {
+      println_on_bg!("{:-^178}", "-");
+    }
     println_on_bg!(
       "{:-^162} | {:-^13}",
       "-", "Support type",
     );
     println_on_bg!(
       "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
-      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
+      " Role/Title ",
+      " First name ",
+      " Last name ",
+      " Institution ",
+      " Nat ",
+      " Dir ",
+      " Pronouns ",
     );
     println_on_bg!(
       "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      current.title,
       current.first_name,
       current.last_name,
-      display_pronouns,
-      current.title,
       display_inst,
       display_type,
-      display_indirect,
+      display_direct,
+      display_pronouns,
     );
     println_on_bg!("{:-^178}", "-");
     println_inst!("| {} | {} | {} | {}", "EDIT / E: edit collateral", "CLIENT / C: add client ", "DELETE: delete collateral", "QUIT / Q: quit menu");
@@ -2932,10 +2953,34 @@ impl NoteArchive {
       true => ("N", "DIRECT: Change to direct support (e.g., 'for youth')"),
       false => ("Y", "INDIRECT: Change to indirect support (e.g., not 'for youth')"),
     };
+    let opposite_primary_command = match current.primary_contact {
+      true => "PRIMARY: remove 'primary contact' label",
+      false => "PRIMARY: add 'primary contact' label",
+    };
+    let opposite_guardian_command = match current.guardian {
+      true => "GUARDIAN: remove 'guardian' label",
+      false => "GUARDIAN: add 'guardian' label",
+    };
+    let opposite_cpt_command = match current.care_plan_team {
+      true => "CPT: remove 'Care Plan Team member' label",
+      false => "CPT: add 'Care Plan Team member' label",
+    };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^178}", "-");
     println_on_bg!("{:-^178}", " Edit collateral record ");
     println_on_bg!("{:-^178}", "-");
+    if current.primary_contact {
+      println_on_bg!("{: <178}", "*Primary contact");
+    }
+    if current.guardian {
+      println_on_bg!("{: <178}", "*Guardian");
+    }
+    if current.care_plan_team {
+      println_on_bg!("{: <178}", "*Care Plan Team member");
+    }
+    if current.primary_contact || current.guardian || current.care_plan_team {
+      println_on_bg!("{:-^178}", "-");
+    }
     println_on_bg!(
       "{:-^162} | {:-^13}",
       "-", "Support type",
@@ -2967,6 +3012,12 @@ impl NoteArchive {
       "| {} | {}",
       opposite_type_command,
       opposite_indirect_command,
+    );
+    println_inst!(
+      "| {} | {} | {}",
+      opposite_primary_command,
+      opposite_guardian_command,
+      opposite_cpt_command,
     );
     println_on_bg!("{:-^178}", "-");
   }
@@ -4002,91 +4053,6 @@ impl NoteArchive {
         }
       };
 
-      let primary_contact = match support_type {
-        Formal => false,
-        Natural => {
-          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-          let mut primary_choice = String::new();
-          println_inst!("Is this collateral the primary contact for the family?");
-          println_inst!("YES / Y | NO / N");
-          let primary_attempt = io::stdin().read_line(&mut primary_choice);
-          match primary_attempt {
-            Ok(_) => match primary_choice.to_ascii_lowercase().trim() {
-              "yes" | "y" => true,
-              "no" | "n" => false,
-              "cancel" => return None,
-              _ => {
-                println_err!("Please choose YES or NO.");
-                thread::sleep(time::Duration::from_secs(1));
-                continue;
-              }
-            }
-            Err(e) => {
-              println_err!("Failed to read input: {}.", e);
-              continue;
-            }
-          }
-        }
-      };
-
-      let guardian = match support_type {
-        Formal => false,
-        Natural => {
-          print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-          let mut guardian_choice = String::new();
-          println_inst!("Is this collateral the youth's guardian?");
-          println_inst!("YES / Y | NO / N");
-          let guardian_attempt = io::stdin().read_line(&mut guardian_choice);
-          match guardian_attempt {
-            Ok(_) => match guardian_choice.to_ascii_lowercase().trim() {
-              "yes" | "y" => true,
-              "no" | "n" => false,
-              "cancel" => return None,
-              _ => {
-                println_err!("Please choose YES or NO.");
-                thread::sleep(time::Duration::from_secs(1));
-                continue;
-              }
-            }
-            Err(e) => {
-              println_err!("Failed to read input: {}.", e);
-              continue;
-            }
-          }
-        }
-      };
-
-      let care_plan_team = match support_type {
-        Formal => false,
-        Natural => {
-          if primary_contact || guardian {
-            true
-          } else {
-            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-            let mut care_plan_team_choice = String::new();
-            println_inst!("Is this collateral on the youth's Care Plan Team?");
-            println_inst!("YES / Y | NO / N");
-            let care_plan_team_attempt = io::stdin().read_line(&mut care_plan_team_choice);
-            match care_plan_team_attempt {
-              Ok(_) => match care_plan_team_choice.to_ascii_lowercase().trim() {
-                "yes" | "y" => true,
-                "no" | "n" => false,
-                "cancel" => return None,
-                _ => {
-                  println_err!("Please choose YES or NO.");
-                  thread::sleep(time::Duration::from_secs(1));
-                  continue;
-                }
-              }
-              Err(e) => {
-                println_err!("Failed to read input: {}.", e);
-                continue;
-              }
-            }
-          }
-        }
-      };
-
       let collateral_attempt = self.generate_unique_new_general_collateral(
         first_name,
         last_name,
@@ -4095,9 +4061,9 @@ impl NoteArchive {
         pronouns,
         support_type,
         indirect_support,
-        primary_contact,
-        guardian,
-        care_plan_team,
+        false, // general collateral will never be primary contact, guardian or care plan team member
+        false, // general collateral will never be primary contact, guardian or care plan team member
+        false, // general collateral will never be primary contact, guardian or care plan team member
       );
       
       match collateral_attempt {
@@ -4845,6 +4811,27 @@ impl NoteArchive {
             continue;
           } else {
             self.current_collateral_mut().indirect_support = false;
+          }
+        },
+        "primary" => {
+          if self.current_collateral().primary_contact == false {
+            self.current_collateral_mut().primary_contact = true;
+          } else {
+            self.current_collateral_mut().primary_contact = false;
+          }
+        },
+        "guardian" => {
+          if self.current_collateral().guardian == false {
+            self.current_collateral_mut().guardian = true;
+          } else {
+            self.current_collateral_mut().guardian = false;
+          }
+        },
+        "cpt" | "care plan team" | "care plan team member" => {
+          if self.current_collateral().care_plan_team == false {
+            self.current_collateral_mut().care_plan_team = true;
+          } else {
+            self.current_collateral_mut().care_plan_team = false;
           }
         },
         _ => {
@@ -11245,64 +11232,6 @@ impl NoteArchive {
                     let id_vec = vec![];
                     self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
                   },
-                  Action => {
-                    let mut fill_ins: Vec<usize> = vec![];
-                    let final_blank_string = loop {
-                      let blank_id = match Self::select_blank_fill_in(Action, fill_ins.clone()) {
-                        Some(s) => s,
-                        None => {
-                          let fill_in_objects = fill_ins.iter().map(|fi| ActionFillIn::iterator_of_blanks().nth(*fi).unwrap() );
-                          let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
-                          break if fill_in_strings.len() > 1 {
-                            format!(
-                              "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
-                              " and ",
-                              fill_in_strings[fill_in_strings.len()-1],
-                            )
-                          } else {
-                            fill_in_strings[0].clone()
-                          };
-                        }
-                      };
-                      if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
-                        fill_ins.push(blank_id);
-                      } else {
-                        fill_ins.retain(|fi| fi != &blank_id )
-                      }
-                    };
-                    let id_vec = vec![];
-                    self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
-                  },
-                  Phrase => {
-                    let mut fill_ins: Vec<usize> = vec![];
-                    let final_blank_string = loop {
-                      let blank_id = match Self::select_blank_fill_in(Phrase, fill_ins.clone()) {
-                        Some(s) => s,
-                        None => {
-                          let fill_in_objects = fill_ins.iter().map(|fi| PhraseFillIn::iterator_of_blanks().nth(*fi).unwrap() );
-                          let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
-                          break if fill_in_strings.len() > 1 {
-                            format!(
-                              "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
-                              " and ",
-                              fill_in_strings[fill_in_strings.len()-1],
-                            )
-                          } else {
-                            fill_in_strings[0].clone()
-                          };
-                        }
-                      };
-                      if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
-                        fill_ins.push(blank_id);
-                      } else {
-                        fill_ins.retain(|fi| fi != &blank_id )
-                      }
-                    };
-                    let id_vec = vec![];
-                    self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, id_vec));
-                  },
                   CustomBlank => {
                     loop {
                       let mut custom_choice = String::new();
@@ -11406,15 +11335,7 @@ impl NoteArchive {
     }
   }
   fn display_blank_fill_in(blank_type: Blank, selected: Option<Vec<usize>>) {
-    let display_category = match blank_type {
-      InternalDocument => String::from("internal document"),
-      ExternalDocument => String::from("external document"),
-      InternalMeeting => String::from("Wraparound meeting title"),
-      ExternalMeeting => String::from("external meeting title"),
-      Action => String::from("general action"),
-      Phrase => String::from("other phrase"),
-      _ => panic!("Incompatible blank fill in string passed to fn 'display_blank_fill_in'")
-    };
+    let display_category = format!("{}", blank_type.clone());
     let fill_ins: Vec<String> = match blank_type {
       InternalDocument => {
         InternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
@@ -11428,12 +11349,6 @@ impl NoteArchive {
       ExternalMeeting => {
         ExternalMeetingFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
       },
-      Action => {
-        ActionFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
-      },
-      Phrase => {
-        PhraseFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
-      },
       _ => panic!("Incompatible blank fill in string passed to fn 'display_blank_fill_in'")
     };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -11445,13 +11360,13 @@ impl NoteArchive {
       match selected.clone() {
         Some(ids) => {
           if ids.iter().any(|id| id == &i ) {
-            println_suc!("{:-^10} | {:-^100}", i, fi);
+            println_suc!("{:-^10} | {: <100}", i, fi);
           } else {
-            println_on_bg!("{:-^10} | {:-^100}", i, fi);
+            println_on_bg!("{:-^10} | {: <100}", i, fi);
           }
         },
         None => {
-          println_on_bg!("{:-^10} | {:-^100}", i, fi);
+          println_on_bg!("{:-^10} | {: <100}", i, fi);
         }
       }
     }
@@ -11539,27 +11454,7 @@ impl NoteArchive {
             }
           }
         },
-        Action => {
-          match ActionFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        Phrase => {
-          match PhraseFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        _ => panic!("Incompatible fill in type passed to fn 'choose_phrase_flll_in'"),
+        _ => panic!("Incompatible fill in type passed to fn 'select_blank_flll_in'"),
       };
       return Some(selected_content)
     }
@@ -11622,26 +11517,6 @@ impl NoteArchive {
         },
         ExternalDocument => {
           match ExternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => format!("{}", b),
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        Action => {
-          match ActionFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => format!("{}", b),
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        Phrase => {
-          match PhraseFillIn::iterator_of_blanks().nth(chosen_id) {
             Some(b) => format!("{}", b),
             None => {
               println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
@@ -12708,64 +12583,6 @@ impl NoteArchive {
               let id_vec = vec![];
               n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
             },
-            Action => {
-              let mut fill_ins: Vec<usize> = vec![];
-              let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(Action, fill_ins.clone()) {
-                  Some(s) => s,
-                  None => {
-                    let fill_in_objects = fill_ins.iter().map(|fi| ActionFillIn::iterator_of_blanks().nth(*fi).unwrap() );
-                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
-                    break if fill_in_strings.len() > 1 {
-                      format!(
-                        "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
-                        " and ",
-                        fill_in_strings[fill_in_strings.len()-1],
-                      )
-                    } else {
-                      fill_in_strings[0].clone()
-                    };
-                  }
-                };
-                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
-                  fill_ins.push(blank_id);
-                } else {
-                  fill_ins.retain(|fi| fi != &blank_id )
-                }
-              };
-              let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
-            },
-            Phrase => {
-              let mut fill_ins: Vec<usize> = vec![];
-              let final_blank_string = loop {
-                let blank_id = match Self::select_blank_fill_in(Phrase, fill_ins.clone()) {
-                  Some(s) => s,
-                  None => {
-                    let fill_in_objects = fill_ins.iter().map(|fi| PhraseFillIn::iterator_of_blanks().nth(*fi).unwrap() );
-                    let fill_in_strings = fill_in_objects.map(|fo| format!("{}", fo) ).collect::<Vec<String>>();
-                    break if fill_in_strings.len() > 1 {
-                      format!(
-                        "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
-                        " and ",
-                        fill_in_strings[fill_in_strings.len()-1],
-                      )
-                    } else {
-                      fill_in_strings[0].clone()
-                    };
-                  }
-                };
-                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
-                  fill_ins.push(blank_id);
-                } else {
-                  fill_ins.retain(|fi| fi != &blank_id )
-                }
-              };
-              let id_vec = vec![];
-              n.blanks.insert(i, (b.clone(), final_blank_string, id_vec));
-            },
             CustomBlank => {
               loop {
                 let mut custom_choice = String::new();
@@ -12867,108 +12684,16 @@ impl NoteArchive {
     Some(note_id)
     
   }
-  fn display_blank_menus() {
-
-    let mut internal_docs = InternalDocumentFillIn::iterator_of_blanks();
-    let mut external_docs = ExternalDocumentFillIn::iterator_of_blanks();
-    let mut internal_meetings = InternalMeetingFillIn::iterator_of_blanks();
-    let mut external_meetings = ExternalMeetingFillIn::iterator_of_blanks();
-    let mut actions = ActionFillIn::iterator_of_blanks();
-    let mut phrases = PhraseFillIn::iterator_of_blanks();
-
-    let mut row_vec: Vec<Vec<String>> = vec![];
-
-    let mut idx = 0;
-    loop {
-      let this_id = internal_docs.nth(0);
-      let this_ed = external_docs.nth(0);
-      let this_im = internal_meetings.nth(0);
-      let this_em = external_meetings.nth(0);
-      let this_a = actions.nth(0);
-      let this_p = phrases.nth(0);
+  fn all_fill_in_types() -> Vec<String> {
+    vec![
       
-      match (
-        this_id,
-        this_ed,
-        this_im,
-        this_em,
-        this_a,
-        this_p,
-      ) {
-        (None, None, None, None, None, None) => break,
-        _ => (),
-      }
-
-      let mut internal_docs_string = String::new();
-      match this_id {
-        Some(val) => internal_docs_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
-        None => (),
-      }
-      let mut external_docs_string = String::new();
-      match this_ed {
-        Some(val) => external_docs_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
-        None => (),
-      }
-      let mut internal_meetings_string = String::new();
-      match this_im {
-        Some(val) => internal_meetings_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
-        None => (),
-      }
-      let mut external_meetings_string = String::new();
-      match this_em {
-        Some(val) => external_meetings_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
-        None => (),
-      }
-      let mut actions_string = String::new();
-      match this_a {
-        Some(val) => actions_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
-        None => (),
-      }
-      let mut phrases_string = String::new();
-      match this_p {
-        Some(val) => phrases_string = format!("[{}{}] {}", val.alpha_index(), idx, val),
-        None => (),
-      }
-      row_vec.push(vec![internal_docs_string, external_docs_string, internal_meetings_string, external_meetings_string, actions_string, phrases_string]);
-      idx += 1;
-    }
-
-    let mut rows: HashMap<u32, Vec<String>> = HashMap::new();
-    let mut row_idx = 1;
-    let n_chars = 20;
-    for s_vec in row_vec {
-      if !s_vec.iter().any(|s| s.chars().count() > n_chars ) {
-        rows.insert(row_idx, s_vec);
-      } else {
-        let mut new_vecs: Vec<Vec<String>> = vec![];
-        // get the number of vectors needed by finding how many 20-char segments are in the longest string
-        let chars_in_line = s_vec.iter().max_by(|s1, s2| s1.chars().count().cmp(&s2.chars().count()) ).unwrap().chars().count(); 
-        let number_of_vecs = chars_in_line / n_chars + if chars_in_line % n_chars != 0 { 1 } else { 0 };
-        for vec_i in 0..number_of_vecs {
-          let idx1 = vec_i * n_chars;
-          let idx2 = (vec_i * n_chars) + n_chars;
-          let new_vec: Vec<String> = s_vec.iter().map(|s|
-            s.chars()
-              .enumerate()
-              .filter(|(i, _)| i >= &idx1 && i < &idx2  )
-              .map(|(_, c)| c.to_string() )
-              .collect::<Vec<String>>()
-              .join("")
-          ).collect();
-          new_vecs.push(new_vec);
-        }
-        // println_on_bg!("{:?}", new_vecs);
-        for n_vec in new_vecs {
-          rows.insert(row_idx, n_vec);
-          row_idx += 1;
-        }
-      }
-      // println_on_bg!("{:?}", &rows);
-    }
+    ]
+  }
+  fn display_blank_menus() {
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^195}", "-");
-    println_on_bg!("{:-^195}", " All fill-ins for blanks ");
+    println_on_bg!("{:-^195}", " All default fill-ins for blanks ");
     println_on_bg!("{:-^195}", "-");
     println_on_bg!(
       "{:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25} | {:-^25}",
@@ -13010,9 +12735,16 @@ impl NoteArchive {
       "CANCEL / C: Cancel",
     );
   }
+  fn get_blank_type() -> Blank {
+
+
+
+  }
   fn get_blank_from_menu() -> Option<(Blank, String)> {
     'main: loop {
-      NoteArchive::display_blank_menus();
+      match self.choose_blanks_empty() {
+        
+      }
 
       let mut buffer = String::new();
       let idx_attempt = io::stdin().read_line(&mut buffer);
@@ -13109,14 +12841,6 @@ impl NoteArchive {
               },
               "em" => match ExternalMeetingFillIn::iterator_of_blanks().nth(num) {
                 Some(b) => break Some((ExternalMeeting, format!("{}", b))),
-                None => break None,
-              },
-              "a" => match ActionFillIn::iterator_of_blanks().nth(num) {
-                Some(b) => break Some((Action, format!("{}", b))),
-                None => break None,
-              },
-              "p" => match PhraseFillIn::iterator_of_blanks().nth(num) {
-                Some(b) => break Some((Phrase, format!("{}", b))),
                 None => break None,
               },
               _ => {

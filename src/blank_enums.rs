@@ -349,6 +349,7 @@ pub enum AppearanceFillIn {
   Tranquil,
   Unkempt,
   Upset,
+  OtherAppearance,
 }
 
 use AppearanceFillIn::{
@@ -390,6 +391,7 @@ use AppearanceFillIn::{
   Tranquil,
   Unkempt,
   Upset,
+  OtherAppearance,
 };
 
 impl AppearanceFillIn {
@@ -433,6 +435,7 @@ impl AppearanceFillIn {
       Tranquil,
       Unkempt,
       Upset,
+      OtherAppearance,
     ].iter().copied())
   }
 }
@@ -487,6 +490,7 @@ impl fmt::Display for AppearanceFillIn {
       Tranquil => "tranquil",
       Unkempt => "unkempt",
       Upset => "upset",
+      OtherAppearance => "other appearance/affect",
     };
     write!(f, "{}", display_string)
   }
@@ -503,18 +507,19 @@ pub enum SupportedParentFillIn {
   CompletedPaperworkWith,
   ElicitedChangeTalkFrom,
   ExplainedParentingConceptsTo,
-  ExplainedTheRoleOfProviders,
+  ExplainedTheRoleOfProvidersTo,
   GaveFeedbackTo,
-  IdentifiedCopingSkills,
+  IdentifiedCopingSkillsWith,
   IntroducedConceptsTo,
   MadeRecommendationsTo,
   ProvidedPsychoeducationTo,
   Reflected,
   EmpathizedWith,
-  SharedParentingPerspectives,
+  SharedParentingPerspectivesWith,
   SuggestedResourcesTo,
   Supported,
   Validated,
+  OtherSupportedParent,
 }
 
 use SupportedParentFillIn::{
@@ -539,6 +544,7 @@ use SupportedParentFillIn::{
   SuggestedResourcesTo,
   Supported,
   Validated,
+  OtherSupportedParent,
 };
 
 impl SupportedParentFillIn {
@@ -565,6 +571,7 @@ impl SupportedParentFillIn {
       SuggestedResourcesTo,
       Supported,
       Validated,
+      OtherSupportedParent,
     ].iter().copied())
   }
 }
@@ -581,34 +588,35 @@ impl BlankIterator for SupportedParentFillIn {
 impl fmt::Display for SupportedParentFillIn {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display_string = match self {
-  AdvocatedFor => "advocated for",
-  AffirmedSupport => "affirmed",
-  Applauded => "applauded",
-  AskedOpenEndedQuestionsOf => "asked open ended questions of",
-  CheeredOn => "cheered on",
-  CompletedAnExerciseWith => "completed an exercise with",
-  CompletedPaperworkWith => "completed paperwork with",
-  ElicitedChangeTalkFrom => "elicited change talk from",
-  ExplainedParentingConceptsTo => "explained parenting concepts to",
-  ExplainedTheRoleOfProvidersTo => "explained the role of providers to",
-  GaveFeedbackTo => "gave feedback to",
-  IdentifiedCopingSkillsWith => "identified coping skills with",
-  IntroducedConceptsTo => "introduced concepts to",
-  MadeRecommendationsTo => "made recommendations to",
-  ProvidedPsychoeducationTo => "provided psychoeducation to",
-  Reflected => "reflected",
-  EmpathizedWith => "empathized with",
-  SharedParentingPerspectivesWith => "shared parenting perspectives with",
-  SuggestedResourcesTo => "suggested resources to",
-  Supported => "supported",
-  Validated => "validated",
+      AdvocatedFor => "advocated for",
+      AffirmedSupport => "affirmed",
+      Applauded => "applauded",
+      AskedOpenEndedQuestionsOf => "asked open ended questions of",
+      CheeredOn => "cheered on",
+      CompletedAnExerciseWith => "completed an exercise with",
+      CompletedPaperworkWith => "completed paperwork with",
+      ElicitedChangeTalkFrom => "elicited change talk from",
+      ExplainedParentingConceptsTo => "explained parenting concepts to",
+      ExplainedTheRoleOfProvidersTo => "explained the role of providers to",
+      GaveFeedbackTo => "gave feedback to",
+      IdentifiedCopingSkillsWith => "identified coping skills with",
+      IntroducedConceptsTo => "introduced concepts to",
+      MadeRecommendationsTo => "made recommendations to",
+      ProvidedPsychoeducationTo => "provided psychoeducation to",
+      Reflected => "reflected",
+      EmpathizedWith => "empathized with",
+      SharedParentingPerspectivesWith => "shared parenting perspectives with",
+      SuggestedResourcesTo => "suggested resources to",
+      Supported => "supported",
+      Validated => "validated",
+      OtherSupportedParent => "other supported parent",
     };
     write!(f, "{}", display_string)
   }
 }
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
-pub enum ParentingSkillsFillIn {
+pub enum ParentingSkillFillIn {
   AdvocacyForOnesChild,
   AffectManagement,
   Attunement,
@@ -639,9 +647,10 @@ pub enum ParentingSkillsFillIn {
   TraumaSensitivity,
   Validation,
   WorkingOnGoals,
+  OtherParentingSkill,
 }
 
-use ParentingSkillsFillIn::{
+use ParentingSkillFillIn::{
   AdvocacyForOnesChild,
   AffectManagement,
   Attunement,
@@ -672,10 +681,11 @@ use ParentingSkillsFillIn::{
   TraumaSensitivity,
   Validation,
   WorkingOnGoals,
+  OtherParentingSkill,
 };
 
-impl ParentingSkillsFillIn {
-  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ParentingSkillsFillIn>> {
+impl ParentingSkillFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ParentingSkillFillIn>> {
     Box::new([
       AdvocacyForOnesChild,
       AffectManagement ,
@@ -707,20 +717,21 @@ impl ParentingSkillsFillIn {
       TraumaSensitivity,
       Validation,
       WorkingOnGoals,
+      OtherParentingSkill,
     ].iter().copied())
   }
 }
 
-impl BlankIterator for ParentingSkillsFillIn {
+impl BlankIterator for ParentingSkillFillIn {
   fn fill_in_category(&self) -> String {
-    String::from("parenting skills")
+    String::from("parenting skill")
   }
   fn alpha_index(&self) -> String {
     String::from("ps")
   }
 }
 
-impl fmt::Display for ParentingSkillsFillIn {
+impl fmt::Display for ParentingSkillFillIn {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display_string = match self {
       AdvocacyForOnesChild => "advocacy for one's child",
@@ -753,6 +764,7 @@ impl fmt::Display for ParentingSkillsFillIn {
       TraumaSensitivity => "trauma sensitivity",
       Validation => "validation",
       WorkingOnGoals => "working on goals",
+      OtherParentingSkill => "other parenting skill",
     };
     write!(f, "{}", display_string)
   }
@@ -784,6 +796,7 @@ pub enum CarePlanningTopicFillIn {
   TheMostRecentCarePlanMeeting,
   UpcomingMeetings,
   YouthGoals,
+  OtherCarePlanningTopic,
 }
 
 use CarePlanningTopicFillIn::{
@@ -811,6 +824,7 @@ use CarePlanningTopicFillIn::{
   TheMostRecentCarePlanMeeting,
   UpcomingMeetings,
   YouthGoals,
+  OtherCarePlanningTopic,
 };
 
 impl CarePlanningTopicFillIn {
@@ -840,6 +854,7 @@ impl CarePlanningTopicFillIn {
       TheMostRecentCarePlanMeeting,
       UpcomingMeetings,
       YouthGoals,
+      OtherCarePlanningTopic,
     ].iter().copied())
   }
 }
@@ -880,6 +895,7 @@ impl fmt::Display for CarePlanningTopicFillIn {
       TheMostRecentCarePlanMeeting => "the most recent Care Plan Meeting",
       UpcomingMeetings => "upcoming meetings",
       YouthGoals => "youth goals",
+      OtherCarePlanningTopic => "other Care Planning topic",
     };
     write!(f, "{}", display_string)
   }
@@ -898,9 +914,9 @@ pub enum YouthTopicFillIn {
   CarePlanActionSteps,
   CaregiverInvolvement,
   ChallengingBehaviors,
-  Communication,
+  CommunicationYouthTopic,
   CommunityActivities,
-  CopingSkills,
+  CopingSkillsYouthTopic,
   CulturalIdentity,
   Defiance,
   Depression,
@@ -911,7 +927,7 @@ pub enum YouthTopicFillIn {
   EngagementWithServices,
   ExecutiveFunctioning,
   ExperienceOfPsychosis,
-  FamilyCulture,
+  FamilyCultureYouthTopic,
   FamilyDynamics,
   FamilyEnvironment,
   FrustrationTolerance,
@@ -954,6 +970,7 @@ pub enum YouthTopicFillIn {
   VocationalSkills,
   WeightGain,
   WeightLoss,
+  OtherYouthTopic,
 }
 
 use YouthTopicFillIn::{
@@ -968,9 +985,9 @@ use YouthTopicFillIn::{
   CarePlanActionSteps,
   CaregiverInvolvement,
   ChallengingBehaviors,
-  Communication,
+  CommunicationYouthTopic,
   CommunityActivities,
-  CopingSkills,
+  CopingSkillsYouthTopic,
   CulturalIdentity,
   Defiance,
   Depression,
@@ -981,7 +998,7 @@ use YouthTopicFillIn::{
   EngagementWithServices,
   ExecutiveFunctioning,
   ExperienceOfPsychosis,
-  FamilyCulture,
+  FamilyCultureYouthTopic,
   FamilyDynamics,
   FamilyEnvironment,
   FrustrationTolerance,
@@ -1024,6 +1041,7 @@ use YouthTopicFillIn::{
   VocationalSkills,
   WeightGain,
   WeightLoss,
+  OtherYouthTopic,
 };
 
 impl YouthTopicFillIn {
@@ -1040,9 +1058,9 @@ impl YouthTopicFillIn {
       CarePlanActionSteps,
       CaregiverInvolvement,
       ChallengingBehaviors,
-      Communication,
+      CommunicationYouthTopic,
       CommunityActivities,
-      CopingSkills,
+      CopingSkillsYouthTopic,
       CulturalIdentity,
       Defiance,
       Depression,
@@ -1053,7 +1071,7 @@ impl YouthTopicFillIn {
       EngagementWithServices,
       ExecutiveFunctioning,
       ExperienceOfPsychosis,
-      FamilyCulture,
+      FamilyCultureYouthTopic,
       FamilyDynamics,
       FamilyEnvironment,
       FrustrationTolerance,
@@ -1096,6 +1114,7 @@ impl YouthTopicFillIn {
       VocationalSkills,
       WeightGain,
       WeightLoss,
+      OtherYouthTopic,
     ].iter().copied())
   }
 }
@@ -1123,9 +1142,9 @@ impl fmt::Display for YouthTopicFillIn {
       CarePlanActionSteps => "Care Plan action steps",
       CaregiverInvolvement => "caregiver involvemnt",
       ChallengingBehaviors => "challenging behaviors",
-      Communication => "communication",
+      CommunicationYouthTopic => "communication",
       CommunityActivities => "community activities",
-      CopingSkills => "coping skills",
+      CopingSkillsYouthTopic => "coping skills",
       CulturalIdentity => "cultural identity",
       Defiance => "defiance",
       Depression => "depression",
@@ -1136,7 +1155,7 @@ impl fmt::Display for YouthTopicFillIn {
       EngagementWithServices => "engagement with services",
       ExecutiveFunctioning => "executive functioning",
       ExperienceOfPsychosis => "experience of psychosis",
-      FamilyCulture => "family culture",
+      FamilyCultureYouthTopic => "family culture",
       FamilyDynamics => "family dynamics",
       FamilyEnvironment => "family environment",
       FrustrationTolerance => "frustration tolerance",
@@ -1179,6 +1198,7 @@ impl fmt::Display for YouthTopicFillIn {
       VocationalSkills => "vocational skills",
       WeightGain => "weight gain",
       WeightLoss => "weight loss",
+      OtherYouthTopic => "other youth mental health topic",
     };
     write!(f, "{}", display_string)
   }
@@ -1193,6 +1213,7 @@ pub enum ContactMethodFillIn {
   Fax,
   Mail,
   ConferenceCall,
+  OtherContactMethod,
 }
 
 use ContactMethodFillIn::{
@@ -1203,6 +1224,7 @@ use ContactMethodFillIn::{
   Fax,
   Mail,
   ConferenceCall,
+  OtherContactMethod,
 };
 
 impl ContactMethodFillIn {
@@ -1215,6 +1237,7 @@ impl ContactMethodFillIn {
       Fax,
       Mail,
       ConferenceCall,
+      OtherContactMethod,
     ].iter().copied())
   }
 }
@@ -1228,7 +1251,7 @@ impl BlankIterator for ContactMethodFillIn {
   }
 }
 
-impl fmt::Display for ContactPurposeFillIn {
+impl fmt::Display for ContactMethodFillIn {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display_string = match self {
       Phone => "phone",
@@ -1238,6 +1261,7 @@ impl fmt::Display for ContactPurposeFillIn {
       Fax => "fax",
       Mail => "mail",
       ConferenceCall => "conference call",
+      OtherContactMethod => "other contact method",
     };
     write!(f, "{}", display_string)
   }
@@ -1260,7 +1284,7 @@ pub enum ContactPurposeFillIn {
   UpdateThemOnCommunicationWithProviders,
   UpdateThemOnCommunicationWithTheYouthsFamily,
   UpdateSafetyPlan,
-  Custom,
+  OtherContactPurpose,
 }
 
 use ContactPurposeFillIn::{
@@ -1279,7 +1303,7 @@ use ContactPurposeFillIn::{
   UpdateThemOnCommunicationWithProviders,
   UpdateThemOnCommunicationWithTheYouthsFamily,
   UpdateSafetyPlan,
-  Custom,
+  OtherContactPurpose,
 };
 
 impl ContactPurposeFillIn {
@@ -1300,7 +1324,7 @@ impl ContactPurposeFillIn {
       UpdateThemOnCommunicationWithProviders,
       UpdateThemOnCommunicationWithTheYouthsFamily,
       UpdateSafetyPlan,
-      Custom,
+      OtherContactPurpose,
     ].iter().copied())
   }
 }
@@ -1332,7 +1356,101 @@ impl fmt::Display for ContactPurposeFillIn {
       UpdateThemOnCommunicationWithProviders => "update them on communication with providers",
       UpdateThemOnCommunicationWithTheYouthsFamily => "update them on communication with the youth's family",
       UpdateSafetyPlan => "update the safety plan for youth",
-      Custom => "custom",
+      OtherContactPurpose => "other contact purpose",
+    };
+    write!(f, "{}", display_string)
+  }
+}
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
+pub enum FulfilledContactPurposeFillIn {
+  AskedForInformationAboutServices,
+  CollectedSignedReleaseOfInformationForms,
+  CompletedAnAssessment,
+  CompletedIntakePaperwork,
+  CreatedSafetyPlan,
+  ExtendedAnInvitationToTheYouthsMextCarePlanMeeting,
+  LearnedAboutPotentialReferrals,
+  OfferedAvailabilityForScheduling,
+  RequestedVerbalConsentToExchangePersonalHealthInformationForYouth,
+  ReviewedPaperwork,
+  ReviewedTheICP,
+  ReviewedTheSNCD,
+  UpdatedThemOnCommunicationWithProviders,
+  UpdatedThemOnCommunicationWithTheYouthsFamily,
+  UpdatedSafetyPlan,
+  OtherFulfilledContactPurpose,
+}
+
+use FulfilledContactPurposeFillIn::{
+  AskedForInformationAboutServices,
+  CollectedSignedReleaseOfInformationForms,
+  CompletedAnAssessment,
+  CompletedIntakePaperwork,
+  CreatedSafetyPlan,
+  ExtendedAnInvitationToTheYouthsMextCarePlanMeeting,
+  LearnedAboutPotentialReferrals,
+  OfferedAvailabilityForScheduling,
+  RequestedVerbalConsentToExchangePersonalHealthInformationForYouth,
+  ReviewedPaperwork,
+  ReviewedTheICP,
+  ReviewedTheSNCD,
+  UpdatedThemOnCommunicationWithProviders,
+  UpdatedThemOnCommunicationWithTheYouthsFamily,
+  UpdatedSafetyPlan,
+  OtherFulfilledContactPurpose,
+};
+
+impl FulfilledContactPurposeFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = FulfilledContactPurposeFillIn>> {
+    Box::new([
+      AskedForInformationAboutServices,
+      CollectedSignedReleaseOfInformationForms,
+      CompletedAnAssessment,
+      CompletedIntakePaperwork,
+      CreatedSafetyPlan,
+      ExtendedAnInvitationToTheYouthsMextCarePlanMeeting,
+      LearnedAboutPotentialReferrals,
+      OfferedAvailabilityForScheduling,
+      RequestedVerbalConsentToExchangePersonalHealthInformationForYouth,
+      ReviewedPaperwork,
+      ReviewedTheICP,
+      ReviewedTheSNCD,
+      UpdatedThemOnCommunicationWithProviders,
+      UpdatedThemOnCommunicationWithTheYouthsFamily,
+      UpdatedSafetyPlan,
+      OtherFulfilledContactPurpose,
+    ].iter().copied())
+  }
+}
+
+impl BlankIterator for FulfilledContactPurposeFillIn {
+  fn fill_in_category(&self) -> String {
+    String::from("contact purpose")
+  }
+  fn alpha_index(&self) -> String {
+    String::from("cp")
+  }
+}
+
+impl fmt::Display for FulfilledContactPurposeFillIn {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let display_string = match self {
+      AskedForInformationAboutServices => "asked for information about services",
+      CollectedSignedReleaseOfInformationForms => "collected signed Release of Information Forms",
+      CompletedAnAssessment => "completed an assessment",
+      CompletedIntakePaperwork => "completed intake paperwork",
+      CreatedSafetyPlan => "created a safety plan",
+      ExtendedAnInvitationToTheYouthsMextCarePlanMeeting => "extended an invitation to the youth's next Care Plan meeting",
+      LearnedAboutPotentialReferrals => "learned about potential referrals",
+      OfferedAvailabilityForScheduling => "offered availability for scheduling",
+      RequestedVerbalConsentToExchangePersonalHealthInformationForYouth => "requested verbal consent to exchange Personal Health Information for youth",
+      ReviewedPaperwork => "reviewed paperwork",
+      ReviewedTheICP => "reviewed the ICP",
+      ReviewedTheSNCD => "reviewed the SNCD",
+      UpdatedThemOnCommunicationWithProviders => "updated them on communication with providers",
+      UpdatedThemOnCommunicationWithTheYouthsFamily => "updated them on communication with the youth's family",
+      UpdatedSafetyPlan => "updated the safety plan for youth",
+      OtherFulfilledContactPurpose => "other contact purpose (past tense)",
     };
     write!(f, "{}", display_string)
   }
@@ -1350,6 +1468,7 @@ pub enum ServiceFillIn {
   DDSServices,
   DMHServices,
   DCFServices,
+  OtherService,
 }
 
 use ServiceFillIn::{
@@ -1362,6 +1481,7 @@ use ServiceFillIn::{
   PersonalCareAttendant,
   DDSServices,
   DCFServices,
+  OtherService,
 };
 
 impl ServiceFillIn {
@@ -1376,6 +1496,7 @@ impl ServiceFillIn {
       PersonalCareAttendant,
       DDSServices,
       DCFServices,
+      OtherService,
     ].iter().copied())
   }
 }
@@ -1402,6 +1523,7 @@ impl fmt::Display for ServiceFillIn {
       DDSServices => "DDS services",
       DMHServices => "DMH services",
       DCFServices => "DMH services",
+      OtherService => "other service",
     };
     write!(f, "{}", display_string)
   }
@@ -1413,8 +1535,9 @@ pub enum MeetingMethodFillIn {
   InPerson,
   Webex,
   GoogleMeets,
-  ConferenceCall,
-  Phone,
+  ConferenceCallMeeting,
+  PhoneMeeting,
+  OtherMeetingMethod,
 }
 
 use MeetingMethodFillIn::{
@@ -1422,8 +1545,9 @@ use MeetingMethodFillIn::{
   InPerson,
   Webex,
   GoogleMeets,
-  ConferenceCall,
-  Phone,
+  ConferenceCallMeeting,
+  PhoneMeeting,
+  OtherMeetingMethod,
 };
 
 impl MeetingMethodFillIn {
@@ -1433,8 +1557,9 @@ impl MeetingMethodFillIn {
       InPerson,
       Webex,
       GoogleMeets,
-      ConferenceCall,
-      Phone,
+      ConferenceCallMeeting,
+      PhoneMeeting,
+      OtherMeetingMethod,
     ].iter().copied())
   }
 }
@@ -1455,37 +1580,41 @@ impl fmt::Display for MeetingMethodFillIn {
       InPerson => "in person",
       Webex => "via Webex",
       GoogleMeets => "via Google Meets",
-      ConferenceCall => "via conference call",
-      Phone => "via phone",
+      ConferenceCallMeeting => "via conference call",
+      PhoneMeeting => "via phone",
+      OtherMeetingMethod => "other meeting method",
     };
     write!(f, "{}", display_string)
   }
 }
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
-pub enum SignedMethodFillIn {
+pub enum SignatureMethodFillIn {
   ElectronicallySigned,
   SignedByHand,
   AgreedToReceiveSignAndReturnToRiversideStaff,
+  OtherSignatureMethod,
 }
 
-use SignedMethodFillIn::{
+use SignatureMethodFillIn::{
   ElectronicallySigned,
   SignedByHand,
   AgreedToReceiveSignAndReturnToRiversideStaff,
+  OtherSignatureMethod,
 };
 
-impl SignedMethodFillIn {
-  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = SignedMethodFillIn>> {
+impl SignatureMethodFillIn {
+  pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = SignatureMethodFillIn>> {
     Box::new([
       ElectronicallySigned,
       SignedByHand,
       AgreedToReceiveSignAndReturnToRiversideStaff,
+      OtherSignatureMethod,
     ].iter().copied())
   }
 }
 
-impl BlankIterator for SignedMethodFillIn {
+impl BlankIterator for SignatureMethodFillIn {
   fn fill_in_category(&self) -> String {
     String::from("signature method")
   }
@@ -1494,12 +1623,13 @@ impl BlankIterator for SignedMethodFillIn {
   }
 }
 
-impl fmt::Display for SignedMethodFillIn {
+impl fmt::Display for SignatureMethodFillIn {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display_string = match self {
       ElectronicallySigned => "electronically signed",
       SignedByHand => "signed by hand",
       AgreedToReceiveSignAndReturnToRiversideStaff => "agreed to receive, sign and return to Riverside staff",
+      OtherSignatureMethod => "other signature method",
     };
     write!(f, "{}", display_string)
   }
