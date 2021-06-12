@@ -2091,6 +2091,7 @@ use ServiceFillIn::{
   SkillsTraining,
   PersonalCareAttendant,
   DDSServices,
+  DMHServices,
   DCFServices,
   OtherService,
 };
@@ -2155,6 +2156,7 @@ impl ServiceFillIn {
       SkillsTraining,
       PersonalCareAttendant,
       DDSServices,
+      DMHServices,
       DCFServices,
       OtherService,
     ].iter().copied())

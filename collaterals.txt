@@ -1,7 +1,8 @@
 ##### collaterals #####
-1 | Jack | Smith | OPT | --NONE-- | 1 | Natural | false | false | false | false
 2 | Jack | Swanson | DDS Case Manager | DDS | 1 | Formal | false | false | false | false
-3 | Quentin | Tarantino | Director | Tarantino Films | 1 | Formal | true | false | false | false
-4 | Steven | Stevenson | FP | Riverside Community Care | 1 | Formal | false | false | false | false
+1 | Jack | Smith | OPT | --NONE-- | 1 | Natural | false | false | false | false
+6 | Poignant | Smithereens | Attorney at law | Smithereeens & Smithereens Lawfirm | 3 | Formal | true | false | false | false
 5 | Joe | Schmoe | OPT | The Edinburg Center | 3 | Formal | false | false | false | false
+4 | Steven | Stevenson | FP | Riverside Community Care | 1 | Formal | false | false | false | false
+3 | Quentin | Tarantino | Director | Tarantino Films | 1 | Formal | true | false | false | false
 ##### collaterals #####

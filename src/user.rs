@@ -121,8 +121,8 @@ mod tests {
 
   #[test]
   fn new_users() {
-    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), ICC, 1, vec![], vec![]);
-    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), FP, 2, vec![], vec![]);
+    let u1 = User::new(1, String::from("Carol"), String::from("Carolson"), Icc, 1, vec![], vec![]);
+    let u2 = User::new(2, String::from("Kerri"), String::from("Kerrison"), Fp, 2, vec![], vec![]);
     let test_vec: Vec<u32> = vec![];
     assert_eq!(u1.id, 1);
     assert_eq!(u1.first_name, String::from("Carol"));

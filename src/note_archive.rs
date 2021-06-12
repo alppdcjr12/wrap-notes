@@ -1941,7 +1941,7 @@ impl NoteArchive {
     loop {
       self.display_client();
       println_inst!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / CO: view/edit client collaterals", "QUIT / Q: quit menu");
-      println_on_bg!("| {}", "GOALS / G: View and edit client goals");
+      println_inst!("| {}", "GOALS / G: View and edit client goals");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -3160,10 +3160,10 @@ impl NoteArchive {
   }
   fn select_collaterals(&mut self) -> (String, Vec<u32>) {
     let mut collats: Vec<Collateral> = vec![];
-    let mut blank_string = String::new();
-    let mut collat_ids: Vec<u32> = vec![];
+    let mut general_collats: Vec<Collateral> = vec![];
     loop {
-      blank_string = if collats.len() > 1 {
+      let collat_ids = collats.clone().iter().map(|co| co.id ).collect::<Vec<u32>>();
+      let blank_string = if collats.len() > 1 {
         format!(
           "{} {} {}",
           collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).collect::<Vec<String>>().join(", "),
@@ -3176,7 +3176,7 @@ impl NoteArchive {
         String::new()
       };
       let initial_input = loop {
-        self.display_client_collaterals(Some(collat_ids));
+        self.display_client_collaterals(Some(collat_ids.clone()));
         if &blank_string[..] != "" {
           println_suc!("Current content: {}", blank_string);
         }
@@ -3206,11 +3206,10 @@ impl NoteArchive {
           continue;
         },
         "general" | "g" => {
-          let mut general_collat_ids: Vec<u32> = vec![];
-          let mut general_collats: Vec<Collateral> = vec![];
           loop {
+            let general_collat_ids = general_collats.iter().map(|co| co.id ).collect::<Vec<u32>>();
             let general_input = loop {
-              self.display_select_general_collaterals(Some(general_collat_ids));
+              self.display_select_general_collaterals(Some(general_collat_ids.clone()));
               println_inst!("ALL: Select all");
               let mut choice = String::new();
               let read_attempt = io::stdin().read_line(&mut choice);
@@ -3237,7 +3236,6 @@ impl NoteArchive {
               },
               "all" | "a" => {
                 general_collats = self.general_collaterals.clone();
-                general_collat_ids = general_collats.iter().map(|co| co.id ).collect();
                 break;
               },
               "quit" | "q" => {
@@ -3253,13 +3251,11 @@ impl NoteArchive {
                     None => continue,
                   };
                   if !general_collats.iter().any(|co| co == &collat ) {
-                    general_collat_ids.push(collat.id);
                     general_collats.push(collat);
                     if collats.len() == self.current_client_collaterals().len() {
                       break;
                     }
                   } else {
-                    collat_ids.retain(|co_id| co_id != &collat.id );
                     collats.retain(|co| co != &collat );
                   }
                 },
@@ -3271,7 +3267,7 @@ impl NoteArchive {
               }
             }
           }
-          for collat in general_collats {
+          for collat in general_collats.clone() {
             collats.push(collat.clone());
           }
           continue;
@@ -3284,9 +3280,8 @@ impl NoteArchive {
           break;
         },
         "all" => {
-          for collat in collats {
+          for collat in collats.clone() {
             if !collats.clone().iter().any(|co| co.id == collat.id ) {
-              collat_ids.push(collat.id);
               collats.push(collat);
             }
           }
@@ -3294,9 +3289,7 @@ impl NoteArchive {
         },
         "" => {
           if collats.len() > 0 {
-            return (blank_string, collat_ids)
-            n = self.autofill_note_blanks(n);
-            break;
+            return (blank_string, collat_ids);
           } else {
             println_err!("Please choose at least one collateral to add to the current blank.");
             thread::sleep(time::Duration::from_secs(2));
@@ -3307,19 +3300,17 @@ impl NoteArchive {
           let selected_id_res: Result<u32, _> = initial_input.parse();
           match selected_id_res {
             Ok(num) => {
-              let collat = match self.get_current_collaterals().iter().find(|co| co.id == selected_id) {
+              let collat = match self.get_current_collaterals().iter().find(|co| co.id == num) {
                 Some(co) => co.clone(),
                 None => continue,
               };
-              if !collats.iter().any(|co| co == &collat ) {
-                collat_ids.push(collat.id);
-                collats.push(collat);
+              if !collats.iter().any(|co| co == collat ) {
+                collats.push(collat.to_owned());
                 if collats.len() == self.current_client_collaterals().len() {
                   break;
                 }
               } else {
-                collat_ids.retain(|co_id| co_id != &collat.id );
-                collats.retain(|co| co != &collat );
+                collats.retain(|co| co != collat );
               }
             },
             Err(e) => {
@@ -3331,7 +3322,7 @@ impl NoteArchive {
         }
       }
     }
-    blank_string = if collats.len() > 1 {
+    let blank_string = if collats.len() > 1 {
       format!(
         "{} {} {}",
         collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).collect::<Vec<String>>().join(", "),
@@ -3341,7 +3332,7 @@ impl NoteArchive {
     } else {
       collats[0].full_name_and_title()
     };
-    let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
+    let id_vec: Vec<u32> = collats.clone().iter().map(|co| co.id ).collect();
     (blank_string, id_vec)
   }
   fn choose_client_collaterals(&mut self) {
@@ -6724,7 +6715,7 @@ impl NoteArchive {
       let input = loop {
         let mut choice = String::new();
         println_inst!("Enter ID to edit or delete goal.");
-        println_inst!("| {} | {}", "NEW / N: Create a new goal", "ADD / A: Add a goal from the collective list");
+        println_inst!("| {} | {} | {}", "NEW / N: Create a new goal", "ADD / A: Add a goal from the collective list", "QUIT / Q: exit menu");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
@@ -6765,6 +6756,7 @@ impl NoteArchive {
             }
           }
         }
+        "cancel" | "c" => break,
         _ => {
           let id = match input.trim().parse::<u32>() {
             Ok(num) => num,
@@ -7983,10 +7975,10 @@ impl NoteArchive {
         Some(c) => *c,
         None => {
           loop {
-            match self.specify_client(String::from("collateral")) {
+            match self.specify_client(String::from("note")) {
               Some(id) => break id,
               None => {
-                println_yel!("A collateral must be connected with a client. Cancel creating collateral ( Y / N )?");
+                println_yel!("A note must be connected with a client. Cancel creating note ( Y / N )?");
                 let mut answer = String::new();
                 let answer_attempt = io::stdin().read_line(&mut answer);
                 let final_answer = match answer_attempt {
@@ -9604,6 +9596,9 @@ impl NoteArchive {
         "edit" | "e" => {
           self.choose_edit_note_templates();
           continue;
+        },
+        "copy" | "c" => {
+          self.choose_copy_note_template();
         },
         "quit" | "q" => {
           break None;
@@ -11230,6 +11225,7 @@ impl NoteArchive {
                 match b {
                   Collaterals => {
                     let mut collats: Vec<Collateral> = vec![];
+                    let mut general_collats: Vec<Collateral> = vec![];
                     loop {
                       let initial_input = loop {
                         let collat_ids = collats.iter().map(|co| co.id ).collect::<Vec<u32>>();
@@ -11258,6 +11254,73 @@ impl NoteArchive {
                           self.add_collateral();
                           continue;
                         },
+                        "general" | "g" => {
+                          loop {
+                            let general_collat_ids = general_collats.clone().iter().map(|co| co.id ).collect::<Vec<u32>>();
+                            let general_input = loop {
+                              self.display_select_general_collaterals(Some(general_collat_ids.clone()));
+                              println_inst!("ALL: Select all");
+                              let mut choice = String::new();
+                              let read_attempt = io::stdin().read_line(&mut choice);
+                              match read_attempt {
+                                Ok(_) => break choice.trim().to_string(),
+                                Err(e) => {
+                                  println_err!("Could not read input; try again ({}).", e);
+                                  continue;
+                                }
+                              }
+                            };
+                            match &general_input.to_ascii_lowercase()[..] {
+                              "new" | "n" => {
+                                let maybe_new_id = self.create_general_collateral_get_id();
+                                match maybe_new_id {
+                                  Some(_) => (),
+                                  None => (),
+                                }
+                                continue;
+                              },
+                              "edit" | "e" => {
+                                self.choose_edit_general_collaterals();
+                                continue;
+                              },
+                              "all" | "a" => {
+                                general_collats = self.general_collaterals.clone();
+                                break;
+                              },
+                              "quit" | "q" => {
+                                break;
+                              },
+                              "" => {
+                                break;
+                              }
+                              _ => match general_input.parse() {
+                                Ok(num) => {
+                                  let collat = match self.general_collaterals.iter().find(|co| co.id == num) {
+                                    Some(co) => co.clone(),
+                                    None => continue,
+                                  };
+                                  if !general_collats.iter().any(|co| co == &collat ) {
+                                    general_collats.push(collat);
+                                    if collats.len() == self.current_client_collaterals().len() {
+                                      break;
+                                    }
+                                  } else {
+                                    general_collats.retain(|co| co != &collat );
+                                  }
+                                },
+                                Err(e) => {
+                                  println_err!("Invalid input: {}; error: {}", initial_input, e);
+                                  thread::sleep(time::Duration::from_secs(3));
+                                  continue;
+                                }
+                              }
+                            }
+                          }
+                          for collat in general_collats.clone() {
+                            collats.push(collat.clone());
+                          }
+                          continue;
+                        }
                         "edit" | "e" => {
                           self.choose_edit_client_collaterals();
                           continue;
@@ -11266,7 +11329,12 @@ impl NoteArchive {
                           break;
                         },
                         "all" => {
-                          collats = self.get_current_collaterals().iter().cloned().cloned().collect::<Vec<Collateral>>();
+                          let mut old_collats = collats.clone();
+                          for collat in self.get_current_collaterals().iter().cloned().cloned().collect::<Vec<Collateral>>() {
+                            if !old_collats.clone().iter().any(|co| co.id == collat.id ) {
+                              old_collats.push(collat.clone());
+                            }
+                          }
                           break;
                         },
                         "" => {
@@ -11284,17 +11352,23 @@ impl NoteArchive {
                           let selected_id_res: Result<u32, _> = initial_input.parse();
                           match selected_id_res {
                             Ok(num) => {
-                              let collat = match self.choose_get_client_collateral(num) {
-                                Some(co) => co.clone(),
-                                None => continue,
-                              };
-                              if !collats.iter().any(|co| co == &collat ) {
-                                collats.push(collat);
-                                if collats.len() == self.current_client_collaterals().len() {
-                                  break;
-                                }
+                              if !self.current_client_collaterals().iter().any(|co| co.id == num ) {
+                                println_err!("Please choose from among the options shown.");
+                                thread::sleep(time::Duration::from_secs(2));
+                                continue;
                               } else {
-                                collats.retain(|co| co != &collat );
+                                let collat = match self.get_collateral_by_id(num as u32) {
+                                  Some(co) => co.clone(),
+                                  None => continue,
+                                };
+                                if !collats.iter().any(|co| co == &collat ) {
+                                  collats.push(collat);
+                                  if collats.len() == self.current_client_collaterals().len() {
+                                    break;
+                                  }
+                                } else {
+                                  collats.retain(|co| co != &collat );
+                                }
                               }
                             },
                             Err(e) => {
@@ -11337,7 +11411,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11369,7 +11443,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11401,7 +11475,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11433,7 +11507,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11465,7 +11539,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11497,7 +11571,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11529,7 +11603,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11561,7 +11635,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11593,7 +11667,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11625,7 +11699,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11657,7 +11731,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11689,7 +11763,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11721,7 +11795,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11753,7 +11827,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -11785,7 +11859,7 @@ impl NoteArchive {
                           break if fill_in_strings.len() > 1 {
                             format!(
                               "{}{}{}",
-                              fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
                               " and ",
                               fill_in_strings[fill_in_strings.len()-1],
                             )
@@ -12176,187 +12250,6 @@ impl NoteArchive {
       return Some(selected_content)
     }
   }
-  fn choose_blank_fill_in(blank_type: Blank) -> Option<String> {
-    loop {
-      NoteArchive::display_blank_fill_in(blank_type, None);
-      let mut fill_in_choice = String::new();
-      let fill_in_attempt = io::stdin().read_line(&mut fill_in_choice);
-      let selected_option = match fill_in_attempt {
-        Ok(_) => fill_in_choice.trim().to_ascii_lowercase(),
-        Err(e) => {
-          println_err!("Failed to read line: {}", e);
-          thread::sleep(time::Duration::from_secs(2));
-          continue;
-        }
-      };
-      match &selected_option[..] {
-        "cancel" | "c" => return None,
-        _ => (),
-      }
-      let chosen_id: usize = match selected_option.parse() {
-        Ok(num) => num,
-        Err(e) => {
-          println_err!("Failed to parse '{}' as int: {}", selected_option, e);
-          thread::sleep(time::Duration::from_secs(2));
-          continue;
-        }
-      };
-      let selected_content: String = match blank_type {
-        InternalMeeting => {
-          match InternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => format!("{}", b),
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        ExternalMeeting => {
-          match ExternalMeetingFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => format!("{}", b),
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        InternalDocument => {
-          match InternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => format!("{}", b),
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        ExternalDocument => {
-          match ExternalDocumentFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(b) => format!("{}", b),
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        Appearance => {
-          match AppearanceFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        SupportedParent => {
-          match SupportedParentFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        ParentingSkill => {
-          match ParentingSkillFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        CarePlanningTopic => {
-          match CarePlanningTopicFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        YouthTopic => {
-          match YouthTopicFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        ContactMethod => {
-          match ContactMethodFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        ContactPurpose => {
-          match ContactPurposeFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        FulfilledContactPurpose => {
-          match FulfilledContactPurposeFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        Service => {
-          match ServiceFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        MeetingMethod => {
-          match MeetingMethodFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        SignatureMethod => {
-          match SignatureMethodFillIn::iterator_of_blanks().nth(chosen_id) {
-            Some(_) => chosen_id,
-            None => {
-              println_err!("Index '{}' not found. Please select content from among the listed options.", chosen_id);
-              thread::sleep(time::Duration::from_secs(2));
-              continue;
-            }
-          }
-        },
-        _ => panic!("Incompatible fill in type passed to fn 'choose_phrase_flll_in'"),
-      };
-      return Some(selected_content)
-    }
-  }
   fn display_icc_note_categories() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^58}", "-");
@@ -12565,11 +12458,11 @@ impl NoteArchive {
   fn autofill_note_blanks(&self, mut n: Note) -> Note {
     let current_client = self.current_client().clone();
     let current_collaterals = self.get_owned_current_collaterals();
-    let primary_contacts = current_collaterals.iter().filter(|co| co.primary_contact ).collect::<Vec<Collateral>>();
+    let primary_contacts = current_collaterals.iter().filter(|co| co.primary_contact ).map(|co_ref| co_ref.clone() ).collect::<Vec<Collateral>>();
     let primary_contacts_len = primary_contacts.len();
-    let guardians = current_collaterals.iter().filter(|co| co.guardian ).collect::<Vec<Collateral>>();
+    let guardians = current_collaterals.iter().filter(|co| co.guardian ).map(|co_ref| co_ref.clone() ).collect::<Vec<Collateral>>();
     let guardians_len = guardians.len();
-    let cpt = current_collaterals.iter().filter(|co| co.care_plan_team ).collect::<Vec<Collateral>>();
+    let cpt = current_collaterals.iter().filter(|co| co.care_plan_team ).map(|co_ref| co_ref.clone() ).collect::<Vec<Collateral>>();
     let cpt_len = cpt.len();
     let current_collaterals_len = current_collaterals.len();
     let u = self.current_user().clone();
@@ -12645,7 +12538,7 @@ impl NoteArchive {
             n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
             let mut old_ids = n.foreign_keys["collateral_ids"].clone();
             for new_id in id_vec {
-              if !old_ids.clone().iter().any(|o_id| o_id == new_id ) {
+              if !old_ids.clone().iter().any(|o_id| o_id == &new_id ) {
                 old_ids.push(new_id);
               }
             }
@@ -12668,7 +12561,7 @@ impl NoteArchive {
             n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
             let mut old_ids = n.foreign_keys["collateral_ids"].clone();
             for new_id in id_vec {
-              if !old_ids.clone().iter().any(|o_id| o_id == new_id ) {
+              if !old_ids.clone().iter().any(|o_id| o_id == &new_id ) {
                 old_ids.push(new_id);
               }
             }
@@ -12691,7 +12584,7 @@ impl NoteArchive {
             n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
             let mut old_ids = n.foreign_keys["collateral_ids"].clone();
             for new_id in id_vec {
-              if !old_ids.clone().iter().any(|o_id| o_id == new_id ) {
+              if !old_ids.clone().iter().any(|o_id| o_id == &new_id ) {
                 old_ids.push(new_id);
               }
             }
@@ -13328,6 +13221,7 @@ impl NoteArchive {
                     println_inst!("Client currently has no collaterals added.");
                     println_inst!("Please add at least one collateral to proceed.");
                     self.choose_edit_client_collaterals();
+                    let current_client = self.current_client();
                     let current_collaterals = self.current_client_collaterals();
                     let current_collaterals_len = current_collaterals.len();
                     if current_collaterals_len > 0 {
@@ -14017,7 +13911,7 @@ impl NoteArchive {
     }
   }
   fn get_blank_from_menu() -> Option<(Blank, String)> {
-    'main: loop {
+    loop {
       let chosen_blank = NoteArchive::get_fillable_blank();
       let b = match chosen_blank {
         None => return None,
@@ -14040,7 +13934,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14053,8 +13947,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string))
         },
         ExternalDocument => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14071,7 +13964,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14084,8 +13977,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         InternalMeeting => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14102,7 +13994,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14115,8 +14007,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         ExternalMeeting => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14133,7 +14024,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14146,8 +14037,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         Appearance => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14164,7 +14054,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14177,8 +14067,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         SupportedParent => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14195,7 +14084,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14208,8 +14097,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         ParentingSkill => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14226,7 +14114,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14239,8 +14127,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         CarePlanningTopic => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14257,7 +14144,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14270,8 +14157,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         YouthTopic => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14288,7 +14174,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14301,8 +14187,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         ContactMethod => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14319,7 +14204,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14332,8 +14217,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         ContactPurpose => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14350,7 +14234,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14363,8 +14247,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         FulfilledContactPurpose => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14381,7 +14264,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14394,8 +14277,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         Service => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14412,7 +14294,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14425,8 +14307,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         MeetingMethod => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14443,7 +14324,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14456,8 +14337,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         SignatureMethod => {
           let mut fill_ins: Vec<usize> = vec![];
@@ -14474,7 +14354,7 @@ impl NoteArchive {
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
-                } else if blank_strings.len() > 0 {
+                } else if fill_in_strings.len() > 0 {
                   fill_in_strings[0].clone()
                 } else {
                   return None;
@@ -14487,8 +14367,7 @@ impl NoteArchive {
               fill_ins.retain(|fi| fi != &blank_id )
             }
           };
-          let id_vec = vec![];
-          return Some((final_blank_string, b))
+          return Some((b, final_blank_string));
         },
         _ => panic!("Blank passed as fillable blank to fn 'get_blank_from_menu' but blank not listed as options in function."),
       }
@@ -15382,8 +15261,8 @@ mod tests {
         ExternalDocument,
         InternalMeeting,
         ExternalMeeting,
-        Action,
-        Phrase,
+        Appearance,
+        SupportedParent,
         CustomBlank,
       ),
       vec![],
@@ -15432,8 +15311,8 @@ mod tests {
         ExternalDocument.display_to_user(),
         InternalMeeting.display_to_user(),
         ExternalMeeting.display_to_user(),
-        Action.display_to_user(),
-        Phrase.display_to_user(),
+        Appearance.display_to_user(),
+        SupportedParent.display_to_user(),
         CustomBlank.display_to_user(),
       ),
     );
@@ -15741,7 +15620,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, Some(1));
+    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -15772,7 +15651,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, Some(1));
+    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -15803,7 +15682,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, Some(1));
+    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16056,14 +15935,14 @@ mod tests {
       true,
       format!(
         "ICC called a bunch of people. They didn't answer. ICC then decided to {}.",
-        Action,
+        Appearance,
       ),
       vec![],
     );
 
     let sentence_indices = vec![
       (0, 70),
-      (70+format!("{}", Action).len(), 71+format!("{}", Action).len()),
+      (70+format!("{}", Appearance).len(), 71+format!("{}", Appearance).len()),
     ];
     let sentence_indices_test = nt2.get_typed_content_indices();
     assert_eq!(sentence_indices, sentence_indices_test);
