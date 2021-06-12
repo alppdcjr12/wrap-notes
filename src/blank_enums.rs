@@ -1,5 +1,30 @@
 use std::fmt;
 
+// print errors
+pub fn print_err(s: String) {
+  print!("{}", Black.on(Red).paint(s));
+}
+macro_rules! print_err {
+    ($($arg:tt)*) => (print_err(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_err {
+    () => (print_err("\n"));
+    ($fmt:expr) => (print_err(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_err!(concat!($fmt, "\n"), $($arg)*));
+}
+// print instructions
+pub fn print_inst(s: String) {
+  print!("{}", Black.on(Blue).paint(s));
+}
+macro_rules! print_inst {
+    ($($arg:tt)*) => (print_inst(format!("{}", format_args!($($arg)*))));
+}
+macro_rules! println_inst {
+    () => (print_inst("\n"));
+    ($fmt:expr) => (print_inst(concat!($fmt, "\n").to_string()));
+    ($fmt:expr, $($arg:tt)*) => (print_inst!(concat!($fmt, "\n"), $($arg)*));
+}
+
 pub trait BlankIterator {
   fn fill_in_category(&self) -> String;
   fn alpha_index(&self) -> String;
@@ -47,6 +72,55 @@ use InternalDocumentFillIn::{
 };
 
 impl InternalDocumentFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherInternalDocument => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = InternalDocumentFillIn>> {
     Box::new([
       InternalReferralForm,
@@ -127,6 +201,55 @@ use ExternalDocumentFillIn::{
 };
 
 impl ExternalDocumentFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherExternalDocument => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ExternalDocumentFillIn>> {
     Box::new([
       NeuropsychologicalAssessment,
@@ -195,6 +318,55 @@ use InternalMeetingFillIn::{
 };
 
 impl InternalMeetingFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherInternalMeeting => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = InternalMeetingFillIn>> {
     Box::new([
       IntakeMeeting,
@@ -267,6 +439,55 @@ use ExternalMeetingFillIn::{
 };
 
 impl ExternalMeetingFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherExternalMeeting => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ExternalMeetingFillIn>> {
     Box::new([
       IEPMeeting,
@@ -395,6 +616,55 @@ use AppearanceFillIn::{
 };
 
 impl AppearanceFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherAppearance => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = AppearanceFillIn>> {
     Box::new([
       Angry,
@@ -548,6 +818,55 @@ use SupportedParentFillIn::{
 };
 
 impl SupportedParentFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherSupportedParent => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = SupportedParentFillIn>> {
     Box::new([
       AdvocatedFor,
@@ -685,6 +1004,55 @@ use ParentingSkillFillIn::{
 };
 
 impl ParentingSkillFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherParentingSkill => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ParentingSkillFillIn>> {
     Box::new([
       AdvocacyForOnesChild,
@@ -828,6 +1196,55 @@ use CarePlanningTopicFillIn::{
 };
 
 impl CarePlanningTopicFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherCarePlanningTopic => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = CarePlanningTopicFillIn>> {
     Box::new([
       AvailabilityOfServices,
@@ -1045,6 +1462,55 @@ use YouthTopicFillIn::{
 };
 
 impl YouthTopicFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherYouthTopic => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = YouthTopicFillIn>> {
     Box::new([
       AcademicParticipation,
@@ -1228,6 +1694,55 @@ use ContactMethodFillIn::{
 };
 
 impl ContactMethodFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherContactMethod => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ContactMethodFillIn>> {
     Box::new([
       Phone,
@@ -1307,6 +1822,55 @@ use ContactPurposeFillIn::{
 };
 
 impl ContactPurposeFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherContactPurpose => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ContactPurposeFillIn>> {
     Box::new([
       AskForInformationAboutServices,
@@ -1401,6 +1965,55 @@ use FulfilledContactPurposeFillIn::{
 };
 
 impl FulfilledContactPurposeFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherFulfilledContactPurpose => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = FulfilledContactPurposeFillIn>> {
     Box::new([
       AskedForInformationAboutServices,
@@ -1485,6 +2098,55 @@ use ServiceFillIn::{
 };
 
 impl ServiceFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherService => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = ServiceFillIn>> {
     Box::new([
       InHomeTherapy,
@@ -1551,6 +2213,55 @@ use MeetingMethodFillIn::{
 };
 
 impl MeetingMethodFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherMeetingMethod => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = MeetingMethodFillIn>> {
     Box::new([
       Zoom,
@@ -1604,6 +2315,55 @@ use SignatureMethodFillIn::{
 };
 
 impl SignatureMethodFillIn {
+  pub fn is_custom() -> bool {
+    match self {
+      OtherSignatureMethod => true,
+      _ => false,
+    }
+  }
+  pub fn selected_display() -> String {
+    if !self.is_custom() {
+      self.to_string()
+    } else {
+      println_inst!("Enter text for the selected blank.");
+      'get_string: loop {
+        let mut input = String::new();
+        let input_result = io::stdin().read_line(&mut input);
+        match input_result {
+          Err(_) => {
+            println_err!("Invalid entry.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
+          Ok(_) => {
+            break loop {
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              let mut confirm_input = String::new();
+              let confirm_input_result = io::stdin().read_line(&mut confirm_input);
+              match confirm_input_result {
+                Err(_) => {
+                  println_err!("Invalid entry.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                Ok(_) => {
+                  match &confirm_input.trim().to_ascii_lowercase()[..] {
+                    "yes" | "y" => break input.trim().to_string(),
+                    "n" | "no" => continue 'get_string,
+                    _ => {
+                      println_err!("Invalid entry.");
+                      thread::sleep(time::Duration::from_secs(2));
+                      continue;
+                    }
+                  }
+                }
+              }
+            };
+          }
+        }
+      }
+    }
+  }
   pub fn iterator_of_blanks() -> Box<dyn Iterator<Item = SignatureMethodFillIn>> {
     Box::new([
       ElectronicallySigned,

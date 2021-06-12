@@ -22,17 +22,17 @@ impl PartialEq for User {
 
 #[derive(Debug, Clone)]
 pub enum EmployeeRole {
-  FP,
-  ICC,
+  Fp,
+  Icc,
 }
 
-use crate::user::EmployeeRole::{FP, ICC};
+use crate::user::EmployeeRole::{Fp, Icc};
 
 impl fmt::Display for EmployeeRole {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display = match self {
-      FP => "FP",
-      ICC => "ICC",
+      Fp => "FP",
+      Icc => "ICC",
     };
     write!(f, "{}", display)
   }
@@ -41,8 +41,8 @@ impl fmt::Display for EmployeeRole {
 impl PartialEq for EmployeeRole {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
-      (&FP, &FP) => true,
-      (&ICC, &ICC) => true,
+      (&Fp, &Fp) => true,
+      (&Icc, &Icc) => true,
       _ => false,
     }
   }

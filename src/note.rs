@@ -1909,6 +1909,7 @@ impl fmt::Display for Note {
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Blank {
   CurrentUser,
+  PartnerICCOrFP,
   CurrentClientName,
   Collaterals,
   AllCollaterals,
@@ -1949,16 +1950,17 @@ pub enum Blank {
 
 use Blank::{
   CurrentUser,
+  PartnerICCOrFP,
   CurrentClientName,
   Collaterals,
   AllCollaterals,
   PrimaryContact,
   Guardian,
   CarePlanTeam,
-  Pronoun1ForBlank(Option<u32>),
-  Pronoun2ForBlank(Option<u32>),
-  Pronoun3ForBlank(Option<u32>),
-  Pronoun4ForBlank(Option<u32>),
+  Pronoun1ForBlank,
+  Pronoun2ForBlank,
+  Pronoun3ForBlank,
+  Pronoun4ForBlank,
   Pronoun1ForUser,
   Pronoun2ForUser,
   Pronoun3ForUser,
@@ -1990,23 +1992,24 @@ use Blank::{
 impl Blank {
   pub fn has_pronouns(&self) -> bool {
     match self {
-      CurrentUser | CurrentClientName | Collaterals | AllCollaterals | PrimaryContact | Guardian | CarePlanTeam => true,
+      CurrentUser | PartnerICCOrFP | CurrentClientName | Collaterals | AllCollaterals | PrimaryContact | Guardian | CarePlanTeam => true,
       _ => false,
     }
   }
   pub fn iterator() -> impl Iterator<Item = Blank> {
     [
       CurrentUser,
+      PartnerICCOrFP,
       CurrentClientName,
       Collaterals,
       AllCollaterals,
       PrimaryContact,
       Guardian,
       CarePlanTeam,
-      Pronoun1ForBlank(Option<u32>),
-      Pronoun2ForBlank(Option<u32>),
-      Pronoun3ForBlank(Option<u32>),
-      Pronoun4ForBlank(Option<u32>),
+      Pronoun1ForBlank(None),
+      Pronoun2ForBlank(None),
+      Pronoun3ForBlank(None),
+      Pronoun4ForBlank(None),
       Pronoun1ForUser,
       Pronoun2ForUser,
       Pronoun3ForUser,
@@ -2035,8 +2038,8 @@ impl Blank {
       CustomBlank
     ].iter().copied()
   }
-  pub fn iterator_of_fillables() -> impl Iterator<Item = Blank> {
-    [
+  pub fn vec_of_fillables() -> Vec<Blank> {
+    vec![
       InternalDocument,
       ExternalDocument,
       InternalMeeting,
@@ -2052,11 +2055,13 @@ impl Blank {
       Service,
       MeetingMethod,
       SignatureMethod,
-    ].iter().copied()
+      CustomBlank,
+    ]
   }
   pub fn vector_of_variants() -> Vec<Blank> {
     vec![
       CurrentUser,
+      PartnerICCOrFP,
       CurrentClientName,
       Collaterals,
       AllCollaterals,
@@ -2098,6 +2103,7 @@ impl Blank {
   pub fn abbreviate(&self) -> String {
     match self {
       CurrentUser => String::from("u"),
+      PartnerICCOrFP => String::from("p"),
       CurrentClientName => String::from("c"),
       Collaterals => String::from("co"),
       AllCollaterals => String::from("allco"),
@@ -2151,6 +2157,7 @@ impl Blank {
   pub fn get_blank_from_str(s: &str) -> Blank {
     match &s[..] {
       "(---u---)" => CurrentUser,
+      "(---p---)" => PartnerICCOrFP,
       "(---c---)" => CurrentClientName,
       "(---co---)" => Collaterals,
       "(---allco---)" => AllCollaterals,
@@ -2204,6 +2211,7 @@ impl Blank {
   pub fn display_to_user(&self) -> String {
     match self {
       CurrentUser => String::from("[ Current user ]"),
+      PartnerICCOrFP => String::from("[ Partner ICC or FP ]"),
       CurrentClientName => String::from("[ Name of client ]"),
       Collaterals => String::from("[ One or more collaterals ]"),
       AllCollaterals => String::from("[ All collaterals for the current client ]"),
@@ -2257,6 +2265,7 @@ impl Blank {
   pub fn display_to_user_empty(&self) -> String {
     match self {
       CurrentUser => String::from("Current user"),
+      PartnerICCOrFP => String::from("Partner ICC or FP"),
       CurrentClientName => String::from("Name of client"),
       Collaterals => String::from("One or more collaterals"),
       AllCollaterals => String::from("All collaterals for the current client"),

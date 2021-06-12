@@ -1,6 +1,6 @@
 pub mod user;
 pub use user::*;
-pub use crate::EmployeeRole::{FP, ICC};
+pub use crate::EmployeeRole::{Fp, Icc};
 pub use crate::SupportType::{Natural, Formal};
 pub use crate::StructureType::{
   CarePlan,
