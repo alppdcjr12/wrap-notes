@@ -2848,6 +2848,7 @@ impl NoteArchive {
   }
   fn display_collateral(&self) {
     let current = self.current_collateral();
+    let c_string = format!("Collateral for {}", &self.collateral_clients_string(current.id));
 
     let pronouns_id = current.pronouns;
     let pronouns_option = self.get_pronouns_by_id(pronouns_id);
@@ -2878,6 +2879,7 @@ impl NoteArchive {
     println_on_bg!("{:-^178}", "-");
     println_on_bg!("{:-^178}", heading);
     println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", c_string);
     if current.primary_contact {
       println_on_bg!("{: <178}", "*Primary contact");
     }
@@ -2887,15 +2889,13 @@ impl NoteArchive {
     if current.care_plan_team {
       println_on_bg!("{: <178}", "*Care Plan Team member");
     }
-    if current.primary_contact || current.guardian || current.care_plan_team {
-      println_on_bg!("{:-^178}", "-");
-    }
+    println_on_bg!("{:-^178}", "-");
     println_on_bg!(
       "{:-^162} | {:-^13}",
       "-", "Support type",
     );
     println_on_bg!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
+      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^5} | {:-^5} | {:-^50}",
       " Role/Title ",
       " First name ",
       " Last name ",
@@ -2905,7 +2905,7 @@ impl NoteArchive {
       " Pronouns ",
     );
     println_on_bg!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {:-^5} | {:-^5} | {: ^50}",
       current.title,
       current.first_name,
       current.last_name,
@@ -2915,7 +2915,6 @@ impl NoteArchive {
       display_pronouns,
     );
     println_on_bg!("{:-^178}", "-");
-    println_inst!("| {} | {} | {} | {}", "EDIT / E: edit collateral", "CLIENT / C: add client ", "DELETE: delete collateral", "QUIT / Q: quit menu");
   }
   fn display_general_collateral(&self) {
     let current = self.current_general_collateral();
@@ -2969,6 +2968,7 @@ impl NoteArchive {
   }
   fn display_edit_collateral(&self) {
     let current = self.current_collateral();
+    let c_string = format!("Collateral for {}", &self.collateral_clients_string(current.id));
 
     let pronouns_id = current.pronouns;
     let pronouns_option = self.get_pronouns_by_id(pronouns_id);
@@ -3003,10 +3003,12 @@ impl NoteArchive {
       true => "CPT: remove 'Care Plan Team member' label",
       false => "CPT: add 'Care Plan Team member' label",
     };
+    let heading = format!(" Edit collateral: {} ", current.full_name_and_title());
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", " Edit collateral record ");
+    println_on_bg!("{:-^178}", heading);
     println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^178}", c_string);
     if current.primary_contact {
       println_on_bg!("{: <178}", "*Primary contact");
     }
@@ -3016,9 +3018,7 @@ impl NoteArchive {
     if current.care_plan_team {
       println_on_bg!("{: <178}", "*Care Plan Team member");
     }
-    if current.primary_contact || current.guardian || current.care_plan_team {
-      println_on_bg!("{:-^178}", "-");
-    }
+    println_on_bg!("{:-^178}", "-");
     println_on_bg!(
       "{:-^162} | {:-^13}",
       "-", "Support type",
@@ -3051,12 +3051,19 @@ impl NoteArchive {
       opposite_type_command,
       opposite_indirect_command,
     );
-    println_inst!(
-      "| {} | {} | {}",
-      opposite_primary_command,
-      opposite_guardian_command,
-      opposite_cpt_command,
-    );
+    if current.support_type == Natural {
+      println_inst!(
+        "| {} | {} | {}",
+        opposite_primary_command,
+        opposite_guardian_command,
+        opposite_cpt_command,
+      );
+    } else {
+      println_inst!(
+        "| {}",
+        opposite_cpt_command,
+      );
+    }
     println_on_bg!("{:-^178}", "-");
   }
   fn display_edit_general_collateral(&self) {
@@ -5015,6 +5022,11 @@ impl NoteArchive {
           }
         },
         "primary" => {
+          if self.current_collateral().support_type == Formal {
+            println_err!("A formal support cannot be the primary contact for a family.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
           if self.current_collateral().primary_contact == false {
             self.current_collateral_mut().primary_contact = true;
           } else {
@@ -5022,6 +5034,11 @@ impl NoteArchive {
           }
         },
         "guardian" => {
+          if self.current_collateral().support_type == Formal {
+            println_err!("A formal support cannot be a youth's guardian.");
+            thread::sleep(time::Duration::from_secs(2));
+            continue;
+          }
           if self.current_collateral().guardian == false {
             self.current_collateral_mut().guardian = true;
           } else {
@@ -13386,7 +13403,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13417,7 +13434,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13448,7 +13465,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13479,7 +13496,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13510,7 +13527,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13541,7 +13558,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13572,7 +13589,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13603,7 +13620,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13634,7 +13651,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13665,7 +13682,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13696,7 +13713,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -13727,7 +13744,7 @@ impl NoteArchive {
                     break if fill_in_strings.len() > 1 {
                       format!(
                         "{}{}{}",
-                        fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
                         " and ",
                         fill_in_strings[fill_in_strings.len()-1],
                       )
@@ -14559,7 +14576,7 @@ impl NoteArchive {
               } else if num_collats == 1 {
                 current_collaterals[0].full_name_and_title()
               } else if num_collats > 1 {
-                let part1 = current_collaterals[..num_collats-2].to_owned().iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", ");
+                let part1 = current_collaterals[..num_collats-1].to_owned().iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", ");
                 let part2 = current_collaterals[num_collats-1].full_name_and_title();
                 format!("{} and {}", part1, part2)
               } else {

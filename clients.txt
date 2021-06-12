@@ -10,4 +10,11 @@
 9 | Jake | Pearson | 2006-1-1 | 1 | 
 10 | Steve | Smitttt | 2011-1-5 | 1 | 
 11 | Paul | Smitttyyboi | 2012-5-6 | 1 | 
+12 | Dave | Johnson | 2001-5-24 | 1 | 
+13 | Steve | Johnson | 2005-2-2 | 1 | 
+14 | Ben | Smith | 2003-3-6 | 1 | 
+15 | a | f | 2011-2-2 | 1 | 8
+16 | df | dff | 2005-5-5 | 2 | 
+17 | a | b | 2000-1-1 | 1 | 
+18 | a | f | 2011-2-2 | 1 | 
 ##### clients #####
