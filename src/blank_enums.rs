@@ -1,11 +1,9 @@
-use std::fmt;
+use std::{fmt, io, thread, time};
+use ansi_term::Colour::{Black, Red, Blue};
 
 // print errors
 pub fn print_err(s: String) {
   print!("{}", Black.on(Red).paint(s));
-}
-macro_rules! print_err {
-    ($($arg:tt)*) => (print_err(format!("{}", format_args!($($arg)*))));
 }
 macro_rules! println_err {
     () => (print_err("\n"));
@@ -72,13 +70,13 @@ use InternalDocumentFillIn::{
 };
 
 impl InternalDocumentFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherInternalDocument => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -201,13 +199,13 @@ use ExternalDocumentFillIn::{
 };
 
 impl ExternalDocumentFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherExternalDocument => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -318,13 +316,13 @@ use InternalMeetingFillIn::{
 };
 
 impl InternalMeetingFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherInternalMeeting => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -439,13 +437,13 @@ use ExternalMeetingFillIn::{
 };
 
 impl ExternalMeetingFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherExternalMeeting => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -616,13 +614,13 @@ use AppearanceFillIn::{
 };
 
 impl AppearanceFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherAppearance => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -818,13 +816,13 @@ use SupportedParentFillIn::{
 };
 
 impl SupportedParentFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherSupportedParent => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -1004,13 +1002,13 @@ use ParentingSkillFillIn::{
 };
 
 impl ParentingSkillFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherParentingSkill => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -1196,13 +1194,13 @@ use CarePlanningTopicFillIn::{
 };
 
 impl CarePlanningTopicFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherCarePlanningTopic => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -1462,13 +1460,13 @@ use YouthTopicFillIn::{
 };
 
 impl YouthTopicFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherYouthTopic => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -1694,13 +1692,13 @@ use ContactMethodFillIn::{
 };
 
 impl ContactMethodFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherContactMethod => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -1822,13 +1820,13 @@ use ContactPurposeFillIn::{
 };
 
 impl ContactPurposeFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherContactPurpose => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -1965,13 +1963,13 @@ use FulfilledContactPurposeFillIn::{
 };
 
 impl FulfilledContactPurposeFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherFulfilledContactPurpose => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -2098,13 +2096,13 @@ use ServiceFillIn::{
 };
 
 impl ServiceFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherService => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -2213,13 +2211,13 @@ use MeetingMethodFillIn::{
 };
 
 impl MeetingMethodFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherMeetingMethod => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {
@@ -2315,13 +2313,13 @@ use SignatureMethodFillIn::{
 };
 
 impl SignatureMethodFillIn {
-  pub fn is_custom() -> bool {
+  pub fn is_custom(&self) -> bool {
     match self {
       OtherSignatureMethod => true,
       _ => false,
     }
   }
-  pub fn selected_display() -> String {
+  pub fn selected_display(&self) -> String {
     if !self.is_custom() {
       self.to_string()
     } else {

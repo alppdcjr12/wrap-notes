@@ -5,13 +5,11 @@ use ansi_term::Colour::{Black, Red, Green, Yellow, Blue, RGB};
 use ansi_term::Style;
 
 use chrono::{Local, NaiveDate, Datelike};
-use std::{fs, io};
+use std::{fs, io, thread, time};
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
-use std::io::{BufRead, BufReader};
-use std::io::{Error, ErrorKind};
-use std::{thread, time};
+use std::io::{BufRead, BufReader, Error, ErrorKind};
 use std::collections::{HashMap, BTreeMap};
 
 use crate::user::*;
@@ -1129,7 +1127,7 @@ impl NoteArchive {
         let role_attempt = io::stdin().read_line(&mut role_choice);
         match role_attempt {
           Ok(_) => match &role_choice.trim().to_ascii_lowercase()[..] {
-            "icc" => break ICC,
+            "icc" => break Icc,
             "fp" => break Fp,
             "cancel" => return None,
             _ => {
@@ -1435,7 +1433,7 @@ impl NoteArchive {
         }
         "role" | "r" => match self.current_user().role {
           Icc => {
-            self.change_role(&FP).unwrap();
+            self.change_role(&Fp).unwrap();
           }
           Fp => {
             self.change_role(&Icc).unwrap();
@@ -3163,23 +3161,20 @@ impl NoteArchive {
   fn select_collaterals(&mut self) -> (String, Vec<u32>) {
     let mut collats: Vec<Collateral> = vec![];
     let mut blank_string = String::new();
+    let mut collat_ids: Vec<u32> = vec![];
     loop {
-    blank_string = if collats.len() > 1 {
-      format!(
-        "{} {} {}",
-        collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).collect::<Vec<String>>().join(", "),
-        "and",
-        collats[collats.len()-1].full_name_and_title()
-      )
-    } else if collats.len > 0{
-      collats[0].full_name_and_title()
-    } else {
-      String::new()
-    };
-    let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
-    n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
-    n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
-      let collat_ids: Vec<u32> = vec![];
+      blank_string = if collats.len() > 1 {
+        format!(
+          "{} {} {}",
+          collats[..collats.len()-1].iter().map(|co| co.full_name_and_title()).collect::<Vec<String>>().join(", "),
+          "and",
+          collats[collats.len()-1].full_name_and_title()
+        )
+      } else if collats.len() > 0{
+        collats[0].full_name_and_title()
+      } else {
+        String::new()
+      };
       let initial_input = loop {
         self.display_client_collaterals(Some(collat_ids));
         if &blank_string[..] != "" {
@@ -3299,6 +3294,7 @@ impl NoteArchive {
         },
         "" => {
           if collats.len() > 0 {
+            return (blank_string, collat_ids)
             n = self.autofill_note_blanks(n);
             break;
           } else {
