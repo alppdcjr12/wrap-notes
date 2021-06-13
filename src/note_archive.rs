@@ -2528,6 +2528,8 @@ impl NoteArchive {
   }
   fn reindex_clients(&mut self) {
     let mut i: u32 = 1;
+    let mut new_note_days: Vec<NoteDay> = self.note_days.clone();
+    let mut new_notes: Vec<Note> = self.notes.clone();
     for mut c in &mut self.clients {
       for u in &mut self.users {
         for c_id in &mut u.foreign_keys.get_mut("client_ids").unwrap().iter_mut() {
@@ -2536,9 +2538,23 @@ impl NoteArchive {
           }
         }
       }
+      for mut nd in new_note_days {
+        if nd.foreign_key["client_id"] == c.id {
+          nd.foreign_key.insert(String::from("client_id"), i);
+        }
+      }
+      for mut n in new_notes {
+        if nd.foreign_key["client_id"] == c.id {
+          nd.foreign_key.insert(String::from("client_id"), i);
+        }
+      }
       c.id = i;
       i += 1;
     }
+      u.id = i;
+      i += 1;
+    self.note_days = new_note_days;
+    self.notes = new_notes;
   }
   fn get_client_by_id(&self, id: u32) -> Option<&Client> {
     self.clients.iter().find(|c| c.id == id)
