@@ -583,14 +583,14 @@ impl NoteArchive {
       CarePlan,
       true,
       String::from("ICC met with (---co---) for a Care Plan Meeting for (---c---)."),
-      vec![2],
+      2,
     );
     let nt2 = NoteTemplate::new(
       2,
       PhoneCall,
       true,
       String::from("ICC called (---co---) to discuss a referral for IHT services."),
-      vec![1],
+      1,
     );
 
     let note_templates = vec![nt1, nt2];
@@ -1496,21 +1496,47 @@ impl NoteArchive {
     println_on_bg!("{:-^79}", "-");
   }
   fn delete_current_user(&mut self) {
+    for c in self.get_current_clients().clone() {
+      match self.load_client(c.id) {
+        Err(_) => panic!("Failed to delete client for current user."),
+        Ok(_) => self.delete_current_client(),
+      }
+    }
+
     let id = self.foreign_key.get("current_user_id").unwrap().to_owned();
+    self.delete_from_blanks(String::from("user"), id);
     self.users.retain(|u| u.id != id);
     self.reindex_users();
     self.foreign_key.remove("current_user_id");
     self.foreign_key.remove("current_client_id");
     self.foreign_key.remove("current_collateral_id");
-    self.note_days.retain(|nd| nd.foreign_key["user_id"] != id );
-    self.notes.retain(|n| n.foreign_key["user_id"] != id );
   }
   fn reindex_users(&mut self) {
     let mut i: u32 = 1;
+    let mut new_note_templates: Vec<NoteTemplate> = self.note_templates.clone();
+    let mut new_note_days: Vec<NoteDay> = self.note_days.clone();
+    let mut new_notes: Vec<Note> = self.notes.clone();
     for mut u in &mut self.users {
+      for mut nt in new_note_templates {
+        let new_ids = nt.foreign_keys["user_ids"].clone().iter().map(|id| if id == &u.id { i } else { *id } ).collect::<Vec<u32>>();
+        nt.foreign_keys.insert(String::from("user_ids"), new_ids);
+      }
+      for mut nd in new_note_days {
+        if nd.foreign_key["user_id"] == u.id {
+          nd.foreign_key.insert(String::from("user_id"), i);
+        }
+      }
+      for mut n in new_notes {
+        if n.foreign_key["user_id"] == u.id {
+          n.foreign_key.insert(String::from("user_id"), i);
+        }
+      }
       u.id = i;
       i += 1;
     }
+    self.note_templates = new_note_templates;
+    self.note_days = new_note_days;
+    self.notes = new_notes;
   }
 
   // clients
@@ -2475,6 +2501,24 @@ impl NoteArchive {
     println_on_bg!("{:-^114}", "-");
   }
   fn delete_current_client(&mut self) {
+    for co in self.get_current_collaterals().clone() {
+      match self.load_collateral(co.id) {
+        Err(_) => panic!("Failed to delete collateral for current client."),
+        Ok(_) => self.delete_current_collateral(),
+      }
+    }
+    for g in self.current_client_goals().clone() {
+      match self.load_goal(g.id) {
+        Err(_) => panic!("Failed to delete goal for current client."),
+        Ok(_) => self.delete_current_goal(),
+      }
+    }
+    for nd in self.current_client_note_days().clone() {
+      match self.load_note_day(nd.id) {
+        Err(_) => panic!("Failed to delete note day for current client."),
+        Ok(_) => self.delete_current_note_day(),
+      }
+    }
     let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("client"), id);
     self.clients.retain(|c| c.id != id);
@@ -8183,6 +8227,9 @@ impl NoteArchive {
   fn get_note_day_by_id(&self, id: u32) -> Option<&NoteDay> {
     self.note_days.iter().find(|nd| nd.id == id)
   }
+  fn get_note_day_by_id_mut(&mut self, id: u32) -> Option<&mut NoteDay> {
+    self.note_days.iter_mut().find(|nd| nd.id == id)
+  }
   /// assumes that the given note_day_id is valid
   fn get_client_by_note_day_id(&self, id: u32) -> Option<&Client> {
     self.clients.iter().find(|c| self.get_note_day_by_id(id).unwrap().foreign_key["client_id"] == c.id )
@@ -10361,6 +10408,9 @@ impl NoteArchive {
   }
   fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nt| nt.id == id)
+  }
+  fn get_note_template_option_by_id_mut(&mut self, id: u32) -> Option<&mut NoteTemplate> {
+    self.note_templates.iter_mut().find(|nt| nt.id == id)
   }
   // fn get_note_template_option_by_id_mut(&mut self, id: u32) -> Option<&mut NoteTemplate> {
   //   self.note_templates.iter_mut().find(|nt| nt.id == id)

@@ -144,12 +144,13 @@ impl NoteTemplate {
     structure: StructureType,
     custom: bool,
     content: String,
-    user_ids: Vec<u32>,
+    user_id: u32,
   ) -> NoteTemplate {
-    let foreign_key: HashMap<String, u32> = HashMap::new();
+    let foreign_key: HashMap<String, u32> = [
+      (String::from("user_id"), user_id),
+    ].iter().cloned().collect();
     let foreign_keys: HashMap<String, Vec<u32>> = [
       (String::from("note_ids"), vec![]),
-      (String::from("user_ids"), user_ids),
     ].iter().cloned().collect();
     NoteTemplate {
       id,
