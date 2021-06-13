@@ -2551,8 +2551,6 @@ impl NoteArchive {
       c.id = i;
       i += 1;
     }
-      u.id = i;
-      i += 1;
     self.note_days = new_note_days;
     self.notes = new_notes;
   }
@@ -5725,6 +5723,7 @@ impl NoteArchive {
   }
   fn delete_current_general_collateral(&mut self) {
     let id = self.foreign_key.get("current_general_collateral_id").unwrap().to_owned();
+    self.delete_from_blanks(String::from("collateral"), id);
     self.general_collaterals.retain(|c| c.id != id);
     self.reindex_general_collaterals();
     self.foreign_key.remove("current_general_collateral_id");
@@ -5733,6 +5732,13 @@ impl NoteArchive {
     let mut i: u32 = 1;
     for mut co in &mut self.collaterals {
       for cl in &mut self.clients {
+        for co_id in &mut cl.foreign_keys.get_mut("collateral_ids").unwrap().iter_mut() {
+          if co_id == &co.id {
+            *co_id = i;
+          }
+        }
+      }
+      for cl in &mut self.users {
         for co_id in &mut cl.foreign_keys.get_mut("collateral_ids").unwrap().iter_mut() {
           if co_id == &co.id {
             *co_id = i;
@@ -7146,6 +7152,13 @@ impl NoteArchive {
   fn delete_current_goal(&mut self) {
     self.delete_goal(self.foreign_key["current_goal_id"]);
   }
+  fn reindex_goals(&mut self) {
+    let mut i: u32 = 1;
+    for mut g in &mut self.goals {
+      g.id = i;
+      i += 1;
+    }
+  }
 
   // note_days
   fn current_note_day_mut(&mut self) -> &mut NoteDay {
@@ -8228,6 +8241,12 @@ impl NoteArchive {
     }
   }
   fn delete_current_note_day(&mut self) {
+    for n in self.current_note_day_notes().clone() {
+      match self.load_note(n.id) {
+        Err(_) => panic!("Failed to delete note for current note day."),
+        Ok(_) => self.delete_current_note(),
+      }
+    }
     let id = self.foreign_key.get("current_note_day_id").unwrap();
     self.note_days.retain(|nd| nd.id != *id);
     self.reindex_note_days();
@@ -15047,6 +15066,13 @@ impl NoteArchive {
   fn reindex_notes(&mut self) {
     let mut i: u32 = 1;
     for mut n in &mut self.notes {
+      for nd in &mut self.note_days {
+        for n_id in &mut nd.foreign_keys.get_mut("note_ids").unwrap().iter_mut() {
+          if n_id == &n.id {
+            *n_id = i;
+          }
+        }
+      }
       n.id = i;
       i += 1;
     }
