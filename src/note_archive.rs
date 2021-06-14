@@ -47,6 +47,7 @@ use Blank::{
   CurrentUser,
   PartnerICCOrFP,
   CurrentClientName,
+  ClientGoal,
   Collaterals,
   AllCollaterals,
   PrimaryContact,
@@ -338,12 +339,40 @@ impl NoteArchive {
           n.blanks = new_blanks;
         }
       },
+      "goal" => {
+        for n in self.current_client_notes_mut() {
+          let mut new_blanks = n.blanks.clone();
+          for (i, (b, s, v)) in n.blanks.clone() {
+            match b {
+              ClientGoal => {
+                new_blanks.insert(i, (b, s, v.iter().cloned().filter(|c_id| c_id != &id ).collect() ) );
+              },
+              _ => (),
+            }
+          }
+          n.blanks = new_blanks;
+        }
+      },
+      "note_day" => {
+        for n in self.current_note_day_notes_mut() {
+          let mut new_blanks = n.blanks.clone();
+          for (i, (b, s, v)) in n.blanks.clone() {
+            match b {
+              NoteDayDate => {
+                new_blanks.insert(i, (b, s, v.iter().cloned().filter(|c_id| c_id != &id ).collect() ) );
+              },
+              _ => (),
+            }
+          }
+          n.blanks = new_blanks;
+        }
+      },
       "collateral" => {
         for n in self.current_collateral_notes_mut() {
           let mut new_blanks = n.blanks.clone();
           for (i, (b, s, v)) in n.blanks.clone() {
             match b {
-              Collaterals | AllCollaterals => {
+              Collaterals | AllCollaterals | PartnerICCOrFP | PrimaryContact | Guardian | CarePlanTeam => {
                 new_blanks.insert(i, (b, s, v.iter().cloned().filter(|c_id| c_id != &id ).collect() ) );
               },
               _ => (),
@@ -7150,7 +7179,9 @@ impl NoteArchive {
     self.write_goals().unwrap();
   }
   fn delete_current_goal(&mut self) {
-    self.delete_goal(self.foreign_key["current_goal_id"]);
+    let id = self.foreign_key["current_goal_id"];
+    self.delete_from_blanks(String::from("goal"), id);
+    self.delete_goal(id);
   }
   fn reindex_goals(&mut self) {
     let mut i: u32 = 1;
@@ -8248,6 +8279,7 @@ impl NoteArchive {
       }
     }
     let id = self.foreign_key.get("current_note_day_id").unwrap();
+    self.delete_from_blanks(String::from("note_day"), id);
     self.note_days.retain(|nd| nd.id != *id);
     self.reindex_note_days();
     self.foreign_key.remove("current_note_day_id");
@@ -11502,6 +11534,37 @@ impl NoteArchive {
                     }
                     self.current_note_mut().foreign_keys.insert(String::from("collateral_ids"), new_ids);
                   },
+                  ClientGoal => {
+                    let mut fill_ins: Vec<u32> = vec![];
+                    let final_blank_string = loop {
+                      let blank_id = match self.select_client_goals(Some(fill_ins.clone())) {
+                        Some(s) => s,
+                        None => {
+                          let fill_in_strings = fill_ins.iter().map(|g_id| self.get_goal_by_id(*g_id).unwrap().goal.clone() ).collect::<Vec<String>>();
+                          break if fill_in_strings.len() > 1 {
+                            format!(
+                              "{}{}{}",
+                              fill_in_strings[..fill_in_strings.len()-1].join(", "),
+                              " and ",
+                              fill_in_strings[fill_in_strings.len()-1],
+                            )
+                          } else if fill_in_strings.len() > 0 {
+                            fill_in_strings[0].clone()
+                          } else {
+                            String::new()
+                          };
+                        }
+                      };
+                      if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                        fill_ins.push(blank_id);
+                      } else {
+                        fill_ins.retain(|fi| fi != &blank_id )
+                      }
+                    };
+                    if fill_ins.len() > 0 {
+                      self.current_note_mut().blanks.insert(i, (b.clone(), final_blank_string, fill_ins));
+                    }
+                  },
                   InternalDocument => {
                     let mut fill_ins: Vec<usize> = vec![];
                     let final_blank_string = loop {
@@ -13309,7 +13372,38 @@ impl NoteArchive {
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
                 }
               }
-            }
+            },
+            ClientGoal => {
+              let mut fill_ins: Vec<u32> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match self.select_client_goals(Some(fill_ins.clone())) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_strings = fill_ins.iter().map(|g_id| self.get_goal_by_id(*g_id).unwrap().goal.clone() ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else if fill_in_strings.len() > 0 {
+                      fill_in_strings[0].clone()
+                    } else {
+                      String::new()
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
+              };
+              if fill_ins.len() > 0 {
+                n.blanks.insert(i, (b.clone(), final_blank_string, fill_ins));
+              }
+            },
             Collaterals => {
               let (blank_string, id_vec) = self.select_collaterals();
               n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
@@ -14537,6 +14631,7 @@ impl NoteArchive {
     let mut current_blank = 1;
     let mut hide = false;
     let mut youth_added = false;
+    let mut hide_inst = false;
     loop {
       n.blanks = self.autofill_note_blanks(n.clone()).blanks.clone();
       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -14567,24 +14662,51 @@ impl NoteArchive {
             val3,
             val4,
           );
-      }
-      println_on_bg!("{:-^163}", "-");
+        }
+        println_on_bg!("{:-^163}", "-");
 
       }
       println_inst!("Enter text to add to note.");
       println_inst!("Press ENTER to choose a phrase from the saved menus.");
-      println_inst!(
-        "| {} | {} | {}",
-        "YOUTH / Y: Add youth's full name",
-        "ALL / A: Add all collaterals",
-        "BACK / B: Delete last word",
-      );
-      println_inst!(
-        "| {} | {} | {}",
-        "SAVE / S: Finish writing and save to current record",
-        "HIDE / H: Hide collaterals list",
-        "CANCEL / C: Cancel and discard",
-      );
+      if !hide_inst {
+        println_inst!(
+          "| {} | {} | {}",
+          "YOUTH / Y: Youth's full name",
+          "ALL / A: All collaterals",
+          "CPT: All Care Plan Team members",
+        );
+        println_inst!(
+          "| {} | {} | {}",
+          "GOAL / G: Client goal",
+          "TODAY / T: Today's date",
+          "NOTEDAY / ND: The date of the current note",
+        );
+        println_inst!(
+          "| {} | {} | {}",
+          "SAVE / S: Finish writing and save to current record",
+          "BACK / B: Delete last word",
+          "CANCEL / C: Cancel and discard",
+        );
+        if hide {
+          println_inst!(
+            "| {} | {}",
+            "SHOW / SH: Show collaterals list",
+            "INST / I: Hide instructions",
+          );
+        } else {
+          println_inst!(
+            "| {} | {}",
+            "HIDE / H: Hide collaterals list",
+            "INST / I: Hide instructions",
+          );
+        }
+      } else {
+        println_inst!(
+          "| {} | {}",
+          "INST / I: Show instructions",
+        );
+      }
+      
       let mut choice = String::new();
       let choice_att = io::stdin().read_line(&mut choice);
       match choice_att {
@@ -14639,6 +14761,17 @@ impl NoteArchive {
               hide = true;
               continue;
             }
+            "show" | "sh" => {
+              hide = false;
+              continue;
+            },
+            "instructions" | "inst" | "i" => {
+              if hide_inst {
+                hide_inst = false;
+              } else {
+                hide_inst = true;
+              }
+            }
             "youth" | "y" | "YOUTH" | "Youth" | "Y" => {
               let current_client_string = if !youth_added {
                 youth_added = true;
@@ -14673,13 +14806,47 @@ impl NoteArchive {
               current_blank += 1;
               continue;
             },
+
+            // "CPT: All Care Plan Team members",
+            // "GOAL / G: Client goal",
+            // "TODAY / T: Today's date",
+            // "NOTEDAY / ND: The date of the current note",
+
+            "cpt" | "care plan team" | "care plan" => {
+              let cpt = self.current_client_collaterals().iter().filter(|co| co.care_plan_team ).map(|co_ref| co_ref.clone() ).collect::<Vec<Collateral>>();
+              let cpt_len = cpt.len();
+              if cpt_len > 0 {
+                let blank_string = if cpt_len > 1 {
+                  format!(
+                    "{} {} {}",
+                    cpt[..cpt_len-1].iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", "),
+                    "and",
+                    cpt[cpt_len-1].full_name_and_title(),
+                  )
+                } else {
+                  cpt[0].full_name_and_title()
+                };
+                let id_vec = cpt.iter().map(|co| co.id ).collect::<Vec<u32>>();
+                n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
+                let mut old_ids = n.foreign_keys["collateral_ids"].clone();
+                for new_id in id_vec {
+                  if !old_ids.clone().iter().any(|o_id| o_id == &new_id ) {
+                    old_ids.push(new_id);
+                  }
+                }
+                n.foreign_keys.insert(String::from("collateral_ids"), old_ids);
+              } else {
+                  println_inst!("No Care Plan Team members found for current client.");
+                  println_inst!("You may choose or edit collaterals from the next menu.");
+                  thread::sleep(time::Duration::from_secs(3));
+                  let (blank_string, id_vec) = self.select_collaterals();
+                  n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
+                  n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
+              }
+            }
             "back" | "b" => {
-
               n.content = n.content.trim().to_string();
-
               let last_space = n.content.rfind(' ');
-
-              
               match last_space {
                 None => {
                   if n.content.chars().count() > 5 {
