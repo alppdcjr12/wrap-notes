@@ -1,10 +1,5 @@
 ##### collaterals #####
-7 | Paul | Smith | OPT | Summit | 1 | Formal | false | false | false | false
-1 | Jack | Smith | OPT | --NONE-- | 1 | Natural | false | false | false | false
-2 | Jack | Swanson | DDS Case Manager | DDS | 1 | Formal | false | false | false | false
-4 | Steven | Stevenson | FP | Riverside Community Care | 1 | Formal | false | false | false | false
-3 | Quentin | Tarantino | Director | Tarantino Films | 1 | Formal | true | false | false | false
-6 | Poignant | Smithereens | Attorney at law | Smithereeens & Smithereens Lawfirm | 3 | Formal | true | false | false | false
-5 | Joe | Schmoe | OPT | The Edinburg Center | 3 | Formal | false | false | false | false
-8 | asdf | asdfasdf | asdfasdfasdf | --NONE-- | 2 | Natural | false | false | true | true
+1 | Betty | Smith | Mother | --NONE-- | 2 | Natural | false | true | true | true
+2 | Kym | Goldsmith | OPT | AYCC | 3 | Formal | false | false | false | false
+3 | Paul | Smith | TRE | --NONE-- | 3 | Natural | false | false | false | false
 ##### collaterals #####

@@ -3,8 +3,8 @@ pub use user::*;
 pub use crate::EmployeeRole::{Fp, Icc};
 pub use crate::SupportType::{Natural, Formal};
 pub use crate::StructureType::{
-  CarePlan,
-  CarePlanVerbose,
+  CarePlan1,
+  CarePlan2,
   Intake,
   Assessment,
   Sncd,
@@ -15,7 +15,26 @@ pub use crate::StructureType::{
   Scheduling,
   SentEmail,
   Referral,
-  CustomStructure
+  ParentSupport,
+  SentCancellation,
+  ParentAppearance,
+  ParentSkills,
+  FailedContactAttempt,
+  CategorizedEmails,
+  Documentation1,
+  AuthorizationRequested,
+  AuthorizationIssued,
+  CollateralOutreach,
+  UpdateFromCollateral,
+  InvitedToMeeting,
+  SentDocument,
+  UpdatedDocument,
+  DiscussCommunication,
+  ReceivedVerbalConsent,
+  ReceivedWrittenConsent,
+  Documentation2,
+  BrainstormContribution,
+  CustomStructure,
 };
 
 pub mod note_archive;
