@@ -23,8 +23,7 @@ use crate::blank_enums::*;
 use EmployeeRole::{Fp, Icc};
 use SupportType::{Natural, Formal};
 use StructureType::{
-  CarePlan1,
-  CarePlan2,
+  CarePlan,
   Intake,
   Assessment,
   Sncd,
@@ -41,7 +40,7 @@ use StructureType::{
   ParentSkills,
   FailedContactAttempt,
   CategorizedEmails,
-  Documentation1,
+  DocumentationStructure,
   AuthorizationRequested,
   AuthorizationIssued,
   CollateralOutreach,
@@ -52,7 +51,6 @@ use StructureType::{
   DiscussCommunication,
   ReceivedVerbalConsent,
   ReceivedWrittenConsent,
-  Documentation2,
   BrainstormContribution,
   CustomStructure,
 };
@@ -642,7 +640,7 @@ impl NoteArchive {
 
     let nt1 = NoteTemplate::new(
       1,
-      CarePlan1,
+      CarePlan,
       true,
       String::from("ICC met with (---co---) for a Care Plan Meeting for (---c---)."),
       vec![2],
@@ -10310,8 +10308,7 @@ impl NoteArchive {
     for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
       let i = i as u32;
       let structure = match def.0 {
-        "Care Plan 1" => CarePlan1,
-        "Care Plan 2" => CarePlan2,
+        "Care Plan" => CarePlan,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => Sncd,
@@ -10339,8 +10336,7 @@ impl NoteArchive {
         "Discuss Communication" => DiscussCommunication,
         "Received Verbal Consent" => ReceivedVerbalConsent,
         "Received Written Consent" => ReceivedWrittenConsent,
-        "Documentation 1" => Documentation1,
-        "Documentation 2" => Documentation2,
+        "Documentation" => DocumentationStructure,
         "Brainstorm Contribution" => BrainstormContribution,
         _ => {
           panic!("Support not added for reading default Structure Type from constant.");
@@ -10362,8 +10358,7 @@ impl NoteArchive {
       let id: u32 = values[0].parse().unwrap();
 
       let structure = match &values[1][..] {
-        "Care Plan 1" => CarePlan1,
-        "Care Plan 2" => CarePlan2,
+        "Care Plan" => CarePlan,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => Sncd,
@@ -10391,8 +10386,7 @@ impl NoteArchive {
         "Discuss Communication" => DiscussCommunication,
         "Received Verbal Consent" => ReceivedVerbalConsent,
         "Received Written Consent" => ReceivedWrittenConsent,
-        "Documentation 1" => Documentation1,
-        "Documentation 2" => Documentation2,
+        "Documentation" => DocumentationStructure,
         "Brainstorm Contribution" => BrainstormContribution,
         _ => return Err(Error::new(
           ErrorKind::Other,
@@ -10723,8 +10717,7 @@ impl NoteArchive {
           let ncat = match self.current_user().role {
             Icc => {
               match structure {
-                CarePlan1 => ICCNote(FaceToFaceContactWithClient),
-                CarePlan2 => ICCNote(FaceToFaceContactWithClient),
+                CarePlan => ICCNote(FaceToFaceContactWithClient),
                 Intake => ICCNote(FaceToFaceContactWithClient),
                 Assessment => ICCNote(FaceToFaceContactWithClient),
                 Sncd => ICCNote(FaceToFaceContactWithClient),
@@ -10751,8 +10744,7 @@ impl NoteArchive {
                 DiscussCommunication => ICCNote(CareCoordination),
                 ReceivedVerbalConsent => ICCNote(FaceToFaceContactWithClient),
                 ReceivedWrittenConsent => ICCNote(FaceToFaceContactWithClient),
-                Documentation1 => ICCNote(Documentation),
-                Documentation2 => ICCNote(Documentation),
+                DocumentationStructure => ICCNote(Documentation),
                 BrainstormContribution => ICCNote(FaceToFaceContactWithClient),
                 CustomStructure => {
                   loop {
@@ -10795,8 +10787,7 @@ impl NoteArchive {
             }
             Fp => {
               match structure {
-              CarePlan1 => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
-              CarePlan2 => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+              CarePlan => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
               Intake => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
               Assessment => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
               Sncd => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
@@ -10823,8 +10814,7 @@ impl NoteArchive {
               DiscussCommunication => FPNote(DescriptionOfIntervention(Some(DirectTimeWithProviders))),
               ReceivedVerbalConsent => FPNote(PlanAdditionalInformation),
               ReceivedWrittenConsent => FPNote(PlanAdditionalInformation),
-              Documentation1 => FPNote(DescriptionOfIntervention(Some(FPInterventionDocumentation))),
-              Documentation2 => FPNote(DescriptionOfIntervention(Some(FPInterventionDocumentation))),
+              DocumentationStructure=> FPNote(DescriptionOfIntervention(Some(FPInterventionDocumentation))),
               BrainstormContribution => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
                 CustomStructure => {
                   loop {
@@ -13169,8 +13159,7 @@ impl NoteArchive {
     let ncat = match self.current_user().role {
       Icc => {
         match nst {
-          CarePlan1 => ICCNote(FaceToFaceContactWithClient),
-          CarePlan2 => ICCNote(FaceToFaceContactWithClient),
+          CarePlan => ICCNote(FaceToFaceContactWithClient),
           Intake => ICCNote(FaceToFaceContactWithClient),
           Assessment => ICCNote(FaceToFaceContactWithClient),
           Sncd => ICCNote(FaceToFaceContactWithClient),
@@ -13197,8 +13186,7 @@ impl NoteArchive {
           DiscussCommunication => ICCNote(CareCoordination),
           ReceivedVerbalConsent => ICCNote(FaceToFaceContactWithClient),
           ReceivedWrittenConsent => ICCNote(FaceToFaceContactWithClient),
-          Documentation1 => ICCNote(Documentation),
-          Documentation2 => ICCNote(Documentation),
+          DocumentationStructure=> ICCNote(Documentation),
           BrainstormContribution => ICCNote(FaceToFaceContactWithClient),
           CustomStructure => {
             loop {
@@ -13241,8 +13229,7 @@ impl NoteArchive {
       }
       Fp => {
         match nst {
-          CarePlan1 => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
-          CarePlan2 => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
+          CarePlan => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
           Intake => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
           Assessment => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
           Sncd => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
@@ -13269,8 +13256,7 @@ impl NoteArchive {
           DiscussCommunication => FPNote(DescriptionOfIntervention(Some(DirectTimeWithProviders))),
           ReceivedVerbalConsent => FPNote(PlanAdditionalInformation),
           ReceivedWrittenConsent => FPNote(PlanAdditionalInformation),
-          Documentation1 => FPNote(DescriptionOfIntervention(Some(FPInterventionDocumentation))),
-          Documentation2 => FPNote(DescriptionOfIntervention(Some(FPInterventionDocumentation))),
+          DocumentationStructure => FPNote(DescriptionOfIntervention(Some(FPInterventionDocumentation))),
           BrainstormContribution => FPNote(DescriptionOfIntervention(Some(FaceToFaceContact))),
           CustomStructure => {
             loop {
@@ -15217,8 +15203,7 @@ impl NoteArchive {
       };
 
       let structure = match &values[3][..] {
-        "Care Plan 1" => CarePlan1,
-        "Care Plan 2" => CarePlan2,
+        "Care Plan" => CarePlan,
         "Intake" => Intake,
         "Assessment" => Assessment,
         "SNCD" => Sncd,
@@ -15246,8 +15231,7 @@ impl NoteArchive {
         "Discuss Communication" => DiscussCommunication,
         "Received Verbal Consent" => ReceivedVerbalConsent,
         "Received Written Consent" => ReceivedWrittenConsent,
-        "Documentation 1" => Documentation1,
-        "Documentation 2" => Documentation2,
+        "Documentation" => DocumentationStructure,
         "Brainstorm Contribution" => BrainstormContribution,
         _ => return Err(Error::new(
           ErrorKind::Other,

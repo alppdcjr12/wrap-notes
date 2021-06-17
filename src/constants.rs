@@ -38,11 +38,210 @@ pub const INDIRECT_ROLES: [&'static str; 25] = [
   "mobile crisis clinician", "intake coordinator", "supervisor",
 ];
 
-pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 1] = [
+pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
   (
-    "Care Plan Meeting",
+    "Parent Support",
     "\
-      This is a template for (---u---) for the client (---c---). \
+      (---u---) (---ps---) (---pc---) (---cu---). \
+    ",
+  ),
+  (
+    "Sent Cancellation",
+    "\
+      (---u---) emailed (---co---) to cancel the (---im---) for (---c---). \
+    ",
+  ),
+  (
+    "Parent Appearance",
+    "\
+      (---co---) appeared (---ap---). \
+    ",
+  ),
+  (
+    "Parent Skills",
+    "\
+      (---co---) demonstrated effective (---ps---). \
+    ",
+  ),
+  (
+    "Failed Contact Attempt",
+    "\
+      (---u---) reached out to (---co---) via (---cm---) to (---cp---) but was unable to reach (---pb2@2@---). \
+    ",
+  ),
+  (
+    "Categorized Emails",
+    "\
+      (---u---) categorized sent emails for (---c---) into separate folders for record keeping. \
+    ",
+  ),
+  (
+    "Documentation",
+    "\
+      (---u---) entered into evolv summaries of treatment events for (---c---) for today, (---td---). \
+    ",
+  ),
+  (
+    "Authorization Requested",
+    "\
+      (---u---) (---cm---) (---co---) to request a new insurance authorization for (---c---). \
+    ",
+  ),
+  (
+    "Authorization Issued",
+    "\
+      (---u---) received a phone call from (---co---) confirming that a new insurance authorization \
+      had been issued for (---c---) for (---cu---) with reference number (---cu---). \
+      (---u---) emailed (---co---) to notify (---pb2@7@---).\
+    ",
+  ),
+  (
+    "Outreach",
+    "\
+      (---u---) reached out to (---co---) via (---cm---) and (---fcp---). \
+    ",
+  ),
+  (
+    "Update From Collateral",
+    "\
+      (---u---) received a (---cm---) from (---co---) informing (---pu2---) that (---cu---). \
+    ",
+  ),
+  (
+    "Invited To Meetings",
+    "\
+      (---u---) send Zoom and Outlook invitations for the upcoming (---im---) for (---c---) \
+      to (---co---).\
+    ",
+  ),
+  (
+    "Sent Documents",
+    "\
+      (---u---) sent the (---im---) for (---c---) to (---co---) via (---cm---). \
+    ",
+  ),
+  (
+    "Updated Document",
+    "\
+      (---u---) updated the (---id---) for (---c---) with updates on (---pc3---) (---yt---). \
+    ",
+  ),
+  (
+    "Discuss Communication",
+    "\
+      (---u---) called (---co---) to discuss recent communication between (---co---). \
+    ",
+  ),
+  (
+    "Received Verbal Consent",
+    "\
+      (---u---) contacted (---g---) via (---cm---) and received verbal consent \
+      for (---u---) and Riverside Community Care to exchange (---c---)'s \
+      Protected Health Information with (---co---).\
+    ",
+  ),
+  (
+    "Received Written Consent",
+    "\
+      (---u---) received written consent via (---cm---) for (---u---) and Riverside \
+      Community Care to exchange (---c---)'s Protected Health Information with (---co---).\
+    ",
+  ),
+  (
+    "Documentation",
+    "\
+      (---u---) reviewed notes and completed daily logs for (---td---). \
+    ",
+  ),
+  (
+    "Brainstorm Contribution",
+    "\
+      (---u---) contributed to the team brainstorm ideas for (---c---)'s \
+      Care Plan goal of \"(---g---).\"\
+    ",
+  ),
+  (
+    "Care Plan",
+    "\
+      (---u---) met with (---cpt---) (---mm---). \
+      All team members completed introductions as necessary. \
+      (---cu---). \
+      The team went over all elements of the agenda including the team mission, \
+      family vision, and ground rules. \
+      The team went over strengths for (---c---) and (---pb3@5@---) family related to \
+      the current goal. \
+      Team members provided updates on and discussed (---c---)'s (---yt---). \
+      The team discussed updates on (---cpto---) for (---c---). \
+      (---cu---). \
+      The team brainstormed action steps for (---c---)'s goal of \"(---g---).\" \
+      (---u---) scheduled the (---im---) for (---c---) for (---c---).\
+    ",
+  ),
+  (
+    "Intake",
+    "\
+      (---u---) met with (---co---) for an intake for (---c---). \
+      (---u---) and (---p---) introduced themselves and discussed \
+      (---pc---)'s hopes and expectations for Wraparound using \
+      open-ended questions to explore changes the family wants to make. \
+      (---cu---). \
+      The team elicited (---pc---)'s experience of challenges (---pb1@9@---) and \
+      (---c---) have faced, including (---c---)'s (---yt---). \
+      The team elicited and reflected the family's strengths, including \
+      (---cu---). \
+      (---u---) explained the Wraparound process. \
+      (---u---) and (---p---) shared information about the limitations and intensive \
+      nature of Wraparound services as well as the role of different team members. \
+      (---u---) and (---p---) discussed their roles and the structure of Wraparound \
+      services. \
+      (---u---) reviewed the (---id---) with (---g---). \
+      (---u---) elicited verbal consent for the (---id---) and (---g---) (---sm---) \
+      the (---id---). \
+      (---g---) (---sm---) Release of Information forms permitting (---u---) and (---p---) \
+      to exchange (---c---)'s Protected Health Information with (---co---). \
+      (---cu---). \
+      (---u---) scheduled the (---im---) for (---cu---). \
+    ",
+  ),
+  (
+    "Assessment",
+    "\
+      (---u---) met with (---co---) for the assessment of (---c---). \
+      (---pc---) shared updates on (---c---)'s recent (---yt---). \
+      (---u---) listened and used open-ended questions to learn more about (---c---)'s \
+      experience and the perspectives of (---co---) while also addressing \
+      assessment of (---c---)'s recent (---yt---). \
+      (---cu---). \
+      (---u---) scheduled the (---im---) for (---cu---).\
+    ",
+  ),
+  (
+    "Agenda Prep",
+    "\
+      (---u---) met with (---co---) for the Agenda Prep for (---c---)'s next Care Plan Meeting.\
+      The team went over all elements of the agenda including the team mission, family vision, \
+      and ground rules. \
+      The team went over recent updates on (---c---)'s (---yt---). \
+      The team discussed potential treatment goals for (---c---) and agreed \
+      on addressing (---g---) for the next Care Plan Meeting. \
+      (---u---) scheduled the (---im---) for (---cu---).\
+    ",
+  ),
+  (
+    "Debrief",
+    "\
+      (---u---) and (---p---) met with (---pc---) for the debrief of (---c---)'s most \
+      recent Care Plan Meeting. \
+      The team went over and agreed on action steps to implement, including (---cu---). \
+      (---cu---). \
+      (---u---) scheduled the (---im---) for (---cu---).\
+    ",
+  ),
+  (
+    "Referral",
+    "\
+      (---u---) sent all required documents via (---cm---) to (---co---) in order to \
+      complete a referral for (---c---) for (---s---).\
     ",
   ),
 ];

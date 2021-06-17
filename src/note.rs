@@ -50,8 +50,7 @@ macro_rules! print_unfocused_blank {
 
 #[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
 pub enum StructureType {
-  CarePlan1,
-  CarePlan2,
+  CarePlan,
   Intake,
   Assessment,
   Sncd,
@@ -68,7 +67,7 @@ pub enum StructureType {
   ParentSkills,
   FailedContactAttempt,
   CategorizedEmails,
-  Documentation1,
+  DocumentationStructure,
   AuthorizationRequested,
   AuthorizationIssued,
   CollateralOutreach,
@@ -79,14 +78,12 @@ pub enum StructureType {
   DiscussCommunication,
   ReceivedVerbalConsent,
   ReceivedWrittenConsent,
-  Documentation2,
   BrainstormContribution,
   CustomStructure,
 }
 
 use StructureType::{
-  CarePlan1,
-  CarePlan2,
+  CarePlan,
   Intake,
   Assessment,
   Sncd,
@@ -103,7 +100,6 @@ use StructureType::{
   ParentSkills,
   FailedContactAttempt,
   CategorizedEmails,
-  Documentation1,
   AuthorizationRequested,
   AuthorizationIssued,
   CollateralOutreach,
@@ -114,7 +110,7 @@ use StructureType::{
   DiscussCommunication,
   ReceivedVerbalConsent,
   ReceivedWrittenConsent,
-  Documentation2,
+  DocumentationStructure,
   BrainstormContribution,
   CustomStructure,
 };
@@ -122,8 +118,7 @@ use StructureType::{
 impl StructureType {
   pub fn iterator() -> impl Iterator<Item = StructureType> {
     [
-      CarePlan1,
-      CarePlan2,
+      CarePlan,
       Intake,
       Assessment,
       Sncd,
@@ -150,16 +145,14 @@ impl StructureType {
       DiscussCommunication,
       ReceivedVerbalConsent,
       ReceivedWrittenConsent,
-      Documentation1,
-      Documentation2,
+      DocumentationStructure,
       BrainstormContribution,
       CustomStructure,
     ].iter().copied()
   }
   pub fn abbreviate(&self) -> &str {
     match self {
-      CarePlan1 => "CPM1",
-      CarePlan2 => "CPM2",
+      CarePlan => "CPM",
       Intake => "I",
       Assessment => "A",
       Sncd => "S",
@@ -187,8 +180,7 @@ impl StructureType {
       DiscussCommunication => "DC",
       ReceivedVerbalConsent => "RVC",
       ReceivedWrittenConsent => "RWC",
-      Documentation1 => "DO1",
-      Documentation2 => "DO2",
+      DocumentationStructure => "DO",
       BrainstormContribution => "BC",
     }
   }
@@ -197,8 +189,7 @@ impl StructureType {
 impl fmt::Display for StructureType {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let display = match self {
-      CarePlan1 => "Care Plan 1",
-      CarePlan2 => "Care Plan 2",
+      CarePlan => "Care Plan",
       Intake => "Intake",
       Assessment => "Assessment",
       Sncd => "SNCD",
@@ -226,8 +217,7 @@ impl fmt::Display for StructureType {
       DiscussCommunication => "Discuss Communication",
       ReceivedVerbalConsent => "Received Verbal Consent",
       ReceivedWrittenConsent => "Received Written Consent",
-      Documentation1 => "Documentation 1",
-      Documentation2 => "Documentation 2",
+      DocumentationStructure => "Documentation",
       BrainstormContribution => "Brainstorm Contribution",
     };
     write!(f, "{}", display)
