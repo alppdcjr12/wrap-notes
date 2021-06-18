@@ -335,8 +335,6 @@ impl NoteArchive {
     println_yel!("{:-^58}", "-");
     println_yel!("{:-^58}", " Files not readable ");
     println_yel!("{:-^58}", "-");
-    println_yel!("{:-^15} | {:-^40}", " Command ", " Function ");
-    println_yel!("{:-^58}", "-");
     
     println_yel!("{:-^58}", "-");
     println_yel!(
@@ -786,8 +784,6 @@ impl NoteArchive {
     let heading_with_spaces = format!(" Notes archive for {} ", self.current_user().name_and_title()); 
     println_on_bg!("{:-^58}", heading_with_spaces);
     println_on_bg!("{:-^58}", "-");
-    println_on_bg!("{:-^15} | {:-^40}", " Command ", " Function ");
-    println_on_bg!("{:-^58}", "-");
     
     println_on_bg!("{: >15} | {: <40}", " NOTE / N ", " Write, view, and edit note records ");
     println_on_bg!("{: >15} | {: <40}", " CLIENT / C ", " View/edit client records ");
@@ -900,8 +896,6 @@ impl NoteArchive {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^58}", "-");
     println_on_bg!("{:-^58}", " Security ");
-    println_on_bg!("{:-^58}", "-");
-    println_on_bg!("{:-^15} | {:-^40}", " Command ", " Function ");
     println_on_bg!("{:-^58}", "-");
     
     println_on_bg!(
@@ -1642,6 +1636,32 @@ impl NoteArchive {
     println_on_bg!("{:-^96}", "-");
     println_inst!("| {} | {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records", "QUIT / Q: quit menu");
   }
+  fn display_select_clients(&self) {
+    let mut heading = String::from(" ");
+    heading.push_str(&self.current_user().full_name()[..]);
+    heading.push_str("'s clients ");
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^96}", heading);
+    println_on_bg!("{:-^96}", "-");
+    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Name ", " DOB ");
+    match self.foreign_key.get("current_user_id") {
+      Some(_) => {
+        for c in self.get_current_clients() {
+          println_on_bg!(
+            "{: ^10} | {: ^40} | {: <12} {: >26}",
+            c.id,
+            c.full_name(),
+            c.fmt_dob(),
+            c.fmt_date_of_birth()
+          );
+        }
+      }
+      None => (),
+    }
+    println_on_bg!("{:-^96}", "-");
+    println_inst!("| {} | {} | {} | {}", "Choose client for note by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records");
+  }
   fn display_edit_clients(&self) {
     let mut heading = String::from(" Edit ");
     heading.push_str(&self.current_user().full_name()[..]);
@@ -1863,6 +1883,65 @@ impl NoteArchive {
             }
             match self.load_client(num) {
               Ok(_) => self.choose_client(),
+              Err(e) => {
+                println_err!("Unable to load client with id {}: {}", num, e);
+                thread::sleep(time::Duration::from_secs(1));
+                continue;
+              }
+            }
+          },
+          Err(e) => {
+            println_err!("Could not read input as a number; try again ({}).", e);
+            thread::sleep(time::Duration::from_secs(1));
+            continue;
+          }
+        },
+      }
+    }
+  }
+  fn select_client(&mut self) -> u32 {
+    loop {
+      let input = loop {
+        self.display_select_clients();
+        let mut choice = String::new();
+        let read_attempt = io::stdin().read_line(&mut choice);
+        match read_attempt {
+          Ok(_) => break choice.to_ascii_lowercase(),
+          Err(e) => {
+            println_err!("Could not read input; try again ({}).", e);
+            continue;
+          }
+        }
+      };
+      let input = input.trim();
+      match input {
+        "new" | "n" => {
+          let maybe_new_id = self.create_client_get_id();
+          match maybe_new_id {
+            Some(new_id) => self.update_current_clients(new_id),
+            None => (),
+          }
+          continue;
+        },
+        "add" | "a" => {
+          self.add_client();
+          continue;
+        },
+        "edit" | "e" => {
+          self.choose_edit_clients();
+          continue;
+        },
+        _ => match input.parse() {
+          Ok(num) => {
+            if !self.get_current_clients()
+              .iter()
+              .any(|&c| c.id == num) {
+                println_err!("Please choose from among the listed clients, or add a client from another user.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+            }
+            match self.load_client(num) {
+              Ok(_) => return num,
               Err(e) => {
                 println_err!("Unable to load client with id {}: {}", num, e);
                 thread::sleep(time::Duration::from_secs(1));
@@ -8421,7 +8500,7 @@ impl NoteArchive {
       );
     }
     println_on_bg!("{:-^156}", "-");
-    println_inst!("{} | {}", "Choose template to copy by ID.", "CANCEL / C: Cancel copying a template");
+    println_inst!("{} | {}", "Choose template to copy by ID.", "QUIT / Q: Return to my note templates");
   }
   fn display_edit_note_templates(&self) {
     let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
@@ -8469,7 +8548,7 @@ impl NoteArchive {
                 match self.load_note_template(num) {
                   Ok(_) => {
                     if self.current_note_template().custom {
-                      self.choose_edit_note_template();
+                      self.choose_edit_note_template(String::from("edit"));
                     } else {
                       panic!("Failed to load a note template by ID listed in the current user's note templates.");
                     }
@@ -8500,16 +8579,31 @@ impl NoteArchive {
   fn display_edit_note_template(&self) {
     self.current_note_template().display_edit_content(None, None);
   }
-  fn choose_edit_note_template(&mut self) {
+  fn choose_edit_note_template(&mut self, s: String) {
     loop {
       self.display_edit_note_template();
-      println_inst!(
-        "{} | {} | {} | {}",
-        "STRUCTURE / S: Edit structure type",
-        "BLANKS / B: Edit blanks",
-        "CONTENT / C: Edit default content",
-        "QUIT / Q: Quit menu",
-      );
+      match &s[..] {
+        "copy" => { // not currently being used
+          println_inst!("Press ENTER to save this template to your personal list.");
+          println_inst!(
+            "{} | {} | {} | {}",
+            "STRUCTURE / S: Edit structure type",
+            "BLANKS / B: Edit blanks",
+            "CONTENT / C: Edit default content",
+            "SAVE: Save copy to your notes",
+          );
+        },
+        "edit" => {
+          println_inst!(
+            "{} | {} | {} | {}",
+            "STRUCTURE / S: Edit structure type",
+            "BLANKS / B: Edit blanks",
+            "CONTENT / C: Edit default content",
+            "QUIT / Q: Quit menu",
+          );
+        },
+        _ => panic!("Unsupported display purpose variable 's' passed to fn 'display_edit_note_template': {}", s),
+      }
       println_inst!("Choose blank by ID to delete or change it to a different type of blank.");
       let mut field_to_edit = String::new();
       let input_attempt = io::stdin().read_line(&mut field_to_edit);
@@ -8522,7 +8616,7 @@ impl NoteArchive {
       }
       field_to_edit = field_to_edit.trim().to_string();
       match &field_to_edit.to_ascii_lowercase()[..] {
-        "quit" | "q" => {
+        "quit" | "q" | "save" | "" => {
           let current_nt = self.current_note_template();
           match self.note_template_dup_already_saved(current_nt.id) {
             Some(nt_ids) => {
@@ -9857,7 +9951,7 @@ impl NoteArchive {
         }
         "edit" | "e" => {
           if self.current_note_template().custom {
-            self.choose_edit_note_template();
+            self.choose_edit_note_template(String::from("edit"));
           } else {
             println_err!("Cannot edit default note templates. To create a custom version, use the 'COPY' command and edit the copy.");
             thread::sleep(time::Duration::from_secs(4));
@@ -10153,7 +10247,6 @@ impl NoteArchive {
       Ok(_) => (),
       Err(e) => panic!("Failed to load note template immediately following generation in copy_note_template: {}.", e),
     }
-    self.choose_edit_note_template();
   }
   fn choose_copy_note_template(&mut self) {
     loop {
@@ -10169,7 +10262,7 @@ impl NoteArchive {
         },
       };
       match &user_choice[..] {
-        "cancel" | "CANCEL" | "Cancel" | "C" | "c" => {
+        "cancel" | "CANCEL" | "Cancel" | "C" | "c" | "quit" | "q" | "" => {
           break;
         },
         _ => {
@@ -10339,7 +10432,7 @@ impl NoteArchive {
         "Documentation" => DocumentationStructure,
         "Brainstorm Contribution" => BrainstormContribution,
         _ => {
-          panic!("Support not added for reading default Structure Type from constant.");
+          panic!("Support not added for reading default Structure Type from constant: {}.", def.0);
         }
       };
       let content = String::from(def.1);
@@ -13299,6 +13392,41 @@ impl NoteArchive {
       }
     };
 
+    match self.foreign_key.get("current_note_day").clone() {
+      Some(_) => (),
+      None => {
+        let nds = self.current_user_note_days();
+        let max_nd = nds.iter().max_by(|a, b| a.date.cmp(&b.date) );
+        let today = Local::now().naive_local().date();
+        match max_nd {
+          Some(max) => {
+            if max.date == today {
+              self.foreign_key.insert(String::from("current_note_day"), max.id);
+            } else {
+              let maybe_new_nd = self.generate_unique_new_note_day(today, self.current_user().id, self.current_client().id);
+              match maybe_new_nd {
+                Err(_) => panic!("Failed to generate new note day."),
+                Ok(nd) => {
+                  self.save_note_day(nd);
+                  self.write_to_files();
+                }
+              }
+            }
+          },
+          None => {
+            let maybe_new_nd = self.generate_unique_new_note_day(today, self.current_user().id, self.current_client().id);
+            match maybe_new_nd {
+              Err(_) => panic!("Failed to generate new note day."),
+              Ok(nd) => {
+                self.save_note_day(nd);
+                self.write_to_files();
+              }
+            }
+          }
+        }
+      },
+    }
+
     let date = self.current_note_day().date.clone();
     let mut n = self.generate_note(date, ncat, nst, ncnt).unwrap();
 
@@ -15090,7 +15218,14 @@ impl NoteArchive {
   ) -> Result<Note, String> {
     let id: u32 = self.notes.len() as u32 + 1;
     let user_id = self.current_user().id;
-    let client_id = self.current_client().id;
+    let client_id = match self.foreign_key.get("current_client_id") {
+      None => self.select_client(),
+      Some(n) => *n,
+    };
+    match self.load_client(client_id) {
+      Err(_) => panic!("Failed to load client selected for note."),
+      Ok(_) => (),
+    }
     let collateral_ids: Vec<u32> = vec![];
 
     Ok(Note::new(id, date, category, structure, content, user_id, client_id, collateral_ids))

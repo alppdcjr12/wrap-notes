@@ -96,7 +96,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
     ",
   ),
   (
-    "Outreach",
+    "Collateral Outreach",
     "\
       (---u---) reached out to (---co---) via (---cm---) and (---fcp---). \
     ",
@@ -108,14 +108,14 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
     ",
   ),
   (
-    "Invited To Meetings",
+    "Invited To Meeting",
     "\
       (---u---) send Zoom and Outlook invitations for the upcoming (---im---) for (---c---) \
       to (---co---).\
     ",
   ),
   (
-    "Sent Documents",
+    "Sent Document",
     "\
       (---u---) sent the (---im---) for (---c---) to (---co---) via (---cm---). \
     ",
