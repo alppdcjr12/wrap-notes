@@ -1,5 +1,0 @@
-##### collaterals #####
-1 | Betty | Smith | Mother | --NONE-- | 2 | Natural | false | true | true | true
-2 | Kym | Goldsmith | OPT | AYCC | 3 | Formal | false | false | false | false
-3 | Paul | Smith | TRE | --NONE-- | 3 | Natural | false | false | false | false
-##### collaterals #####
