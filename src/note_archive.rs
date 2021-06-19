@@ -8491,7 +8491,20 @@ impl NoteArchive {
     println_on_bg!("{:-^156}", heading);
     println_on_bg!("{:-^156}", "-");
     println_on_bg!("{:-^10} | {:-^40} | {:-^100}", " ID ", " Type ", " Preview ");
-    for nt in self.note_templates.clone() {
+
+    let defaults: Vec<NoteTemplate> = self.note_templates.clone().iter().filter(|nt| !nt.custom ).map(|nt| nt.clone() ).collect();
+    let customs: Vec<NoteTemplate> = self.note_templates.clone().iter().filter(|nt| nt.custom ).map(|nt| nt.clone() ).collect();
+    let nondup_customs: Vec<NoteTemplate> = customs.iter().filter(|c_nt| !defaults.iter().any(|d_nt| d_nt.content == c_nt.content  ) ).map(|nt| nt.clone() ).collect();
+
+    let mut display_nts: Vec<NoteTemplate> = vec![];
+    for nt in defaults {
+      display_nts.push(nt.clone());
+    }
+    for nt in nondup_customs {
+      display_nts.push(nt.clone());
+    }
+
+    for nt in display_nts {
       let mut type_string = format!("{}", nt.structure);
       if nt.custom {
         type_string.push_str(" (custom)");
@@ -9896,9 +9909,9 @@ impl NoteArchive {
         println_inst!(
           "| {} | {} | {} | {} | {}",
           "NOTE / N: use template for a new note",
-          "COPY / C: create new custom template from this template",
+          "COPY / C: make copy for new custom template",
           "EDIT / E: edit template",
-          "DELETE: delete (custom template only)",
+          "DELETE: delete template",
           "QUIT / Q: quit menu"
         );
       } else {
@@ -10247,6 +10260,7 @@ impl NoteArchive {
     };
     let new_id = new_nt.id;
     self.save_note_template(new_nt);
+    self.write_to_files();
     match self.load_note_template(new_id) {
       Ok(_) => (),
       Err(e) => panic!("Failed to load note template immediately following generation in copy_note_template: {}.", e),
@@ -10272,9 +10286,20 @@ impl NoteArchive {
         _ => {
           match user_choice.parse() {
             Ok(num) => {
+              let defaults: Vec<NoteTemplate> = self.note_templates.clone().iter().filter(|nt| !nt.custom ).map(|nt| nt.clone() ).collect();
+              let customs: Vec<NoteTemplate> = self.note_templates.clone().iter().filter(|nt| nt.custom ).map(|nt| nt.clone() ).collect();
+              let nondup_customs: Vec<NoteTemplate> = customs.iter().filter(|c_nt| !defaults.iter().any(|d_nt| d_nt.content == c_nt.content  ) ).map(|nt| nt.clone() ).collect();
+
+              let mut display_nts: Vec<NoteTemplate> = vec![];
+              for nt in defaults {
+                display_nts.push(nt.clone());
+              }
+              for nt in nondup_customs {
+                display_nts.push(nt.clone());
+              }
               match self.load_note_template(num) {
                 Ok(_) => {
-                  if !self.note_templates.iter().any(|nt| nt.id == num ) {
+                  if !display_nts.iter().any(|nt| nt.id == num ) {
                     println_err!("Please choose from among the listed templates.");
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
@@ -10520,7 +10545,8 @@ impl NoteArchive {
       if !nonduplicates.iter().any(|nondup|
         nondup.structure == nt.structure
         && nondup.content == nt.content
-        && nondup.foreign_key.get("user_id").as_deref() == nt.foreign_key.get("user_id").as_deref()
+        && !nondup.foreign_keys.get("user_ids").as_deref().iter().any(|u_id_a| !nt.foreign_keys.get("user_ids").as_deref().iter().any(|u_id_b| u_id_b == u_id_a ) )
+        && !nt.foreign_keys.get("user_ids").as_deref().iter().any(|u_id_a| !nondup.foreign_keys.get("user_ids").as_deref().iter().any(|u_id_b| u_id_b == u_id_a ) )
       ) {
         nonduplicates.push(nt.clone());
       }

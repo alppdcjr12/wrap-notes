@@ -253,7 +253,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 28] = [
   (
     "Sent Document",
     "\
-      (---u---) sent the (---im---) for (---c---) to (---co---) via (---cm---). \
+      (---u---) sent the (---id---) for (---c---) to (---co---) via (---cm---). \
     ",
   ),
   (
