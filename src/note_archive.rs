@@ -2866,7 +2866,7 @@ impl NoteArchive {
     println_on_bg!("{:-^113}", "-");
     println_inst!("| {} | {} | {} | {}",
       "Enter ID to choose collateral.",
-      "NEW / N: new collateral",
+      "NEW / N: new general collateral",
       "EDIT / E: edit",
       "QUIT / Q: quit menu",
     );
@@ -3371,9 +3371,11 @@ impl NoteArchive {
       };
       let initial_input = loop {
         self.display_client_collaterals(Some(collat_ids.clone()));
+        println!("");
         if &blank_string[..] != "" {
           println_suc!("Current content: {}", blank_string);
         }
+        println!("");
         println_inst!("ALL: Select all currently shown collaterals.");
         println_inst!("GENERAL: Select from general/universal collaterals.");
         let mut choice = String::new();
@@ -7661,10 +7663,6 @@ impl NoteArchive {
         let max = nd.date.clone();
         let recents = nds.iter().filter(|note_day| note_day.date == max ).cloned().cloned();
         for note_day in recents {
-          println_suc!("{:-^150}", "-");
-          let client = self.get_client_by_note_day_id(note_day.foreign_key["client_id"]).unwrap();
-          let heading = format!(" {} ", &client.full_name());
-          println_suc!("{:-^150}", &heading);
           self.print_note_day(note_day);
         }
       }
@@ -7804,6 +7802,11 @@ impl NoteArchive {
   }
   fn print_current_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+    let nd = self.current_note_day().to_owned();
+    let name = self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name();
+    let date: String = nd.heading_date();
+    let heading = format!(" {} notes for {} ", date, name);
+    println_suc!("{:-^150}", &heading);
     for (k, v) in &self.get_current_note_day_notes_by_category() {
       if v.len() > 0 {
         println_suc!("{}", k);
@@ -7823,10 +7826,11 @@ impl NoteArchive {
   fn print_note_day(&self, nd: NoteDay) {
     let name = self.get_client_by_id(nd.foreign_key["client_id"]).unwrap().full_name();
     let date: String = nd.heading_date();
-    println_suc!("Notes from {} for {}", date, name);
+    let heading = format!(" {} notes for {} ", date, name);
+    println_suc!("{:-^150}", &heading);
     for (k, v) in &self.get_note_day_notes_by_category(nd) {
       if v.len() > 0 {
-        println_suc!("{}", k);
+        println_suc!("{: <150}", k);
         for n in v {
           let (output, _) = n.generate_display_content_string_with_blanks(None, None);
           println!("{}\n", output);
@@ -7958,9 +7962,9 @@ impl NoteArchive {
       println_inst!(
         "| {} | {} | {} | {} | {}",
         "NEW / N: new note",
-        "PRINT / P: display all completed notes",
+        "PRINT / P: display all client notes for this day",
         "DELETE: delete individual records",
-        "DELETE ALL: delete all displayed records",
+        "DELETE ALL: delete all",
         "QUIT / Q: quit menu"
       );
       let mut choice = String::new();
@@ -8469,7 +8473,7 @@ impl NoteArchive {
         "Choose template by ID.",
         "NEW / N: New template",
         "EDIT / E: Edit custom note templates",
-        "COPY / C: Copy template"
+        "COPY / C: Copy default templates"
       );
     } else {
       println_inst!(
@@ -10747,9 +10751,9 @@ impl NoteArchive {
     }
   }
   fn choose_edit_note(&mut self) {
-    let mut blank_focus_id: Option<u32> = None;
-    let mut content_focus_id: Option<u32> = None;
     'choose_edit: loop {
+      let mut blank_focus_id: Option<u32> = None;
+      let mut content_focus_id: Option<u32> = None;
       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
       self.current_note().display_content(blank_focus_id, content_focus_id);
       println_inst!(
@@ -13396,12 +13400,19 @@ impl NoteArchive {
       Some(_) => (),
       None => {
         let nds = self.current_user_note_days();
-        let max_nd = nds.iter().max_by(|a, b| a.date.cmp(&b.date) );
+        let max_id: Option<u32> = match nds.iter().max_by(|a, b| a.date.cmp(&b.date) ) {
+          Some(nd) => Some(nd.id),
+          None => None,
+        };
+        let max_date: Option<NaiveDate> = match nds.iter().max_by(|a, b| a.date.cmp(&b.date) ) {
+          Some(nd) => Some(nd.date.clone()),
+          None => None,
+        };
         let today = Local::now().naive_local().date();
-        match max_nd {
-          Some(max) => {
-            if max.date == today {
-              self.foreign_key.insert(String::from("current_note_day"), max.id);
+        match max_id {
+          Some(m) => {
+            if max_date.unwrap() == today {
+              self.foreign_key.insert(String::from("current_note_day"), m);
             } else {
               let maybe_new_nd = self.generate_unique_new_note_day(today, self.current_user().id, self.current_client().id);
               match maybe_new_nd {
@@ -13612,8 +13623,12 @@ impl NoteArchive {
                     Icc => println_inst!("No FP found in client collaterals."),
                     Fp => println_inst!("No ICC found in client collaterals."),
                   }
-                  println_inst!("You may choose or edit collaterals from the next menu.");
-                  thread::sleep(time::Duration::from_secs(3));
+                  println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
+                  let mut s = String::new();
+                  let input_attempt = io::stdin().read_line(&mut s);
+                  match input_attempt {
+                    _ => (),
+                  }
                   let (blank_string, id_vec) = self.select_collaterals();
                   n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
@@ -13691,8 +13706,12 @@ impl NoteArchive {
                 Some(_) => (),
                 None => {
                   println_inst!("No primary contact found for current client.");
-                  println_inst!("You may choose or edit collaterals from the next menu.");
-                  thread::sleep(time::Duration::from_secs(3));
+                  println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
+                  let mut s = String::new();
+                  let input_attempt = io::stdin().read_line(&mut s);
+                  match input_attempt {
+                    _ => (),
+                  }
                   let (blank_string, id_vec) = self.select_collaterals();
                   n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
@@ -13704,8 +13723,12 @@ impl NoteArchive {
                 Some(_) => (),
                 None => {
                   println_inst!("No guardian found for current client.");
-                  println_inst!("You may choose or edit collaterals from the next menu.");
-                  thread::sleep(time::Duration::from_secs(3));
+                  println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
+                  let mut s = String::new();
+                  let input_attempt = io::stdin().read_line(&mut s);
+                  match input_attempt {
+                    _ => (),
+                  }
                   let (blank_string, id_vec) = self.select_collaterals();
                   n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
@@ -13717,8 +13740,12 @@ impl NoteArchive {
                 Some(_) => (),
                 None => {
                   println_inst!("No Care Plan Team members found for current client.");
-                  println_inst!("You may choose or edit collaterals from the next menu.");
-                  thread::sleep(time::Duration::from_secs(3));
+                  println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
+                  let mut s = String::new();
+                  let input_attempt = io::stdin().read_line(&mut s);
+                  match input_attempt {
+                    _ => (),
+                  }
                   let (blank_string, id_vec) = self.select_collaterals();
                   n.blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
@@ -15084,8 +15111,12 @@ impl NoteArchive {
                 n.foreign_keys.insert(String::from("collateral_ids"), old_ids);
               } else {
                   println_inst!("No Care Plan Team members found for current client.");
-                  println_inst!("You may choose or edit collaterals from the next menu.");
-                  thread::sleep(time::Duration::from_secs(3));
+                  println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
+                  let mut s = String::new();
+                  let input_attempt = io::stdin().read_line(&mut s);
+                  match input_attempt {
+                    _ => (),
+                  }
                   let (blank_string, id_vec) = self.select_collaterals();
                   n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);

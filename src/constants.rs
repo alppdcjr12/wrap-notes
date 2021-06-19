@@ -38,128 +38,7 @@ pub const INDIRECT_ROLES: [&'static str; 25] = [
   "mobile crisis clinician", "intake coordinator", "supervisor",
 ];
 
-pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
-  (
-    "Parent Support",
-    "\
-      (---u---) (---ps---) (---pc---) (---cu---). \
-    ",
-  ),
-  (
-    "Sent Cancellation",
-    "\
-      (---u---) emailed (---co---) to cancel the (---im---) for (---c---). \
-    ",
-  ),
-  (
-    "Parent Appearance",
-    "\
-      (---co---) appeared (---ap---). \
-    ",
-  ),
-  (
-    "Parent Skills",
-    "\
-      (---co---) demonstrated effective (---ps---). \
-    ",
-  ),
-  (
-    "Failed Contact Attempt",
-    "\
-      (---u---) reached out to (---co---) via (---cm---) to (---cp---) but was unable to reach (---pb2@2@---). \
-    ",
-  ),
-  (
-    "Categorized Emails",
-    "\
-      (---u---) categorized sent emails for (---c---) into separate folders for record keeping. \
-    ",
-  ),
-  (
-    "Documentation",
-    "\
-      (---u---) entered into evolv summaries of treatment events for (---c---) for today, (---td---). \
-    ",
-  ),
-  (
-    "Authorization Requested",
-    "\
-      (---u---) (---cm---) (---co---) to request a new insurance authorization for (---c---). \
-    ",
-  ),
-  (
-    "Authorization Issued",
-    "\
-      (---u---) received a phone call from (---co---) confirming that a new insurance authorization \
-      had been issued for (---c---) for (---cu---) with reference number (---cu---). \
-      (---u---) emailed (---co---) to notify (---pb2@7@---).\
-    ",
-  ),
-  (
-    "Collateral Outreach",
-    "\
-      (---u---) reached out to (---co---) via (---cm---) and (---fcp---). \
-    ",
-  ),
-  (
-    "Update From Collateral",
-    "\
-      (---u---) received a (---cm---) from (---co---) informing (---pu2---) that (---cu---). \
-    ",
-  ),
-  (
-    "Invited To Meeting",
-    "\
-      (---u---) send Zoom and Outlook invitations for the upcoming (---im---) for (---c---) \
-      to (---co---).\
-    ",
-  ),
-  (
-    "Sent Document",
-    "\
-      (---u---) sent the (---im---) for (---c---) to (---co---) via (---cm---). \
-    ",
-  ),
-  (
-    "Updated Document",
-    "\
-      (---u---) updated the (---id---) for (---c---) with updates on (---pc3---) (---yt---). \
-    ",
-  ),
-  (
-    "Discuss Communication",
-    "\
-      (---u---) called (---co---) to discuss recent communication between (---co---). \
-    ",
-  ),
-  (
-    "Received Verbal Consent",
-    "\
-      (---u---) contacted (---g---) via (---cm---) and received verbal consent \
-      for (---u---) and Riverside Community Care to exchange (---c---)'s \
-      Protected Health Information with (---co---).\
-    ",
-  ),
-  (
-    "Received Written Consent",
-    "\
-      (---u---) received written consent via (---cm---) for (---u---) and Riverside \
-      Community Care to exchange (---c---)'s Protected Health Information with (---co---).\
-    ",
-  ),
-  (
-    "Documentation",
-    "\
-      (---u---) reviewed notes and completed daily logs for (---td---). \
-    ",
-  ),
-  (
-    "Brainstorm Contribution",
-    "\
-      (---u---) contributed to the team brainstorm ideas for (---c---)'s \
-      Care Plan goal of \"(---g---).\"\
-    ",
-  ),
+pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 28] = [
   (
     "Care Plan",
     "\
@@ -178,6 +57,18 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
     ",
   ),
   (
+    "Care Plan",
+    "\
+      Met with (---co---) in family home in (---cu---) for CPM. \
+      (---u---) passed around sign-in sheet. \
+      The team reviewed ground rules and team mission. \
+      (---u---) reviewed team strengths and family vision. \
+      The team brainstormed around the following goal: (---go---). \
+      (---u---) assigned tasks to team members. \
+      The team reported no major safety concerns.\
+    ",
+  ),
+  (
     "Intake",
     "\
       (---u---) met with (---co---) for an intake for (---c---). \
@@ -187,8 +78,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
       (---cu---). \
       The team elicited (---pc---)'s experience of challenges (---pb1@9@---) and \
       (---c---) have faced, including (---c---)'s (---yt---). \
-      The team elicited and reflected the family's strengths, including \
-      (---cu---). \
+      The team elicited and reflected the family's strengths, including (---cu---). \
       (---u---) explained the Wraparound process. \
       (---u---) and (---p---) shared information about the limitations and intensive \
       nature of Wraparound services as well as the role of different team members. \
@@ -200,7 +90,22 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
       (---g---) (---sm---) Release of Information forms permitting (---u---) and (---p---) \
       to exchange (---c---)'s Protected Health Information with (---co---). \
       (---cu---). \
-      (---u---) scheduled the (---im---) for (---cu---). \
+      (---u---) scheduled the (---im---) for (---cu---).\
+    ",
+  ),
+  (
+    "Intake",
+    "\
+      (---u---) met for intake for (---c---) with (---co---) at the family's home in (---cu---). \
+      ICC reviewed wraparound process and paperwork. \
+      Paperwork included: (---id---). \
+      (---pc---) discussed her major needs/concerns for (---c---). \
+      (---pc---) reported that Andrew struggles with (---cu---). \
+      (---cu---). \
+      (---u---) and (---p---) further discussed the Wraparound process with the family \
+      and how the process could be tailored to their needs. \
+      (---cu---). \
+      (---u---) and (---p---) scheduled the (---im---) with the family.\
     ",
   ),
   (
@@ -213,6 +118,18 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
       assessment of (---c---)'s recent (---yt---). \
       (---cu---). \
       (---u---) scheduled the (---im---) for (---cu---).\
+    ",
+  ),
+  (
+    "Assessment",
+    "\
+      (---u---) met with (---co---) to complete comprehensive and CANS assessments for (---c---) in the \
+      family's home in (---cu---). (---u---) gathered (---c---)'s current needs and challenges. \
+      ICC gathered current and past supports and services, family background information, educational information, \
+      history of abuse/trauma, medications and medical information, diagnoses, and assessed risk/safety. \
+      (---cu---). \
+      ICC further assessed (---c---)'s needs and strengths. \
+      (---cu---).\
     ",
   ),
   (
@@ -242,6 +159,127 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 25] = [
     "\
       (---u---) sent all required documents via (---cm---) to (---co---) in order to \
       complete a referral for (---c---) for (---s---).\
+    ",
+  ),
+  (
+    "Parent Support",
+    "\
+      (---u---) (---ps---) (---pc---) (---cu---). \
+    ",
+  ),
+  (
+    "Parent Appearance",
+    "\
+      (---co---) appeared (---ap---). \
+    ",
+  ),
+  (
+    "Parent Skills",
+    "\
+      (---co---) demonstrated effective (---ps---). \
+    ",
+  ),
+  (
+    "Brainstorm Contribution",
+    "\
+      (---u---) contributed to the team brainstorm ideas for (---c---)'s \
+      Care Plan goal of \"(---g---).\"\
+    ",
+  ),
+  (
+    "Collateral Outreach",
+    "\
+      (---u---) reached out to (---co---) via (---cm---) and (---fcp---). \
+    ",
+  ),
+  (
+    "Update From Collateral",
+    "\
+      (---u---) received a (---cm---) from (---co---) informing (---pu2---) that (---cu---). \
+    ",
+  ),
+  (
+    "Discuss Communication",
+    "\
+      (---u---) called (---co---) to discuss recent communication between (---co---). \
+    ",
+  ),
+  (
+    "Invited To Meeting",
+    "\
+      (---u---) send Zoom and Outlook invitations for the upcoming (---im---) for (---c---) \
+      to (---co---).\
+    ",
+  ),
+  (
+    "Failed Contact Attempt",
+    "\
+      (---u---) reached out to (---co---) via (---cm---) to (---cp---) but was unable to reach (---pb2@2@---). \
+    ",
+  ),
+  (
+    "Received Verbal Consent",
+    "\
+      (---u---) contacted (---g---) via (---cm---) and received verbal consent \
+      for (---u---) and Riverside Community Care to exchange (---c---)'s \
+      Protected Health Information with (---co---).\
+    ",
+  ),
+  (
+    "Received Written Consent",
+    "\
+      (---u---) received written consent via (---cm---) for (---u---) and Riverside \
+      Community Care to exchange (---c---)'s Protected Health Information with (---co---).\
+    ",
+  ),
+  (
+    "Documentation",
+    "\
+      (---u---) reviewed notes and completed daily logs for (---td---). \
+    ",
+  ),
+  (
+    "Documentation",
+    "\
+      (---u---) entered into evolv summaries of treatment events for (---c---) for today, (---td---). \
+    ",
+  ),
+  (
+    "Updated Document",
+    "\
+      (---u---) updated the (---id---) for (---c---) with updates on (---pc3---) (---yt---). \
+    ",
+  ),
+  (
+    "Sent Document",
+    "\
+      (---u---) sent the (---im---) for (---c---) to (---co---) via (---cm---). \
+    ",
+  ),
+  (
+    "Sent Cancellation",
+    "\
+      (---u---) emailed (---co---) to cancel the (---im---) for (---c---). \
+    ",
+  ),
+  (
+    "Authorization Requested",
+    "\
+      (---u---) (---cm---) (---co---) to request a new insurance authorization for (---c---). \
+    ",
+  ),
+  (
+    "Authorization Issued",
+    "\
+      (---u---) received a phone call from (---co---) confirming that a new insurance authorization \
+      had been issued for (---c---) for (---cu---) with reference number (---cu---). \
+      (---u---) emailed (---co---) to notify (---pb2@7@---).\
+    ",
+  ),
+  (
+    "Categorized Emails",
+    "\
+      (---u---) categorized sent emails for (---c---) into separate folders for record keeping. \
     ",
   ),
 ];

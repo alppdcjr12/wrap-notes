@@ -46,6 +46,13 @@ pub enum InternalDocumentFillIn {
   TelehealthInformedConsent,
   CANSVirtualGatewayConsentForm,
   WFIConsentForm,
+  WFIEvaluationTalkingPoints,
+  CBHIPaperwork,
+  TenPrinciplesOfWraparound,
+  WraparoundProcessAndGuide,
+  PrivacyNotice,
+  RiversideEvaluationProcess,
+  CallInformationSheet,
   OtherInternalDocument,
 }
 
@@ -66,6 +73,13 @@ use InternalDocumentFillIn::{
   TelehealthInformedConsent,
   CANSVirtualGatewayConsentForm,
   WFIConsentForm,
+  WFIEvaluationTalkingPoints,
+  CBHIPaperwork,
+  TenPrinciplesOfWraparound,
+  WraparoundProcessAndGuide,
+  PrivacyNotice,
+  RiversideEvaluationProcess,
+  CallInformationSheet,
   OtherInternalDocument,
 };
 
@@ -137,6 +151,13 @@ impl InternalDocumentFillIn {
       TelehealthInformedConsent,
       CANSVirtualGatewayConsentForm,
       WFIConsentForm,
+      WFIEvaluationTalkingPoints,
+      CBHIPaperwork,
+      TenPrinciplesOfWraparound,
+      WraparoundProcessAndGuide,
+      PrivacyNotice,
+      RiversideEvaluationProcess,
+      CallInformationSheet,
       OtherInternalDocument,
     ].iter().copied())
   }
@@ -170,6 +191,13 @@ impl fmt::Display for InternalDocumentFillIn {
       TelehealthInformedConsent => "Telehealth Informed Consent Form",
       CANSVirtualGatewayConsentForm => "CANS Virtual Gateway Consent Form",
       WFIConsentForm => "WFI Consent Form",
+      WFIEvaluationTalkingPoints => "WFI Evaluation Talking Points",
+      CBHIPaperwork => "CBHI Paperwork",
+      TenPrinciplesOfWraparound => "10 Principles of Wraparound",
+      WraparoundProcessAndGuide => "Wraparound Process and Guide",
+      PrivacyNotice => "Privacy Notice",
+      RiversideEvaluationProcess => "Riverside Evaluation Process",
+      CallInformationSheet => "Call Information Sheet",
       // keep last for the sake of organization
       OtherInternalDocument => "other internal document",
     };
