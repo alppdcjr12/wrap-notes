@@ -695,7 +695,7 @@ impl NoteTemplate {
             let overflowing_blank: Option<(String, usize, usize)> = match color_formatting.clone() {
               None => None,
               Some(f) => {
-                let maybe_blank = f.iter().find(|(_, i1, i2)| i1 != &0 && i1 <= &(current_idx+140) && i2 >= &(current_idx+140) );
+                let maybe_blank = f.iter().find(|(s, i1, i2)| i1 != &0 && i1 <= &(current_idx+140) && i2 >= &(current_idx+140) && String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(s) );
                 match maybe_blank {
                   None => None,
                   Some(tup) => Some(tup.clone()),
@@ -731,22 +731,8 @@ impl NoteTemplate {
                     }
                   },
                   Some(f) => {
-                    let mut current_sent = long_sent.clone();
-                    let rightmost_space = loop {
-                      match current_sent.rfind(' ') {
-                        None => break None,
-                        Some(space_idx) => {
-                          match f.iter().find(|(s, i1, i2)| i1-current_idx < space_idx && i2-current_idx > space_idx && !String::from("UNHIGHLIGHTED BLANK").contains(&s[..]) ) {
-                            // "UNHIGHLIGHTED BLANK" contains all 3 blank descriptor variations
-                            Some(tup) => {
-                              current_sent = String::from(&current_sent[..tup.1-current_idx]);
-                              continue;
-                            },
-                            None => break Some(space_idx),
-                          }
-                        }
-                      }
-                    };
+                    let current_sent = long_sent.clone();
+                    let rightmost_space = current_sent.rfind(' ');
                     match rightmost_space {
                       None => {
                         let last_divider_idx = f.iter().find(|(_s, i1, i2)| i1 > &current_idx && i2 >= &(current_idx+140) );
@@ -768,6 +754,7 @@ impl NoteTemplate {
                             current_idx += 140;
                           },
                           Some(idx_tup) => {
+                            println!("{:?}", idx_tup);
                             let pos = idx_tup.1 - current_idx;
                             let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
                               .filter(|(_s, i1, i2)| i1 >= &current_idx && i2 <= &(current_idx+pos) )
@@ -786,19 +773,56 @@ impl NoteTemplate {
                         }
                       },
                       Some(spc) => {
-                        let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
-                          .filter(|(_s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140) )
-                          .map(|(s, i1, i2)|
-                            if i2 > &(current_idx+spc) {
-                              (s.to_string(), i1-current_idx, spc)
-                            } else {
+                        if spc < 140 {
+                          let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                            .filter(|(_s, i1, i2)| i1 > &current_idx && i2 < &(current_idx+spc) )
+                            .map(|(s, i1, i2)|
                               (s.to_string(), i1-current_idx, i2-current_idx)
-                            }
                           )
                           .collect();
-                        length_adjusted_vec.push((i, String::from(&long_sent[..spc]), Some(sentence_formatting)));
-                        long_sent = String::from(&long_sent[spc..]);
-                        current_idx += 140;
+                          length_adjusted_vec.push((i, String::from(&long_sent[..spc+1]), Some(sentence_formatting)));
+                          long_sent = String::from(&long_sent[spc+1..]);
+                          current_idx += 140;
+                        } else {
+                          let last_divider_idx = f.iter().find(|(_s, i1, i2)| i1 > &current_idx && i2 >= &(current_idx+140) );
+                          match last_divider_idx {
+                            None => {
+                              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                                .filter(|(_s, i1, i2)| i1 > &current_idx && i2 <= &(current_idx+140+1) )
+                                .map(|(s, i1, i2)|
+                                  if i2 <= &(current_idx+140) {
+                                    (s.to_string(), i1-current_idx, i2-current_idx)
+                                  } else {
+                                    (s.to_string(), i1-current_idx, 140)
+                                  }
+                                )
+                                .collect();
+                                
+                              length_adjusted_vec.push((i, String::from(&long_sent[..140]), Some(sentence_formatting)));
+                              long_sent = String::from(&long_sent[141..]);
+                              current_idx += 140;
+                            },
+                            Some(idx_tup) => {
+                              let pos = idx_tup.1;
+                              let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
+                                .filter(|(_s, i1, i2)| i1 >= &current_idx && i2 <= &(current_idx+pos) )
+                                .map(|(s, i1, i2)|
+                                  if i2 <= &(current_idx+pos) {
+                                    (s.to_string(), i1-current_idx, i2-current_idx)
+                                  } else {
+                                    (s.to_string(), i1-current_idx, pos)
+                                  }
+                                )
+                                .collect();
+                              let output = if long_sent.len() > pos { &long_sent[..pos] } else { &long_sent };
+                              length_adjusted_vec.push((i, String::from(output), Some(sentence_formatting)));
+                              let new_string = String::new();
+                              let output2 = if long_sent.len() > pos { &long_sent[pos..] } else { &new_string };
+                              long_sent = String::from(output2);
+                              current_idx += pos;
+                            }
+                          }
+                        }
                       },
                     }
                   }
@@ -1656,6 +1680,7 @@ impl Note {
                     }
                     cont_i += 1;
                   }
+                  break;
                   // cont_i += 1;
                   // last iteration, so no need to increment
                 },
@@ -1685,7 +1710,7 @@ impl Note {
             }
             break;
           }
-        }
+        },
         Some(m) => m,
       };
       current_blank += 1;

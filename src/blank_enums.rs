@@ -2086,8 +2086,8 @@ impl fmt::Display for FulfilledContactPurposeFillIn {
       ReviewedPaperwork => "reviewed paperwork",
       ReviewedTheICP => "reviewed the ICP",
       ReviewedTheSNCD => "reviewed the SNCD",
-      UpdatedThemOnCommunicationWithProviders => "updated them on communication with providers",
-      UpdatedThemOnCommunicationWithTheYouthsFamily => "updated them on communication with the youth's family",
+      UpdatedThemOnCommunicationWithProviders => "passed on updates regarding communication with providers",
+      UpdatedThemOnCommunicationWithTheYouthsFamily => "passed on updates regarding communication with the youth's family",
       UpdatedSafetyPlan => "updated the safety plan for youth",
       OtherFulfilledContactPurpose => "other contact purpose (past tense)",
     };

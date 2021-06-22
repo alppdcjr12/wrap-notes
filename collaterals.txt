@@ -1,0 +1,5 @@
+##### collaterals #####
+2 | Joseph | McJesusDad | family friend | --NONE-- | 1 | Natural | false | false | false | true
+3 | Mary | Motherofgod | mother | --NONE-- | 2 | Natural | false | true | true | true
+1 | Jesus | Christ | Saviour | Heaven | 1 | Formal | true | false | false | true
+##### collaterals #####

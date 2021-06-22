@@ -1634,7 +1634,8 @@ impl NoteArchive {
       None => (),
     }
     println_on_bg!("{:-^96}", "-");
-    println_inst!("| {} | {} | {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records", "QUIT / Q: quit menu");
+    println_inst!("| {} | {} | {}", "Choose client by ID.", "NEW / N: new client", "ADD / A: Add from other user");
+    println_inst!("| {} | {}", "EDIT / E: edit records", "QUIT / Q: quit menu");
   }
   fn display_select_clients(&self) {
     let mut heading = String::from(" ");
@@ -1660,7 +1661,8 @@ impl NoteArchive {
       None => (),
     }
     println_on_bg!("{:-^96}", "-");
-    println_inst!("| {} | {} | {} | {}", "Choose client for note by ID.", "NEW / N: new client", "ADD / A: Add from other user", "EDIT / E: edit records");
+    println_inst!("| {} | {} | {}", "Choose client for note by ID.", "NEW / N: new client", "ADD / A: Add from other user");
+    println_inst!("| {}", "EDIT / E: edit records");
   }
   fn display_edit_clients(&self) {
     let mut heading = String::from(" Edit ");
@@ -2092,8 +2094,8 @@ impl NoteArchive {
   fn choose_client(&mut self) {
     loop {
       self.display_client();
-      println_inst!("| {} | {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / CO: view/edit client collaterals", "QUIT / Q: quit menu");
-      println_inst!("| {}", "GOALS / G: View and edit client goals");
+      println_inst!("| {} | {} | {}", "EDIT / E: edit client", "DELETE: delete client", "COLLATERAL / CO: view/edit client collaterals");
+      println_inst!("| {} | {}", "GOALS / G: View and edit client goals", "QUIT / Q: quit menu");
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
       let input = match read_attempt {
@@ -2823,10 +2825,12 @@ impl NoteArchive {
       None => (),
     }
     println_on_bg!("{:-^113}", "-");
-    println_inst!("| {} | {} | {} | {} | {}",
+    println_inst!("| {} | {} | {}",
       "Enter ID to choose collateral.",
       "NEW / N: new collateral",
       "ADD / A: add from other client/user",
+    );
+    println_inst!("| {} | {}",
       "EDIT / E: edit",
       "QUIT / Q: quit menu",
     );
@@ -2948,10 +2952,12 @@ impl NoteArchive {
       );
     }
     println_on_bg!("{:-^166}", "-");
-    println_inst!("| {} | {} | {} | {} | {} | {}",
+    println_inst!("| {} | {} | {}",
       "Enter ID to choose collateral.",
       "EDIT / E: edit",
       "NEW / N: new collateral",
+    );
+    println_inst!("| {} | {} | {}",
       "ADD / A: Add from other user/client",
       "GENERAL / G: View general collaterals",
       "QUIT / Q: quit menu"
@@ -2966,11 +2972,11 @@ impl NoteArchive {
     println_on_bg!("{:-^116}", " These collaterals can be selected for any youth. ");
     println_on_bg!("{:-^116}", " (E.g. intake coordinators, insurance contacts, Office Managers extraordinaire.) ");
     println_on_bg!("{:-^116}", "-");
-    println_on_bg!("{:-^10} | {:-<30} | {:-<70}", " ID ", "Name ", "Title ");
+    println_on_bg!("{:-^10} | {:-^30} | {:-^70}", " ID ", " Name ", " Title ");
 
     for co in self.general_collaterals.clone() {
       println_on_bg!(
-        "{: ^10} | {:-<30} | {:-<70}",
+        "{: ^10} | {: <30} | {: <70}",
         co.id,
         co.full_name(),
         co.title(),
@@ -3063,26 +3069,26 @@ impl NoteArchive {
     let heading = format!(" {} ", current.full_name_and_title());
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", heading);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", c_string);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", heading);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", c_string);
     if current.primary_contact {
-      println_on_bg!("{: <178}", "*Primary contact");
+      println_on_bg!("{: <146}", "*Primary contact");
     }
     if current.guardian {
-      println_on_bg!("{: <178}", "*Guardian");
+      println_on_bg!("{: <146}", "*Guardian");
     }
     if current.care_plan_team {
-      println_on_bg!("{: <178}", "*Care Plan Team member");
+      println_on_bg!("{: <146}", "*Care Plan Team member");
     }
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^146}", "-");
     println_on_bg!(
-      "{:-^112} | {:-^13} | {:-^50}",
+      "{:-^96} | {:-^13} | {:-^27}",
       "-", "Support type", "-",
     );
     println_on_bg!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^5} | {:-^5} | {:-^50}",
+      "{:-^20} | {:-^20} | {:-^20} | {:-^30} | {:-^5} | {:-^5} | {:-^27}",
       " Role/Title ",
       " First name ",
       " Last name ",
@@ -3092,7 +3098,7 @@ impl NoteArchive {
       " Pronouns ",
     );
     println_on_bg!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {:-^5} | {:-^5} | {: ^50}",
+      "{: ^20} | {: ^20} | {: ^20} | {: ^30} | {: ^5} | {: ^5} | {: ^27}",
       current.title,
       current.first_name,
       current.last_name,
@@ -3101,7 +3107,7 @@ impl NoteArchive {
       display_direct,
       display_pronouns,
     );
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^146}", "-");
   }
   fn display_general_collateral(&self) {
     let current = self.current_general_collateral();
@@ -3129,28 +3135,35 @@ impl NoteArchive {
     };
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", " View general collateral record ");
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^143}", "-");
+    println_on_bg!("{:-^143}", " View general collateral record ");
+    println_on_bg!("{:-^143}", "-");
+    println_on_bg!("{:-^143}", "-");
     println_on_bg!(
-      "{:-^162} | {:-^13}",
-      "-", "Support type",
+      "{:-^102} | {:-^13} | {:-^25}",
+      "-", "Support type", "-",
     );
     println_on_bg!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
-      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
+      "{:-^20} | {:-^20} | {:-^20} | {:-^30} | {:-^5} | {:-^5} | {:-^25}",
+      " First name ",
+      " Last name ",
+      " Role/Title ",
+      " Institution ",
+      " Nat ",
+      " Dir ",
+      " Pronouns ",
     );
     println_on_bg!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      "{: ^20} | {: ^20} | {: ^20} | {: ^30} | {: ^5} | {: ^5} | {: ^25}",
       current.first_name,
       current.last_name,
-      display_pronouns,
       current.title,
       display_inst,
       display_type,
       display_indirect,
+      display_pronouns,
     );
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^143}", "-");
     println_inst!("| {} | {} | {}", "EDIT / E: edit collateral", "DELETE: delete collateral", "QUIT / Q: quit menu");
   }
   fn display_edit_collateral(&self) {
@@ -3192,47 +3205,57 @@ impl NoteArchive {
     };
     let heading = format!(" Edit collateral: {} ", current.full_name_and_title());
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", heading);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^178}", c_string);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", heading);
+    println_on_bg!("{:-^146}", "-");
+    println_on_bg!("{:-^146}", c_string);
     if current.primary_contact {
-      println_on_bg!("{: <178}", "*Primary contact");
+      println_on_bg!("{: <146}", "*Primary contact");
     }
     if current.guardian {
-      println_on_bg!("{: <178}", "*Guardian");
+      println_on_bg!("{: <146}", "*Guardian");
     }
     if current.care_plan_team {
-      println_on_bg!("{: <178}", "*Care Plan Team member");
+      println_on_bg!("{: <146}", "*Care Plan Team member");
     }
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^146}", "-");
     println_on_bg!(
-      "{:-^162} | {:-^13}",
-      "-", "Support type",
+      "{:-^99} | {:-^13} | {:-^27}",
+      "-", "Support type", "-",
     );
     println_on_bg!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5} | {:-^5}",
-      " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Nat ", " Dir "
+      "{:-^20} | {:-^20} | {:-^20} | {:-^30} | {:-^5} | {:-^5} | {:-^27}",
+      " Role/Title ",
+      " First name ",
+      " Last name ",
+      " Institution ",
+      " Nat ",
+      " Dir ",
+      " Pronouns ",
     );
     println_on_bg!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5} | {:-^5}",
+      "{: ^20} | {: ^20} | {: ^20} | {: ^30} | {: ^5} | {: ^5} | {: ^27}",
+      current.title,
       current.first_name,
       current.last_name,
-      display_pronouns,
-      current.title,
       display_inst,
       display_type,
       display_indirect,
+      display_pronouns,
     );
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^146}", "-");
     println_inst!(
-      "| {} | {} | {} | {} | {} | {}",
+      "| {} | {} | {}",
       "FIRST / F: edit first name",
       "LAST / L: edit surname",
       "TITLE / T: edit title/role",
+    );
+    println_inst!(
+      "| {} | {} | {}",
       "INST / I: edit institution",
       "PRNS / P: edit pronouns",
-      "QUIT / Q: quit menu");
+      "QUIT / Q: quit menu",
+    );
     println_inst!(
       "| {} | {}",
       opposite_type_command,
@@ -3240,9 +3263,15 @@ impl NoteArchive {
     );
     if current.support_type == Natural {
       println_inst!(
-        "| {} | {} | {}",
+        "| {}",
         opposite_primary_command,
+      );
+      println_inst!(
+        "| {}",
         opposite_guardian_command,
+      );
+      println_inst!(
+        "| {}",
         opposite_cpt_command,
       );
     } else {
@@ -3251,7 +3280,7 @@ impl NoteArchive {
         opposite_cpt_command,
       );
     }
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^146}", "-");
   }
   fn display_edit_general_collateral(&self) {
     let current = self.current_general_collateral();
@@ -3274,15 +3303,15 @@ impl NoteArchive {
       false => ("Y", "INDIRECT: Change to indirect support (e.g., not 'for youth')"),
     };
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^170}", "-");
-    println_on_bg!("{:-^170}", " Edit collateral record ");
-    println_on_bg!("{:-^170}", "-");
+    println_on_bg!("{:-^165}", "-");
+    println_on_bg!("{:-^165}", " Edit collateral record ");
+    println_on_bg!("{:-^165}", "-");
     println_on_bg!(
-      "{:-^20} | {:-^20} | {:-^30} | {:-^30} | {:-^50} | {:-^5}",
+      "{:-^20} | {:-^20} | {:-^30} | {:-^25} | {:-^50} | {:-^5}",
       " First name ", " Last name ", " Pronouns ", " Role/Title ", " Institution ", " Dir "
     );
     println_on_bg!(
-      "{: ^20} | {: ^20} | {: ^30} | {: ^30} | {: ^50} | {:-^5}",
+      "{: ^20} | {: ^20} | {: ^25} | {: ^30} | {: ^50} | {: ^5}",
       current.first_name,
       current.last_name,
       display_pronouns,
@@ -3290,20 +3319,24 @@ impl NoteArchive {
       display_inst,
       display_indirect,
     );
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^165}", "-");
     println_inst!(
-      "| {} | {} | {} | {} | {} | {}",
+      "| {} | {} | {}",
       "FIRST / F: edit first name",
       "LAST / L: edit surname",
       "TITLE / T: edit title/role",
+    );
+    println_inst!(
+      "| {} | {} | {}",
       "INST / I: edit institution",
       "PRNS / P: edit pronouns",
-      "QUIT / Q: quit menu");
+      "QUIT / Q: quit menu"
+    );
     println_inst!(
       "| {}",
       opposite_indirect_command,
     );
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^165}", "-");
   }
   fn display_add_collateral(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -3837,9 +3870,12 @@ impl NoteArchive {
     loop {
       self.display_collateral();
       println_inst!(
-        "| {} | {} | {} | {}",
+        "| {} | {}",
         "EDIT / E: edit collateral",
         "DELETE: delete collateral",
+      );
+      println_inst!(
+        "| {} | {}",
         "CLIENT: add collateral to another client",
         "QUIT / Q: quit menu"
       );
@@ -4164,36 +4200,29 @@ impl NoteArchive {
         }
       } };
 
-      let care_plan_team =  if guardian || primary_contact { true } else { match support_type {
-        Formal => false,
-        Natural => {
-          if primary_contact || guardian {
-            true
-          } else {
-            print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-            let mut care_plan_team_choice = String::new();
-            println_inst!("Is this collateral on the youth's Care Plan Team?");
-            println_inst!("YES / Y | NO / N");
-            let care_plan_team_attempt = io::stdin().read_line(&mut care_plan_team_choice);
-            match care_plan_team_attempt {
-              Ok(_) => match care_plan_team_choice.to_ascii_lowercase().trim() {
-                "yes" | "y" => true,
-                "no" | "n" => false,
-                "cancel" => return None,
-                _ => {
-                  println_err!("Please choose YES or NO.");
-                  thread::sleep(time::Duration::from_secs(1));
-                  continue;
-                }
-              }
-              Err(e) => {
-                println_err!("Failed to read input: {}.", e);
-                continue;
-              }
+      let care_plan_team =  if guardian || primary_contact { true } else {
+        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+        let mut care_plan_team_choice = String::new();
+        println_inst!("Is this collateral on the youth's Care Plan Team?");
+        println_inst!("YES / Y | NO / N");
+        let care_plan_team_attempt = io::stdin().read_line(&mut care_plan_team_choice);
+        match care_plan_team_attempt {
+          Ok(_) => match care_plan_team_choice.to_ascii_lowercase().trim() {
+            "yes" | "y" => true,
+            "no" | "n" => false,
+            "cancel" => return None,
+            _ => {
+              println_err!("Please choose YES or NO.");
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
             }
           }
+          Err(e) => {
+            println_err!("Failed to read input: {}.", e);
+            continue;
+          }
         }
-      } };
+      };
 
       let collateral_attempt = self.generate_unique_new_collateral(
         first_name,
@@ -6137,7 +6166,8 @@ impl NoteArchive {
       self.display_pronouns();
       let input = loop {
         let mut choice = String::new();
-        println_inst!("| {} | {} | {} | {}", "NEW / N: new", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu/cancel ");
+        println_inst!("| {} | {}", "NEW / N: new", "EDIT / E: edit (for all data)");
+        println_inst!("| {} | {}", "DELETE / D: delete (for all data)", "QUIT / Q: quit menu/cancel");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice.to_ascii_lowercase(),
@@ -6664,7 +6694,7 @@ impl NoteArchive {
   fn view_pronoun(&mut self, prns_id: u32) {
     loop {
       self.display_view_pronoun(prns_id);
-      println_inst!("| {} | {} | {}", "EDIT / E: edit (for all)", "DELETE / D: delete (for all)", "QUIT / Q: quit menu");
+      println_inst!("| {} | {} | {}", "EDIT / E: edit (for all data)", "DELETE / D: delete (for all data)", "QUIT / Q: quit menu");
       let mut decision = String::new();
       let input_attempt = io::stdin().read_line(&mut decision);
       match input_attempt {
@@ -6857,6 +6887,7 @@ impl NoteArchive {
       let input = loop {
         let mut choice = String::new();
         println_inst!("Enter ID to choose goal.");
+        println_inst!("Press ENTER to continue with the selected options.");
         println_inst!("| {} | {} | {}", "NEW / N: Create a new goal", "ADD / A: Add a goal from the collective list", "CANCEL / C: cancel");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
@@ -6902,7 +6933,7 @@ impl NoteArchive {
             }
           }
         }
-        "cancel" | "c" => return None,
+        "cancel" | "c" | "" => return None,
         _ => {
           let id = match input.trim().parse::<u32>() {
             Ok(num) => num,
@@ -7840,22 +7871,22 @@ impl NoteArchive {
   }
   fn display_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^162}", "-");
     
     let notes = self.current_note_day_notes();
     
     let nd = self.current_note_day();
     let c = self.get_client_by_note_day_id(nd.id).unwrap();
     let heading = format!(" Notes for {} for {} ", c.full_name(), nd.fmt_date());
-    println_on_bg!("{:-^178}", heading);
-    println_on_bg!("{:-^178}", "-");
-    println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^162}", heading);
+    println_on_bg!("{:-^162}", "-");
+    println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^7} | {:-^70}", " ID ", " Category ", " Topic/structure ", " Words ", " Content sample " );
+    println_on_bg!("{:-^162}", "-");
     for n in notes {
       let words: Vec<&str> = n.content.split(" ").collect();
       let (s, _) = n.generate_display_content_string_with_blanks(None, None);
-      let sample = if s.len() > 75 {
-        format!("{}{}", String::from(&s[..73]), String::from("..."))
+      let sample = if s.len() > 65 {
+        format!("{}{}", String::from(&s[..60]), String::from("..."))
       } else {
         s
       };
@@ -7866,9 +7897,9 @@ impl NoteArchive {
       };
       let n_structure = n.structure.to_string();
       
-      println_on_bg!("{: ^6} | {: ^35} | {: ^30} | {: ^14} | {: ^79}", n.id, cat, n_structure, words.len(), sample);
+      println_on_bg!("{: ^6} | {: ^35} | {: ^30} | {: ^7} | {: ^70}", n.id, cat, n_structure, words.len(), sample);
     }
-    println_on_bg!("{:-^178}", "-");
+    println_on_bg!("{:-^162}", "-");
   }
   fn display_delete_note_day(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -7960,10 +7991,13 @@ impl NoteArchive {
       self.display_note_day();
 
       println_inst!(
-        "| {} | {} | {} | {} | {}",
+        "| {} | {} | {}",
         "NEW / N: new note",
         "PRINT / P: display all client notes for this day",
         "DELETE: delete individual records",
+      );
+      println_inst!(
+        "| {} | {}",
         "DELETE ALL: delete all",
         "QUIT / Q: quit menu"
       );
@@ -8469,9 +8503,12 @@ impl NoteArchive {
     let current_templates = self.current_user_note_templates().clone();
     if current_templates.iter().filter(|nt| nt.custom ).count() > 0 {
       println_inst!(
-        "{} | {} | {} | {}",
+        "{} | {}",
         "Choose template by ID.",
         "NEW / N: New template",
+      );
+      println_inst!(
+        "{} | {}",
         "EDIT / E: Edit custom note templates",
         "COPY / C: Copy default templates"
       );
@@ -8517,7 +8554,7 @@ impl NoteArchive {
       );
     }
     println_on_bg!("{:-^156}", "-");
-    println_inst!("{} | {}", "Choose template to copy by ID.", "QUIT / Q: Return to my note templates");
+    println_inst!("| {} | {}", "Choose template to copy by ID.", "QUIT / Q: Return to my note templates");
   }
   fn display_edit_note_templates(&self) {
     let heading = format!(" Edit note templates for {} ", &self.current_user().full_name()[..]);
@@ -8603,18 +8640,24 @@ impl NoteArchive {
         "copy" => { // not currently being used
           println_inst!("Press ENTER to save this template to your personal list.");
           println_inst!(
-            "{} | {} | {} | {}",
+            "{} | {}",
             "STRUCTURE / S: Edit structure type",
             "BLANKS / B: Edit blanks",
+          );
+          println_inst!(
+            "{} | {}",
             "CONTENT / C: Edit default content",
             "SAVE: Save copy to your notes",
           );
         },
         "edit" => {
           println_inst!(
-            "{} | {} | {} | {}",
+            "{} | {}",
             "STRUCTURE / S: Edit structure type",
             "BLANKS / B: Edit blanks",
+          );
+          println_inst!(
+            "{} | {}",
             "CONTENT / C: Edit default content",
             "QUIT / Q: Quit menu",
           );
@@ -8701,9 +8744,12 @@ impl NoteArchive {
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
             println_inst!(
-              "{} | {} | {} | {}",
+              "{} | {}",
               "EDIT / E: Edit selected content",
               "ADD / A: Add content to end of template",
+            );
+            println_inst!(
+              "{} | {}",
               "INSERT / I: Insert additional content",
               "DELETE / D: Delete content",
             );
@@ -9907,10 +9953,13 @@ impl NoteArchive {
 
       if self.current_note_template().custom {
         println_inst!(
-          "| {} | {} | {} | {} | {}",
+          "| {} | {} | {}",
           "NOTE / N: use template for a new note",
           "COPY / C: make copy for new custom template",
           "EDIT / E: edit template",
+        );
+        println_inst!(
+          "| {} | {}",
           "DELETE: delete template",
           "QUIT / Q: quit menu"
         );
@@ -10053,9 +10102,12 @@ impl NoteArchive {
         nt.display_content(None, None);
         println_inst!("Enter text to add text to the template, or choose from among the following options:");
         println_inst!(
-          "{} | {} | {} | {}",
+          "{} | {}",
           "TEXT / T: add custom text",
           "BLANK / B: add custom blank",
+        );
+        println_inst!(
+          "{} | {}",
           "SAVE / S: finish and save template",
           "BACK: Delete last sentence or blank",
         );
@@ -10748,7 +10800,7 @@ impl NoteArchive {
   }
   fn choose_note(&mut self) {
     self.display_note();
-    println_inst!("{} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
+    println_inst!("| {} | {} | {}", " EDIT / E: Edit entry ", " DELETE / D: Delete entry ", " QUIT / Q: Quit menu");
     loop {
       let mut choice = String::new();
       let read_attempt = io::stdin().read_line(&mut choice);
@@ -10783,9 +10835,12 @@ impl NoteArchive {
       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
       self.current_note().display_content(blank_focus_id, content_focus_id);
       println_inst!(
-        "{} | {} | {} | {}",
+        "{} | {}",
         "BLANKS / B: Edit blanks",
         "CONTENT / C: Edit other content",
+      );
+      println_inst!(
+        "{} | {}",
         "TYPE / T: Edit note type/category",
         "QUIT / Q: Quit menu",
       );
@@ -10989,9 +11044,12 @@ impl NoteArchive {
             print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
             self.current_note().display_content(blank_focus_id, content_focus_id);
             println_inst!(
-              "{} | {} | {} | {}",
+              "{} | {}",
               "EDIT / E: Edit selected content",
               "ADD / A: Add content to end of note",
+            );
+            println_inst!(
+              "{} | {}",
               "INSERT / I: Insert additional content",
               "DELETE / D: Delete content",
             );
@@ -12427,10 +12485,10 @@ impl NoteArchive {
     println_on_bg!("{:-^113}", "-");
     match selected {
       None=> {
-        println_inst!("{} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
+        println_inst!("| {} | {}", " Select content to add to blank by ID. ", " CANCEL / C: Cancel and return to editing note");
       },
       Some(_) => {
-        println_inst!("{} | {}", "Select content to add to blank by ID.", "ENTER: Add selected content to blank.");
+        println_inst!("| {} | {}", "Select content to add to blank by ID.", "ENTER: Add selected content to blank.");
       }
     }
   }
@@ -13495,9 +13553,12 @@ impl NoteArchive {
         n.display_content(Some(i), None);
         println_on_bg!("{:-^58}", "-");
         println_inst!(
-          "| {} | {} | {} | {}",
+          "| {} | {}",
           "SKIP / S: Skip to next blank",
           "DELETE / D: Delete content of current blank",
+        );
+        println_inst!(
+          "| {} | {}",
           "CLEAR / C: Clear content of all blanks",
           "QUIT / Q: Quit menu",
         );
@@ -15084,6 +15145,55 @@ impl NoteArchive {
               current_blank += 1;
               continue;
             },
+            "goal" | "g" => {
+              let mut fill_ins: Vec<u32> = vec![];
+              let final_blank_string = loop {
+                let blank_id = match self.select_client_goals(Some(fill_ins.clone())) {
+                  Some(s) => s,
+                  None => {
+                    let fill_in_strings = fill_ins.iter().map(|g_id| self.get_goal_by_id(*g_id).unwrap().goal.clone() ).collect::<Vec<String>>();
+                    break if fill_in_strings.len() > 1 {
+                      format!(
+                        "{}{}{}",
+                        fill_in_strings[..fill_in_strings.len()-1].join(", "),
+                        " and ",
+                        fill_in_strings[fill_in_strings.len()-1],
+                      )
+                    } else if fill_in_strings.len() > 0 {
+                      fill_in_strings[0].clone()
+                    } else {
+                      String::new()
+                    };
+                  }
+                };
+                if !fill_ins.clone().iter().any(|fi| fi == &blank_id ) {
+                  fill_ins.push(blank_id);
+                } else {
+                  fill_ins.retain(|fi| fi != &blank_id )
+                }
+              };
+              if fill_ins.len() > 0 {
+                n.add_blank(ClientGoal);
+                n.blanks.insert(current_blank, (ClientGoal, final_blank_string, fill_ins));
+                current_blank += 1;
+              }
+              continue;
+            }
+            "noteday" | "nd" => {
+              let nd = self.current_note_day();
+              n.add_blank(NoteDayDate);
+              n.blanks.insert(current_blank, (NoteDayDate, nd.fmt_date_long(), vec![nd.id]));
+              current_blank += 1;
+              continue;
+            },
+            "today" | "t" => {
+              let t = Local::now().naive_local().date();
+              let nd = NoteDay::new(1, t, 1, 1, vec![]); // just for the fmtdate method below
+              n.add_blank(TodayDate);
+              n.blanks.insert(current_blank, (TodayDate, nd.fmt_date_long(), vec![]));
+              current_blank += 1;
+              continue;
+            }
             "all" | "a" => {
               let current_collaterals = self.current_client_collaterals();
               let num_collats = current_collaterals.len();
@@ -15106,12 +15216,6 @@ impl NoteArchive {
               current_blank += 1;
               continue;
             },
-
-            // "CPT: All Care Plan Team members",
-            // "GOAL / G: Client goal",
-            // "TODAY / T: Today's date",
-            // "NOTEDAY / ND: The date of the current note",
-
             "cpt" | "care plan team" | "care plan" => {
               let cpt = self.current_client_collaterals().iter().filter(|co| co.care_plan_team ).map(|co_ref| co_ref.to_owned().to_owned() ).collect::<Vec<Collateral>>();
               let cpt_len = cpt.len();
@@ -15127,6 +15231,7 @@ impl NoteArchive {
                   cpt[0].full_name_and_title()
                 };
                 let id_vec = cpt.iter().map(|co| co.id ).collect::<Vec<u32>>();
+                n.add_blank(CarePlanTeam);
                 n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
                 let mut old_ids = n.foreign_keys["collateral_ids"].clone();
                 for new_id in id_vec {
@@ -15144,6 +15249,7 @@ impl NoteArchive {
                     _ => (),
                   }
                   let (blank_string, id_vec) = self.select_collaterals();
+                  n.add_blank(CarePlanTeam);
                   n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
               }
@@ -15198,9 +15304,12 @@ impl NoteArchive {
                         if n.content.trim_end() != n.content {
                           n.add_blank(Collaterals);
                           n.blanks.insert(current_blank, (Collaterals, collateral_display_string, vec![]));
-                          n.content.push_str(&Collaterals.to_string());
+                          current_blank += 1;
                         } else {
-                          n.content.push_str(&format!("{}{}", " ", &collateral_display_string[..])[..]);
+                          n.content.push_str(" ");
+                          n.add_blank(Collaterals);
+                          n.blanks.insert(current_blank, (Collaterals, collateral_display_string, vec![]));
+                          current_blank += 1;
                         }
                         continue;
                       },
@@ -15212,7 +15321,7 @@ impl NoteArchive {
                   ()
                 }
               }
-              if n.content.trim_end() != n.content || String::from(";:,.'\"!@#$%^*)`]}-_+=>?/").contains(&choice.trim()[..]) || String::new() == n.content {
+              if n.content.trim_end() != n.content || String::from(";:,.'\"!@#$%^*)`]}-_+=>?/").contains(choice.trim().chars().last().unwrap()) || String::new() == n.content {
                 n.content.push_str(&choice.trim()[..]);
               } else {
                 n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
