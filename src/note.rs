@@ -235,6 +235,32 @@ pub struct NoteTemplate {
 }
 
 impl NoteTemplate {
+  pub fn get_all_display_content_strings(
+    &self,
+    blank_focus_id: Option<u32>,
+    content_focus_id: Option<u32>
+  ) -> Vec<(usize, String, Vec<(String, usize, usize)>)> {
+    let display_content_vec: Vec<String> = self.content.split(". ").map(|s| s.to_string() ).collect();
+    let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
+    for (i, sent) in display_content_vec.iter().enumerate() {
+      if sent.chars().count() > 0 {
+        let mut sentence = sent.clone();
+        if i != display_content_vec.len() - 1 && sentence != String::from("") {
+          sentence.push_str(". ");
+        }
+        let (s, format_vec) = self.generate_display_content_string_with_blanks(
+          Some(sentence),
+          blank_focus_id,
+          content_focus_id,
+        );
+        let maybe_multiple = Note::break_into_lines((i, s, format_vec));
+        for line in maybe_multiple {
+          output.push(line);
+        }
+      }
+    }
+    output
+  }
   pub fn new(
     id: u32,
     structure: StructureType,
@@ -265,7 +291,7 @@ impl NoteTemplate {
     } 
   }
   pub fn preview(&self) -> String {
-    let (this_content, _) = self.generate_display_content_string_with_blanks(None, None);
+    let (this_content, _) = self.generate_display_content_string_with_blanks(None, None, None);
     if this_content.len() > 95 {
       format!("{}{}", &this_content[0..95], "...")
     } else {
@@ -421,8 +447,16 @@ impl NoteTemplate {
     }
     output_vec
   }
-  pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> (String, Vec<(String, usize, usize)>) {
-    let mut content_string = self.content.clone();
+  pub fn generate_display_content_string_with_blanks(
+    &self,
+    different_content: Option<String>,
+    blank_focus_id: Option<u32>,
+    content_focus_id: Option<u32>
+  ) -> (String, Vec<(String, usize, usize)>) {
+    let mut content_string = match different_content {
+      None => self.content.clone(),
+      Some(s) => s.clone(),
+    };
     let mut format_vec: Vec<(String, usize, usize)> = vec![];
     let mut cont_i = 1;
 
@@ -645,7 +679,10 @@ impl NoteTemplate {
     }
     RE_BLANK.find_iter(&self.content[..idx]).count()
   }
-  pub fn get_display_content_vec_from_string(display_content: String, color_formatting: Option<Vec<(String, usize, usize)>>) -> Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> {
+  pub fn get_display_content_vec_from_string(
+    display_content: String,
+    color_formatting: Option<Vec<(String, usize, usize)>>
+  ) -> Vec<(usize, String, Option<Vec<(String, usize, usize)>>)> {
     let display_content_vec: Vec<String> = display_content.split(". ").map(|s| s.to_string() ).collect();
     let mut length_adjusted_vec = vec![];
     let mut current_idx = 0;
@@ -695,7 +732,7 @@ impl NoteTemplate {
             let overflowing_blank: Option<(String, usize, usize)> = match color_formatting.clone() {
               None => None,
               Some(f) => {
-                let maybe_blank = f.iter().find(|(s, i1, i2)| i1 != &0 && i1 <= &(current_idx+140) && i2 >= &(current_idx+140) && String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(s) );
+                let maybe_blank = f.iter().find(|(_s, i1, i2)| i1 != &0 && i1 <= &(current_idx+140) && i2 >= &(current_idx+140) );
                 match maybe_blank {
                   None => None,
                   Some(tup) => Some(tup.clone()),
@@ -732,8 +769,8 @@ impl NoteTemplate {
                   },
                   Some(f) => {
                     let current_sent = long_sent.clone();
-                    let rightmost_space = current_sent.rfind(' ');
-                    match rightmost_space {
+                    let rightmost_space = &current_sent[..140].rfind(' ');
+                    match rightmost_space {  // DEBUG THIS
                       None => {
                         let last_divider_idx = f.iter().find(|(_s, i1, i2)| i1 > &current_idx && i2 >= &(current_idx+140) );
                         match last_divider_idx {
@@ -754,7 +791,6 @@ impl NoteTemplate {
                             current_idx += 140;
                           },
                           Some(idx_tup) => {
-                            println!("{:?}", idx_tup);
                             let pos = idx_tup.1 - current_idx;
                             let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
                               .filter(|(_s, i1, i2)| i1 >= &current_idx && i2 <= &(current_idx+pos) )
@@ -773,7 +809,7 @@ impl NoteTemplate {
                         }
                       },
                       Some(spc) => {
-                        if spc < 140 {
+                        if spc < &140 {
                           let sentence_formatting: Vec<(String, usize, usize)> = f.iter()
                             .filter(|(_s, i1, i2)| i1 > &current_idx && i2 < &(current_idx+spc) )
                             .map(|(s, i1, i2)|
@@ -860,10 +896,10 @@ impl NoteTemplate {
     println_on_bg!("{:-^163}", "-");
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
-    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
-    let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
-    for (i, cont, f) in display_content_vec {
+    let (content, _) = self.generate_display_content_string_with_blanks(None, blank_focus_id, content_focus_id);
+    let display_content_vec = self.get_all_display_content_strings(blank_focus_id, content_focus_id);
+    for (i, cont, f_vec) in display_content_vec {
       let num_chars = cont.chars().count();
       let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
       // f is Option<Vec<(String, usize, usize)>>
@@ -874,56 +910,46 @@ impl NoteTemplate {
         format!(" {} ", display_i)
       };
       prev_i = i;
-      match f {
-        None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
-        Some(f_vec) => {
-          print_on_bg!("{:-^20} |  ", display_i);
-          if f_vec.len() == 0 {
-            print_on_bg!("{: <140}", &cont);
-          } else {
-            for (s, idx1, idx2) in f_vec {
-              let to_format = if idx2 >= cont.len() {
-                &cont[idx1..]
-              } else {
-                &cont[idx1..idx2]
-              };
-              match &s[..] {
-                "HIGHLIGHTED CONTENT" => {
-                  print_highlighted_content!("{}", to_format);
-                },
-                "UNHIGHLIGHTED CONTENT" => {
-                  print_unhighlighted_content!("{}", to_format);
-                },
-                "CONTENT" => {
-                  print_on_bg!("{}", to_format);
-                },
-                "HIGHLIGHTED BLANK" => {
-                  print!("{}", Black.on(Yellow).bold().paint(to_format));
-                },
-                "UNHIGHLIGHTED BLANK" => {
-                  print!("{}", Black.on(White).paint(to_format));
-                },
-                "UNFOCUSED BLANK" => {
-                  print_unfocused_blank!("{}", to_format);
-                },
-                "BLANK" => {
-                  print!("{}", Black.on(White).paint(to_format));
-                },
-                _ => (),
-              }
-            }
-            for _ in 0..num_to_add {
-              print_on_bg!(" ");
-            }
-          }
+      for (s, idx1, idx2) in f_vec {
+        let to_format = if idx2 >= cont.len() {
+          &cont[idx1..]
+        } else {
+          &cont[idx1..idx2]
+        };
+        match &s[..] {
+          "HIGHLIGHTED CONTENT" => {
+            print_highlighted_content!("{}", to_format);
+          },
+          "UNHIGHLIGHTED CONTENT" => {
+            print_unhighlighted_content!("{}", to_format);
+          },
+          "CONTENT" => {
+            print_on_bg!("{}", to_format);
+          },
+          "HIGHLIGHTED BLANK" => {
+            print!("{}", Black.on(Yellow).bold().paint(to_format));
+          },
+          "UNHIGHLIGHTED BLANK" => {
+            print!("{}", Black.on(White).paint(to_format));
+          },
+          "UNFOCUSED BLANK" => {
+            print_unfocused_blank!("{}", to_format);
+          },
+          "BLANK" => {
+            print!("{}", Black.on(White).paint(to_format));
+          },
+          _ => (),
         }
+      }
+      for _ in 0..num_to_add {
+        print_on_bg!(" ");
       }
       print!("\n");
     }
     println_on_bg!("{:-^163}", "-");
   }
   pub fn get_content_indices(&self) -> Vec<(usize, usize)> {
-    let (_, formatting) = self.generate_display_content_string_with_blanks(None, None);
+    let (_, formatting) = self.generate_display_content_string_with_blanks(None, None, None);
     formatting.iter().filter(|(s, _, _)| !String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(s) ).map(|(_, u1, u2)| (*u1, *u2) ).collect::<Vec<(usize, usize)>>()
   }
   pub fn display_edit_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
@@ -934,7 +960,7 @@ impl NoteTemplate {
     println_on_bg!("{:-^163}", "-");
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
-    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
+    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(None, blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
     let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
     for (i, cont, f) in display_content_vec {
@@ -1396,6 +1422,32 @@ pub struct Note {
 }
 
 impl Note {
+  pub fn get_all_display_content_strings(
+    &self,
+    blank_focus_id: Option<u32>,
+    content_focus_id: Option<u32>
+  ) -> Vec<(usize, String, Vec<(String, usize, usize)>)> {
+    let display_content_vec: Vec<String> = self.content.split(". ").map(|s| s.to_string() ).collect();
+    let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
+    for (i, sent) in display_content_vec.iter().enumerate() {
+      if sent.chars().count() > 0 {
+        let mut sentence = sent.clone();
+        if i != display_content_vec.len() - 1 && sentence != String::from("") {
+          sentence.push_str(". ");
+        }
+        let (s, format_vec) = self.generate_display_content_string_with_blanks(
+          Some(sentence),
+          blank_focus_id,
+          content_focus_id,
+        );
+        let maybe_multiple = Note::break_into_lines((i, s, format_vec));
+        for line in maybe_multiple {
+          output.push(line);
+        }
+      }
+    }
+    output
+  }
   pub fn new(
     id: u32,
     date: NaiveDate,
@@ -1587,8 +1639,96 @@ impl Note {
     }
     length_adjusted_vec
   }
-  pub fn generate_display_content_string_with_blanks(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) -> (String, Vec<(String, usize, usize)>) {
-    let mut content_string = self.content.clone();
+  pub fn break_into_lines(
+    line: (usize, String, Vec<(String, usize, usize)>)
+  ) -> Vec<(usize, String, Vec<(String, usize, usize)>)> {
+    if line.1.chars().count() <= 140 {
+      vec![line]
+    } else {
+      let formatting = line.2.clone();
+      let overlapping: Option<&(String, usize, usize)> = formatting.iter().find(|(_s, i1, i2)| i1 < &140 && i2 > &140 );
+      let last_full: Option<&(String, usize, usize)> = match overlapping {
+        Some(_) => None,
+        None => {
+          formatting.iter().rev().find(|(_s, _i1, i2)| i2 <= &140 )
+        }
+      };
+      let other_split_index: Option<usize> = match last_full {
+        None => None,
+        Some((s, i1, _i2)) => {
+          if i1 != &0 {
+            None
+          } else {
+            if String::from("UNHIGHLIGHTED CONTENT").contains(&s[..]) {
+              line.1.rfind(' ')
+            } else {
+              None
+            }
+          }
+        }
+      };
+      let sec_1_output_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, i1, _i2)| i1 <= &140 )
+        .map(|(s, i1, i2)| match overlapping {
+          None => match other_split_index {
+            None => (String::from(&s[..]), *i1, *i2),
+            Some(i) => (String::from(&s[..]), *i1, *&i),
+          },
+          Some((_os, _oi1, oi2)) => {
+            if oi2 == i2 { (String::from(&s[..]), *i1, 140 as usize) } else { (String::from(&s[..]), *i1, *i2) }
+          }
+        } )
+        .filter(|(_s, _i1, i2)| i2 <= &(140 as usize) )
+        .map(|(s, i1, i2)| (String::from(&s[..]), i1, i2) )
+        .collect();
+
+      let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
+      output.push((line.0, line.1.clone(), sec_1_output_formatting.clone()));
+      
+      let next_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, _i1, i2)| i2 > &140 )
+        .map(|(s, i1, i2)| match overlapping {
+          None => match other_split_index {
+            None => {
+              if i1 < &140 {
+                (String::from(&s[..]), 0 as usize, 0 as usize)
+              } else {
+                (String::from(&s[..]), (i1-140) as usize, (i2-140) as usize)
+              }
+            }
+            Some(i) => (String::from(&s[..]), 0 as usize, ((i2-140)-i) as usize),
+          },
+          Some((_os, _oi1, oi2)) => {
+            if oi2 == i2 { (String::from(&s[..]), 0 as usize, (i2-140) as usize) } else { (String::from(&s[..]), (i1-140) as usize, (i2-140) as usize) }
+          }
+        } )
+        .filter(|(_s, i1, i2)| !(i1 == &(0 as usize) && i2 == &(0 as usize)) )
+        .map(|(s, i1, i2)| (String::from(&s[..]), i1, i2) )
+        .collect();
+      
+      let next_string_start = sec_1_output_formatting[sec_1_output_formatting.len()-1].2;
+      let next_string = String::from(&line.1[next_string_start..]);
+
+      let additional_output: Vec<(usize, String, Vec<(String, usize, usize)>)> = Note::break_into_lines(
+        (line.0, next_string, next_formatting)
+      );
+
+      for l in additional_output {
+        output.push(l);
+      }
+
+      output
+
+    }
+  }
+  pub fn generate_display_content_string_with_blanks(
+    &self,
+    different_content: Option<String>,
+    blank_focus_id: Option<u32>,
+    content_focus_id: Option<u32>,
+  ) -> (String, Vec<(String, usize, usize)>) {
+    let mut content_string = match different_content {
+      None => self.content.clone(),
+      Some(s) => s.clone(),
+    };
     let mut format_vec: Vec<(String, usize, usize)> = vec![];
     let mut cont_i = 1;
 
@@ -1863,10 +2003,10 @@ impl Note {
   pub fn display_content(&self, blank_focus_id: Option<u32>, content_focus_id: Option<u32>) {
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
-    let (display_content_string, formatting) = self.generate_display_content_string_with_blanks(blank_focus_id, content_focus_id);
     let mut prev_i = 100; // 0 is the actual index
-    let display_content_vec = NoteTemplate::get_display_content_vec_from_string(display_content_string, Some(formatting));
-    for (i, cont, f) in display_content_vec {
+    let (content, _) = self.generate_display_content_string_with_blanks(None, blank_focus_id, content_focus_id);
+    let display_content_vec = self.get_all_display_content_strings(blank_focus_id, content_focus_id);
+    for (i, cont, f_vec) in display_content_vec {
       let num_chars = cont.chars().count();
       let num_to_add = if num_chars < 140 { 140-num_chars-1 } else { 0 };
       // f is Option<Vec<(String, usize, usize)>>
@@ -1877,49 +2017,40 @@ impl Note {
         format!(" {} ", display_i)
       };
       prev_i = i;
-      match f {
-        None => println_on_bg!("{:-^20} | {:-^140}", display_i, &cont),
-        Some(f_vec) => {
-          print_on_bg!("{:-^20} |  ", display_i);
-          if f_vec.len() == 0 {
-            print_on_bg!("{: <140}", &cont);
-          } else {
-            for (s, idx1, idx2) in f_vec {
-              let to_format = if idx2 >= cont.len() {
-                &cont[idx1..]
-              } else {
-                &cont[idx1..idx2]
-              };
-              match &s[..] {
-                "HIGHLIGHTED CONTENT" => {
-                  print_highlighted_content!("{}", to_format);
-                },
-                "UNHIGHLIGHTED CONTENT" => {
-                  print_unhighlighted_content!("{}", to_format);
-                },
-                "CONTENT" => {
-                  print_on_bg!("{}", to_format);
-                },
-                "HIGHLIGHTED BLANK" => {
-                  print!("{}", Black.on(Yellow).bold().paint(to_format));
-                },
-                "UNHIGHLIGHTED BLANK" => {
-                  print!("{}", Black.on(White).paint(to_format));
-                },
-                "UNFOCUSED BLANK" => {
-                  print_unfocused_blank!("{}", to_format);
-                },
-                "BLANK" => {
-                  print!("{}", Black.on(White).paint(to_format));
-                },
-                _ => (),
-              }
-            }
-            for _ in 0..num_to_add {
-              print_on_bg!(" ");
-            }
-          }
+      print_on_bg!("{:-^20} |  ", display_i);
+      for (s, idx1, idx2) in f_vec {
+        let to_format = if idx2 >= cont.len() {
+          &cont[idx1..]
+        } else {
+          &cont[idx1..idx2]
+        };
+        match &s[..] {
+          "HIGHLIGHTED CONTENT" => {
+            print_highlighted_content!("{}", to_format);
+          },
+          "UNHIGHLIGHTED CONTENT" => {
+            print_unhighlighted_content!("{}", to_format);
+          },
+          "CONTENT" => {
+            print_on_bg!("{}", to_format);
+          },
+          "HIGHLIGHTED BLANK" => {
+            print!("{}", Black.on(Yellow).bold().paint(to_format));
+          },
+          "UNHIGHLIGHTED BLANK" => {
+            print!("{}", Black.on(White).paint(to_format));
+          },
+          "UNFOCUSED BLANK" => {
+            print_unfocused_blank!("{}", to_format);
+          },
+          "BLANK" => {
+            print!("{}", Black.on(White).paint(to_format));
+          },
+          _ => (),
         }
+      }
+      for _ in 0..num_to_add {
+        print_on_bg!(" ");
       }
       print!("\n");
     }

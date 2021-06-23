@@ -20,7 +20,7 @@ pub const FAMILY_ROLES: [&'static str; 119] = [
   "foster sibling", "former foster sibling", "bio mom", "bio dad", 
 ];
 
-pub const FORMAL_ROLES: [&'static str; 62] = [
+pub const FORMAL_ROLES: [&'static str; 69] = [
   "intensive care coordinator", "icc", "family partner", "fp", "in home therapist", "in-home therapist", "iht",
   "in home behavioral therapist", "in-home behavioral therapist", "ihbt", "therapeutic mentor", "tm", "ot", "occupational therapist",
   "psychiatrist", "outpatient therapist", "opt", "guidance counselor", "school social worker", "social worker", "dcf worker",
@@ -29,7 +29,9 @@ pub const FORMAL_ROLES: [&'static str; 62] = [
   "therapeutic training and support mentor", "therapeutic training & support mentor", "tt&s mentor", "tt and s mentor", 
   "teacher", "special education teacher", "school guidance counselor", "lifeset worker", "lifeset mentor", "bcba", "yapm", "young adult peer mentor",
   "case manager", "dds case manager", "dds case coordinator", "case coordinator", "dmh case manager", "dcf worker", "dcf social worker", "behavior monitor", "bm", "hospital case manager",
-  "mci family partner", "mobile crisis intervention family partner", "academic support", "adjustment counselor", "school adjustment counselor"
+  "mci family partner", "mobile crisis intervention family partner", "academic support", "adjustment counselor", "school adjustment counselor",
+  "dds service coordinator", "service coordinator", "dds intensive case manager", "intensive case manager",
+  "dds intensive flexible family support", "intensive flexible family support", "psychiatric nurse practitioner"
 ];
 
 pub const INDIRECT_ROLES: [&'static str; 25] = [
