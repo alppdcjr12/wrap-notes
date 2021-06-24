@@ -57,7 +57,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 28] = [
       Team members provided updates on and discussed (---c---)'s (---yt---). \
       The team discussed updates on (---cpto---) for (---c---). \
       (---cu---). \
-      The team brainstormed action steps for (---c---)'s goal of \"(---g---).\" \
+      The team brainstormed action steps for (---c---)'s goal of \"(---go---).\" \
       (---u---) scheduled the (---im---) for (---c---) for (---c---).\
     ",
   ),
@@ -188,7 +188,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 28] = [
     "Brainstorm Contribution",
     "\
       (---u---) contributed to the team brainstorm ideas for (---c---)'s \
-      Care Plan goal of \"(---g---).\"\
+      Care Plan goal of \"(---go---).\"\
     ",
   ),
   (

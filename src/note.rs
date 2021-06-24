@@ -1450,7 +1450,7 @@ impl Note {
         for line in maybe_multiple {
           output.push(line);
         }
-      blank_offset += RE_BLANK.find_iter(&sent).count() as u32;
+        blank_offset += RE_BLANK.find_iter(&sent).count() as u32;
       }
     }
     output
@@ -1685,6 +1685,7 @@ pub fn break_into_lines(
 
       let next_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, _i1, i2)| i2 > &last_idx )
         .map(|(s, i1, i2)|
+          // the condition under which i1 < &last_index is that it was dangling from the last line - so just start at 0 to get the non-dangler
           if i1 > &last_idx {
             (String::from(&s[..]), (i1-last_idx) as usize, (i2-last_idx) as usize)
           } else {
@@ -1863,13 +1864,13 @@ pub fn break_into_lines(
         Some(b_tup) => {
           match blank_focus_id {
             None => format!("{}", b_tup.1),
-            Some(_) => format!("[{}]: {}", i, b_tup.1),
+            Some(_) => format!("[{}]: {}", current_blank, b_tup.1),
           }
         },
         None => {
           match blank_focus_id {
             None => format!("{}", b.display_to_user()),
-            Some(_) => format!("[{}]: {}", i, b.display_to_user()),
+            Some(_) => format!("[{}]: {}", current_blank, b.display_to_user()),
           }
         }
       };

@@ -14417,7 +14417,7 @@ impl NoteArchive {
       println_on_bg!(
         "{: ^10} | {: <100}",
         i+1,
-        &fillable.to_string(),
+        &fillable.display_to_user_empty(),
       );
     }
     println_on_bg!("{:-^113}", "-");
