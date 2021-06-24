@@ -1655,7 +1655,7 @@ pub fn break_into_lines(
       let formatting = line.2.clone();
       let overlapping: Option<&(String, usize, usize)> = formatting.iter().find(|(s, i1, i2)| i1 < &140 && i2 > &140 && String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(&s[..]) );
       let other_split_index: Option<usize> = match overlapping {
-        None => String::from(&line.1[..140].rfind(' '),
+        None => String::from(&line.1[..140]).rfind(' '),
         Some(_) => None,
       };
       let sec_1_output_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, i1, _i2)| i1 <= &140 )
@@ -1674,14 +1674,23 @@ pub fn break_into_lines(
       let last_idx = if sec_1_output_formatting.len() > 0 {
         sec_1_output_formatting[sec_1_output_formatting.len()-1].2
       } else {
-        0
+        match other_split_index {
+          None => 0,
+          Some(idx) => idx,
+        }
       };
       
       let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
       output.push((line.0, String::from(&line.1[..last_idx]), sec_1_output_formatting.clone()));
 
       let next_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, _i1, i2)| i2 > &last_idx )
-        .map(|(s, i1, i2)| (String::from(&s[..]), (i1-last_idx) as usize, (i2-last_idx) as usize) )
+        .map(|(s, i1, i2)|
+          if i1 > &last_idx {
+            (String::from(&s[..]), (i1-last_idx) as usize, (i2-last_idx) as usize)
+          } else {
+            (String::from(&s[..]), 0 as usize, (i2-last_idx) as usize)
+          }
+        )
         .collect();
       
       let next_string = String::from(&line.1[last_idx..]);
