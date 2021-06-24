@@ -897,7 +897,6 @@ impl NoteTemplate {
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
     let mut prev_i = 100; // 0 is the actual index
-    let (content, _) = self.generate_display_content_string_with_blanks(None, blank_focus_id, content_focus_id);
     let display_content_vec = self.get_all_display_content_strings(blank_focus_id, content_focus_id);
     for (i, cont, f_vec) in display_content_vec {
       let num_chars = cont.chars().count();
@@ -906,9 +905,10 @@ impl NoteTemplate {
       let display_i = if i == prev_i {
         String::from("   ")
       } else {
-        let display_i = i + 1;
-        format!(" {} ", display_i)
+        let display = i + 1;
+        format!(" {} ", display)
       };
+      print_on_bg!("{:-^20} | ", display_i);
       prev_i = i;
       for (s, idx1, idx2) in f_vec {
         let to_format = if idx2 >= cont.len() {
@@ -1429,6 +1429,11 @@ impl Note {
   ) -> Vec<(usize, String, Vec<(String, usize, usize)>)> {
     let display_content_vec: Vec<String> = self.content.split(". ").map(|s| s.to_string() ).collect();
     let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
+
+    let mut blank_offset = 0;
+    lazy_static! {
+      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+    }
     for (i, sent) in display_content_vec.iter().enumerate() {
       if sent.chars().count() > 0 {
         let mut sentence = sent.clone();
@@ -1437,6 +1442,7 @@ impl Note {
         }
         let (s, format_vec) = self.generate_display_content_string_with_blanks(
           Some(sentence),
+          Some(blank_offset),
           blank_focus_id,
           content_focus_id,
         );
@@ -1444,6 +1450,7 @@ impl Note {
         for line in maybe_multiple {
           output.push(line);
         }
+      blank_offset += RE_BLANK.find_iter(&sent).count() as u32;
       }
     }
     output
@@ -1639,77 +1646,51 @@ impl Note {
     }
     length_adjusted_vec
   }
-  pub fn break_into_lines(
+pub fn break_into_lines(
     line: (usize, String, Vec<(String, usize, usize)>)
   ) -> Vec<(usize, String, Vec<(String, usize, usize)>)> {
     if line.1.chars().count() <= 140 {
       vec![line]
     } else {
       let formatting = line.2.clone();
-      let overlapping: Option<&(String, usize, usize)> = formatting.iter().find(|(_s, i1, i2)| i1 < &140 && i2 > &140 );
-      let last_full: Option<&(String, usize, usize)> = match overlapping {
+      let overlapping: Option<&(String, usize, usize)> = formatting.iter().find(|(s, i1, i2)| i1 < &140 && i2 > &140 && String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(&s[..]) );
+      let other_split_index: Option<usize> = match overlapping {
+        None => String::from(&line.1[..140].rfind(' '),
         Some(_) => None,
-        None => {
-          formatting.iter().rev().find(|(_s, _i1, i2)| i2 <= &140 )
-        }
-      };
-      let other_split_index: Option<usize> = match last_full {
-        None => None,
-        Some((s, i1, _i2)) => {
-          if i1 != &0 {
-            None
-          } else {
-            if String::from("UNHIGHLIGHTED CONTENT").contains(&s[..]) {
-              line.1.rfind(' ')
-            } else {
-              None
-            }
-          }
-        }
       };
       let sec_1_output_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, i1, _i2)| i1 <= &140 )
-        .map(|(s, i1, i2)| match overlapping {
-          None => match other_split_index {
-            None => (String::from(&s[..]), *i1, *i2),
-            Some(i) => (String::from(&s[..]), *i1, *&i),
-          },
-          Some((_os, _oi1, oi2)) => {
-            if oi2 == i2 { (String::from(&s[..]), *i1, 140 as usize) } else { (String::from(&s[..]), *i1, *i2) }
-          }
+        .map(|(s, i1, i2)| match other_split_index {
+          None => (String::from(&s[..]), *i1, *i2),
+          Some(i) => if i1 < &i && i2 > &i {
+              (String::from(&s[..]), *i1, *&i)
+            } else {
+              (String::from(&s[..]), *i1, *i2)
+            }
         } )
         .filter(|(_s, _i1, i2)| i2 <= &(140 as usize) )
         .map(|(s, i1, i2)| (String::from(&s[..]), i1, i2) )
         .collect();
 
-      let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
-      output.push((line.0, line.1.clone(), sec_1_output_formatting.clone()));
+      let last_idx = if sec_1_output_formatting.len() > 0 {
+        sec_1_output_formatting[sec_1_output_formatting.len()-1].2
+      } else {
+        0
+      };
       
-      let next_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, _i1, i2)| i2 > &140 )
-        .map(|(s, i1, i2)| match overlapping {
-          None => match other_split_index {
-            None => {
-              if i1 < &140 {
-                (String::from(&s[..]), 0 as usize, 0 as usize)
-              } else {
-                (String::from(&s[..]), (i1-140) as usize, (i2-140) as usize)
-              }
-            }
-            Some(i) => (String::from(&s[..]), 0 as usize, ((i2-140)-i) as usize),
-          },
-          Some((_os, _oi1, oi2)) => {
-            if oi2 == i2 { (String::from(&s[..]), 0 as usize, (i2-140) as usize) } else { (String::from(&s[..]), (i1-140) as usize, (i2-140) as usize) }
-          }
-        } )
-        .filter(|(_s, i1, i2)| !(i1 == &(0 as usize) && i2 == &(0 as usize)) )
-        .map(|(s, i1, i2)| (String::from(&s[..]), i1, i2) )
+      let mut output: Vec<(usize, String, Vec<(String, usize, usize)>)> = vec![];
+      output.push((line.0, String::from(&line.1[..last_idx]), sec_1_output_formatting.clone()));
+
+      let next_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, _i1, i2)| i2 > &last_idx )
+        .map(|(s, i1, i2)| (String::from(&s[..]), (i1-last_idx) as usize, (i2-last_idx) as usize) )
         .collect();
       
-      let next_string_start = sec_1_output_formatting[sec_1_output_formatting.len()-1].2;
-      let next_string = String::from(&line.1[next_string_start..]);
+      let next_string = String::from(&line.1[last_idx..]);
 
-      let additional_output: Vec<(usize, String, Vec<(String, usize, usize)>)> = Note::break_into_lines(
-        (line.0, next_string, next_formatting)
-      );
+      let additional_output: Vec<(usize, String, Vec<(String, usize, usize)>)> = if next_formatting.len() > 0 {
+        Note::break_into_lines((line.0, next_string, next_formatting))
+      } else {
+        vec![]
+      };
 
       for l in additional_output {
         output.push(l);
@@ -1722,6 +1703,7 @@ impl Note {
   pub fn generate_display_content_string_with_blanks(
     &self,
     different_content: Option<String>,
+    blank_offset: Option<u32>,
     blank_focus_id: Option<u32>,
     content_focus_id: Option<u32>,
   ) -> (String, Vec<(String, usize, usize)>) {
@@ -1745,6 +1727,10 @@ impl Note {
     let mut content = String::new();
     let mut i: u32 = 1;
     let mut current_blank: u32 = 0;
+    if let Some(num) = blank_offset {
+      current_blank += num;
+    }
+
     loop {
       let find_match_string = content_string.clone();
       let m = RE_BLANK.find(&find_match_string);
@@ -2004,7 +1990,6 @@ impl Note {
     println_on_bg!("{:-^20} | {:-^140}", " Sentence ID ", " Content ");
     println_on_bg!("{:-^163}", "-");
     let mut prev_i = 100; // 0 is the actual index
-    let (content, _) = self.generate_display_content_string_with_blanks(None, blank_focus_id, content_focus_id);
     let display_content_vec = self.get_all_display_content_strings(blank_focus_id, content_focus_id);
     for (i, cont, f_vec) in display_content_vec {
       let num_chars = cont.chars().count();

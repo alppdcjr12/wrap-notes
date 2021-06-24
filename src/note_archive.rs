@@ -7842,7 +7842,7 @@ impl NoteArchive {
       if v.len() > 0 {
         println_suc!("{}", k);
         for n in v {
-          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None);
+          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
           println!("{}\n", output);
         }
       }
@@ -7863,7 +7863,7 @@ impl NoteArchive {
       if v.len() > 0 {
         println_suc!("{: <150}", k);
         for n in v {
-          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None);
+          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
           println!("{}\n", output);
         }
       }
@@ -7884,7 +7884,7 @@ impl NoteArchive {
     println_on_bg!("{:-^162}", "-");
     for n in notes {
       let words: Vec<&str> = n.content.split(" ").collect();
-      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None);
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
       let sample = if s.len() > 65 {
         format!("{}{}", String::from(&s[..60]), String::from("..."))
       } else {
@@ -7916,7 +7916,7 @@ impl NoteArchive {
     println_on_bg!("{:-^178}", "-");
     for n in notes {
       let words: Vec<&str> = n.content.split(" ").collect();
-      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None);
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
       let sample = if s.len() > 75 {
         format!("{}{}", String::from(&s[..73]), String::from("..."))
       } else {
@@ -11241,7 +11241,7 @@ impl NoteArchive {
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
 
-                          let mut display_content = self.current_note().generate_display_content_string_with_blanks(None, None, None).0.clone();
+                          let mut display_content = self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0.clone();
                           while display_content.chars().count() > 163 {
                             let (p1, p2) = display_content.split_at(163);
                             let mut pointer_string = String::new();
@@ -11295,12 +11295,12 @@ impl NoteArchive {
                           "before" | "b" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -11342,12 +11342,12 @@ impl NoteArchive {
                           "after" | "a" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -11392,12 +11392,12 @@ impl NoteArchive {
                           "" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -15321,7 +15321,7 @@ impl NoteArchive {
                   ()
                 }
               }
-              if n.content.trim_end() != n.content || String::from(";:,.'\"!@#$%^*)`]}-_+=>?/").contains(choice.trim().chars().last().unwrap()) || String::new() == n.content {
+              if n.content.trim_end() != n.content || String::from("'\"@#$%^*`]}-_+=>?/").contains(choice.trim().chars().last().unwrap()) || String::new() == n.content {
                 n.content.push_str(&choice.trim()[..]);
               } else {
                 n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
@@ -16000,7 +16000,7 @@ mod tests {
     
     // (String, Vec<(String, usize, usize)>)
     
-    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None, None);
+    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None, None, None);
     assert_eq!(
       display_content_string1,
       format!(
@@ -16029,7 +16029,7 @@ mod tests {
       ),
     );
     
-    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None, None);
+    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None, None, None);
     assert_eq!(
       display_content_string2,
       format!(
@@ -16045,7 +16045,7 @@ mod tests {
       ),
     );
 
-    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1), None);
     assert_eq!(
       display_content_string3,
       format!(
@@ -16061,7 +16061,7 @@ mod tests {
       ),
     );
 
-    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1));
     assert_eq!(
       format!(
         "[1]: {}[2]: 's pronouns are {}[3]: . {}[4]: 's pronouns are {}[5]: . {}[6]: 's pronouns are {}[7]: . {}[8]: 's pronouns are {}[9]: .",
@@ -16105,7 +16105,7 @@ mod tests {
 
     let check_display_string_with_content_focus = format!("{}{}{}{}{}{}{}{}{}{}{}", s1a, s1b, s1c, s1d, s1e, s1f, s1g, s1h, s1i, s1j, s1k);
 
-    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     assert_eq!(check_display_string_with_content_focus, display_string_with_content_focus);
   }
@@ -16140,7 +16140,7 @@ mod tests {
       (String::from("CONTENT"), s1e, s1f),
     ];
 
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, Some(1), None);
 
     assert_eq!(formatting1, formatting_vector1);
 
@@ -16184,7 +16184,7 @@ mod tests {
       (String::from("CONTENT"), s1j, s1k),
     ];
 
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1), None);
 
     assert_eq!(formatting2, formatting_vector2);
 
@@ -16210,7 +16210,7 @@ mod tests {
       (String::from("CONTENT"), s1d, s1e),
     ];
 
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, Some(1), None);
 
     assert_eq!(formatting3, formatting_vector3);
   }
@@ -16247,7 +16247,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
     ];
 
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     assert_eq!(formatting1, formatting_vector1);
 
@@ -16291,7 +16291,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1j, s1k),
     ];
 
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     assert_eq!(formatting2, formatting_vector2);
 
@@ -16317,7 +16317,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
     ];
 
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     assert_eq!(formatting3, formatting_vector3);
 
@@ -16332,7 +16332,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16363,7 +16363,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16394,7 +16394,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16447,7 +16447,7 @@ mod tests {
 
     // (String, Vec<(String, usize, usize)>)
     
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None);
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, None);
 
     assert_eq!(formatting1, formatting_vector1);
   }
@@ -16467,7 +16467,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1), None);
 
     let s1a = String::from("Here is a sentence. ").chars().count();
     let s1b = String::from("Here is another one with a blank (").chars().count() + s1a;
@@ -16570,7 +16570,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16673,7 +16673,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None);
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, None);
 
     let s1a = String::from("A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("Some good, some not so good. ").chars().count() + s1a;
