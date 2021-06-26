@@ -291,11 +291,11 @@ fn choose_blanks_option() -> Option<usize> {
 pub fn get_spacing_buffers(last_content_char: Option<char>, next_content_char: Option<char>) -> (String, String) {
   match (last_content_char, next_content_char) {
     (Some(lc), Some(nc)) => {
-      if lc == ' ' && nc == ' ' {
+      if lc.is_whitespace() && (nc.is_whitespace() || nc == '.') {
         (String::new(), String::new())
-      } else if lc == ' ' {
+      } else if lc.is_whitespace() {
         (String::new(), String::from(" "))
-      } else if nc == ' ' {
+      } else if nc.is_whitespace() || nc == '.' {
         (String::from(" "), String::new())
       } else {
         (String::from(" "), String::from(" "))
@@ -7842,7 +7842,7 @@ impl NoteArchive {
       if v.len() > 0 {
         println_suc!("{}", k);
         for n in v {
-          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
+          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None, None, None);
           println!("{}\n", output);
         }
       }
@@ -7863,7 +7863,7 @@ impl NoteArchive {
       if v.len() > 0 {
         println_suc!("{: <150}", k);
         for n in v {
-          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
+          let (output, _) = n.generate_display_content_string_with_blanks(None, None, None, None, None);
           println!("{}\n", output);
         }
       }
@@ -7884,7 +7884,7 @@ impl NoteArchive {
     println_on_bg!("{:-^162}", "-");
     for n in notes {
       let words: Vec<&str> = n.content.split(" ").collect();
-      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None, None);
       let sample = if s.len() > 65 {
         format!("{}{}", String::from(&s[..60]), String::from("..."))
       } else {
@@ -7916,7 +7916,7 @@ impl NoteArchive {
     println_on_bg!("{:-^178}", "-");
     for n in notes {
       let words: Vec<&str> = n.content.split(" ").collect();
-      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None);
+      let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None, None);
       let sample = if s.len() > 75 {
         format!("{}{}", String::from(&s[..73]), String::from("..."))
       } else {
@@ -8724,7 +8724,7 @@ impl NoteArchive {
                 continue;
               }
             };
-            break match StructureType::iterator().nth(chosen_id) {
+            break match StructureType::iterator().nth(chosen_id - 1) {
               None => {
                 println_err!("Invalid choice.");
                 thread::sleep(time::Duration::from_secs(2));
@@ -8804,7 +8804,7 @@ impl NoteArchive {
               },
               "edit" | "e" => {
                 self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-                println_inst!("Enter new content to replace the selected text, including spaces.");
+                println_inst!("Enter exact content to replace the selected text, including any spaces on the left and right.");
                 let mut new_section = String::new();
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
@@ -8824,7 +8824,7 @@ impl NoteArchive {
 
                 for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
                   if i + 1 == content_focus_id.unwrap() as usize {
-                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1+1..]);
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
                   }
                 }
 
@@ -8850,7 +8850,7 @@ impl NoteArchive {
                       let nt_content = self.current_note_template().content.clone();
 
                       let mut new_content = String::new();
-                      for (i, idxs) in self.current_note_template().get_typed_content_indices().iter().enumerate() {
+                      for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
                         if i == content_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
                         }
@@ -8872,25 +8872,23 @@ impl NoteArchive {
                 }
               },
               "insert" | "i" => { // in content choice
-                let mut content_focus_id: Option<u32> = Some(0);
-                let blank_focus_id: Option<u32> = None;
                 let mut chosen_text = String::new();
                 'insert_content: loop {
-
+                  
                   self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
-
-                  if content_focus_id.unwrap() == 0 {
-                    println_inst!("Enter new content to insert.");
-                    let mut entered_content = String::new();
-                    let enter_result = io::stdin().read_line(&mut entered_content);
-                    match enter_result {
-                      Ok(_) => chosen_text = String::from(&entered_content[..entered_content.len()-2]),
+                  
+                  if chosen_text == String::new() {
+                    println_inst!("Enter new content to insert, without spaces on the ends.");
+                    let mut selected_text = String::new();
+                    let enter_result = io::stdin().read_line(&mut selected_text);
+                    chosen_text = match enter_result {
+                      Ok(_) => String::from(&selected_text[..selected_text.len()-2]),
                       Err(e) => {
                         println_err!("Failed to read string: {}", e);
                         thread::sleep(time::Duration::from_secs(2));
                         continue;
                       }
-                    }
+                    };
                   }
 
                   let content_indices = self.current_note_template().get_content_section_indices();
@@ -8921,13 +8919,13 @@ impl NoteArchive {
                       break 'insert_content;
                     },
                     "" => {
-                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
                       'insert_location_content: loop {
+                        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                         let indices = content_indices[content_focus_id.unwrap() as usize - 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
-                        let display_string = format!("{}", self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx1..idx2].to_string());
+                        let display_string = format!("{}", self.current_note_template().content[idx1..idx2].to_string());
                         let num_chars = display_string.chars().count();
                         if num_chars <= 163 {
                           println_on_bg!("{}", &display_string);
@@ -8940,7 +8938,7 @@ impl NoteArchive {
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
 
-                          let mut display_content = self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0.clone();
+                          let mut display_content = display_string.clone();
                           while display_content.chars().count() > 163 {
                             let (p1, p2) = display_content.split_at(163);
                             let mut pointer_string = String::new();
@@ -8993,21 +8991,19 @@ impl NoteArchive {
                           }
                           "before" | "b" => {
                             loop {
-                              let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
-                              } else {
-                                display_string[..current_location].chars().last()
-                              };
-                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
-                              } else {
-                                display_string[current_location..].chars().next()
-                              };
+                              let last_content_char = self.current_note_template()
+                                .generate_display_content_string_with_blanks(None, None, None).0[..idx1+1]
+                                .chars()
+                                .last();
+                              let next_content_char = self.current_note_template()
+                                .generate_display_content_string_with_blanks(None, None, None).0[idx2..]
+                                .chars()
+                                .next();
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
-                              let new_content = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
+                              let new_content_section = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
-                              println_inst!("{}", &new_content);
+                              println_inst!("{}", &new_content_section);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -9022,10 +9018,19 @@ impl NoteArchive {
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
+                                  let nt_content = self.current_note_template().content.clone();
+
+                                  let mut new_content = String::new();
+
+                                  for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
+                                    if i + 1 == content_focus_id.unwrap() as usize {
+                                      new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_content_section[..], &nt_content[idxs.1..]);
+                                    }
+                                  }
                                   self.current_note_template_mut().content = new_content;
                                   self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
-                                  break 'insert_location_content;
+                                  break 'insert_content;
                                 },
                                 "no" | "n" => {
                                   continue 'insert_location_content;
@@ -9040,21 +9045,23 @@ impl NoteArchive {
                           },
                           "after" | "a" => {
                             loop {
-                              let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
-                              } else {
-                                display_string[..current_location].chars().last()
-                              };
-                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
-                              } else {
-                                display_string[current_location..].chars().next()
-                              };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let last_content_char = display_string[..]
+                                .chars()
+                                .last();
+                              let next_content_char = self.current_note_template()
+                                .generate_display_content_string_with_blanks(None, None, None).0[idx2..]
+                                .chars()
+                                .next();
+                              let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char);
 
-                              let new_content = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
+                              let last_char = match last_content_char {
+                                Some(c) => c.to_string(),
+                                None => String::new(),
+                              };
+
+                              let new_content_section = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
-                              println_inst!("{}", &new_content);
+                              println_inst!("{}{}", &last_char, &new_content_section);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -9069,10 +9076,17 @@ impl NoteArchive {
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
+                                  let nt_content = self.current_note_template().content.clone();
+                                  let mut new_content = String::new();
+                                  for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
+                                    if i + 1 == content_focus_id.unwrap() as usize {
+                                      new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_content_section[..], &nt_content[idxs.1..]);
+                                    }
+                                  }
                                   self.current_note_template_mut().content = new_content;
                                   self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
-                                  break 'insert_location_content;
+                                  break 'insert_content;
                                 },
                                 "no" | "n" => {
                                   continue 'insert_location_content;
@@ -9146,6 +9160,7 @@ impl NoteArchive {
                                   );
                                   self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
+
                                   break 'insert_content;
                                 },
                                 "NO" | "no" | "No" | "N" | "n" => {
@@ -9198,9 +9213,22 @@ impl NoteArchive {
               _ => {
                 match content.parse::<u32>() {
                   Err(_) => {
+                    let content_indices = self.current_note_template().get_content_section_indices();
+                    let (idx1, idx2) = content_indices[(content_focus_id.unwrap() - 1) as usize];
+                    let last_content_char = self.current_note_template()
+                      .generate_display_content_string_with_blanks(None, None, None).0[..idx1+1]
+                      .chars()
+                      .last();
+                    let next_content_char = self.current_note_template()
+                      .generate_display_content_string_with_blanks(None, None, None).0[idx2..]
+                      .chars()
+                      .next();
+                    let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                    let new_content_section = format!("{}{}{}", &bfrs.0, &content, &bfrs.1);
                     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                     self.current_note_template().display_content(blank_focus_id, content_focus_id);
-                    println_inst!("Press ENTER to confirm editing selected content to '{}'.", &content);
+                    println_inst!("Press ENTER to confirm editing selected content to '{}'.", &new_content_section);
                     println_inst!("Any other key to cancel.");
                     let mut new_section = String::new();
                     let new_section_choice = loop {
@@ -9223,7 +9251,7 @@ impl NoteArchive {
     
                         for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
                           if i + 1 == content_focus_id.unwrap() as usize {
-                            new_content = format!("{}{}{}", &n_content[..idxs.0], &content[..], &n_content[idxs.1+1..]);
+                            new_content = format!("{}{}{}", &n_content[..idxs.0], &new_content_section[..], &n_content[idxs.1..]);
                           }
                         }
     
@@ -9437,12 +9465,12 @@ impl NoteArchive {
                 }
               },
               "insert" | "i" => { // in blanks choice
-                let blank_focus_id: Option<u32> = None;
-                let mut content_focus_id: Option<u32> = Some(1);
                 let new_blank = match choose_blanks_option() {
                   Some(nb) => Blank::vector_of_variants()[nb],
                   None => continue,
                 };
+                blank_focus_id = None;
+                content_focus_id = Some(1);
                 'insert_loop: loop {
                   let current_note_template = self.current_note_template();
                   let typed_content_indices = current_note_template.get_content_section_indices();
@@ -9468,7 +9496,7 @@ impl NoteArchive {
                       let indices = typed_content_indices[content_focus_id.unwrap() as usize - 1];
                       let idx1 = indices.0 as usize;
                       let idx2 = indices.1 as usize;
-                      let display_string = current_note_template.generate_display_content_string_with_blanks(None, None, None).0[idx1..idx2].to_string();
+                      let display_string = current_note_template.content[idx1..idx2].to_string();
                       let num_blanks_before_idx = current_note_template.num_blanks_before_idx(idx1);
                       new_blanks.insert(num_blanks_before_idx, new_blank.clone());
                       let mut current_location = 1;
@@ -11105,7 +11133,7 @@ impl NoteArchive {
               "edit" | "e" => {
                 print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                 self.current_note().display_content(blank_focus_id, content_focus_id);
-                println_inst!("Enter new content to replace the selected text, including spaces.");
+                println_inst!("Enter exact content to replace the selected text, including any spaces on the left and right.");
                 let mut new_section = String::new();
                 let new_section_choice = loop {
                   let section_result = io::stdin().read_line(&mut new_section);
@@ -11125,7 +11153,7 @@ impl NoteArchive {
 
                 for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
                   if i + 1 == content_focus_id.unwrap() as usize {
-                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1+1..]);
+                    new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_section_choice[..], &nt_content[idxs.1..]);
                   }
                 }
 
@@ -11151,7 +11179,7 @@ impl NoteArchive {
                       let nt_content = self.current_note().content.clone();
 
                       let mut new_content = String::new();
-                      for (i, idxs) in self.current_note().get_typed_content_indices().iter().enumerate() {
+                      for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
                         if i == content_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
                         }
@@ -11173,25 +11201,23 @@ impl NoteArchive {
                 }
               },
               "insert" | "i" => { // in content choice
-                content_focus_id = Some(0);
-                blank_focus_id = None;
                 let mut chosen_text = String::new();
                 'insert_content: loop {
                   print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                   self.current_note().display_content(blank_focus_id, content_focus_id);
-
-                  if content_focus_id.unwrap() == 0 {
-                    println_inst!("Enter new content to insert.");
-                    let mut entered_content = String::new();
-                    let enter_result = io::stdin().read_line(&mut entered_content);
-                    match enter_result {
-                      Ok(_) => chosen_text = String::from(&entered_content[..entered_content.len()-2]),
+                  
+                  if chosen_text == String::new() {
+                    println_inst!("Enter new content to insert, without spaces on the ends.");
+                    let mut selected_text = String::new();
+                    let enter_result = io::stdin().read_line(&mut selected_text);
+                    chosen_text = match enter_result {
+                      Ok(_) => String::from(&selected_text[..selected_text.len()-2]),
                       Err(e) => {
                         println_err!("Failed to read string: {}", e);
                         thread::sleep(time::Duration::from_secs(2));
                         continue;
                       }
-                    }
+                    };
                   }
 
                   let content_indices = self.current_note().get_content_section_indices();
@@ -11222,9 +11248,9 @@ impl NoteArchive {
                       break 'insert_content;
                     },
                     "" => {
-                      print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                       let mut current_location = 1;
                       'insert_location_content: loop {
+                        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                         let indices = content_indices[content_focus_id.unwrap() as usize - 1];
                         let idx1 = indices.0 as usize;
                         let idx2 = indices.1 as usize;
@@ -11241,7 +11267,7 @@ impl NoteArchive {
                         } else {
                           let mut outer_vec: Vec<(String, String)> = vec![];
 
-                          let mut display_content = self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0.clone();
+                          let mut display_content = self.current_note().generate_display_content_string_with_blanks(None, None, None, None, None).0.clone();
                           while display_content.chars().count() > 163 {
                             let (p1, p2) = display_content.split_at(163);
                             let mut pointer_string = String::new();
@@ -11294,21 +11320,19 @@ impl NoteArchive {
                           }
                           "before" | "b" => {
                             loop {
-                              let last_content_char = if current_location == 0 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[..idx1].chars().last()
-                              } else {
-                                display_string[..current_location].chars().last()
-                              };
-                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[idx2..].chars().next()
-                              } else {
-                                display_string[current_location..].chars().next()
-                              };
+                              let last_content_char = self.current_note()
+                                .generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1+1]
+                                .chars()
+                                .last();
+                              let next_content_char = self.current_note()
+                                .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
+                                .chars()
+                                .next();
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
 
-                              let new_content = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
+                              let new_content_section = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
-                              println_inst!("{}", &new_content);
+                              println_inst!("{}", &new_content_section);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -11323,10 +11347,19 @@ impl NoteArchive {
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
+                                  let nt_content = self.current_note().content.clone();
+
+                                  let mut new_content = String::new();
+
+                                  for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
+                                    if i + 1 == content_focus_id.unwrap() as usize {
+                                      new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_content_section[..], &nt_content[idxs.1..]);
+                                    }
+                                  }
                                   self.current_note_mut().content = new_content;
                                   self.current_note_mut().clean_spacing();
                                   self.write_to_files();
-                                  break 'insert_location_content;
+                                  break 'insert_content;
                                 },
                                 "no" | "n" => {
                                   continue 'insert_location_content;
@@ -11341,21 +11374,23 @@ impl NoteArchive {
                           },
                           "after" | "a" => {
                             loop {
-                              let last_content_char = if current_location == 0 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[..idx1].chars().last()
-                              } else {
-                                display_string[..current_location].chars().last()
-                              };
-                              let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[idx2..].chars().next()
-                              } else {
-                                display_string[current_location..].chars().next()
-                              };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let last_content_char = display_string[..]
+                                .chars()
+                                .last();
+                              let next_content_char = self.current_note()
+                                .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
+                                .chars()
+                                .next();
+                              let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char);
 
-                              let new_content = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
+                              let last_char = match last_content_char {
+                                Some(c) => c.to_string(),
+                                None => String::new(),
+                              };
+
+                              let new_content_section = format!("{}{}{}{}", &display_string[..], &bfrs.0, &chosen_text, &bfrs.1);
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
-                              println_inst!("{}", &new_content);
+                              println_inst!("{}{}", &last_char, &new_content_section);
 
                               let mut confirm_insert = String::new();
                               let confirm_attempt = io::stdin().read_line(&mut confirm_insert);
@@ -11370,10 +11405,19 @@ impl NoteArchive {
 
                               match &confirm.to_ascii_lowercase()[..] {
                                 "yes" | "y" => {
+                                  let nt_content = self.current_note().content.clone();
+
+                                  let mut new_content = String::new();
+
+                                  for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
+                                    if i + 1 == content_focus_id.unwrap() as usize {
+                                      new_content = format!("{}{}{}", &nt_content[..idxs.0], &new_content_section[..], &nt_content[idxs.1..]);
+                                    }
+                                  }
                                   self.current_note_mut().content = new_content;
                                   self.current_note_mut().clean_spacing();
                                   self.write_to_files();
-                                  break 'insert_location_content;
+                                  break 'insert_content;
                                 },
                                 "no" | "n" => {
                                   continue 'insert_location_content;
@@ -11392,12 +11436,12 @@ impl NoteArchive {
                           "" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[..idx1].chars().last()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None).0[idx2..].chars().next()
+                                self.current_note().generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -11494,16 +11538,27 @@ impl NoteArchive {
                     }
                   }
                 }
-                blank_focus_id = Some(1);
-                content_focus_id = None;
                 self.write_to_files();
               },
               _ => {
                 match content.parse::<u32>() {
                   Err(_) => {
+                    let content_indices = self.current_note().get_content_section_indices();
+                    let (idx1, idx2) = content_indices[(content_focus_id.unwrap() - 1) as usize];
+                    let last_content_char = self.current_note()
+                      .generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1+1]
+                      .chars()
+                      .last();
+                    let next_content_char = self.current_note()
+                      .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
+                      .chars()
+                      .next();
+                    let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+
+                    let new_content_section = format!("{}{}{}", &bfrs.0, &content, &bfrs.1);
                     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                     self.current_note().display_content(blank_focus_id, content_focus_id);
-                    println_inst!("Press ENTER to confirm replacing selected content with '{}'.", &content);
+                    println_inst!("Press ENTER to confirm replacing selected content with '{}'.", &new_content_section);
                     println_inst!("Any other key to cancel.");
                     let mut new_section = String::new();
                     let new_section_choice = loop {
@@ -11526,7 +11581,7 @@ impl NoteArchive {
     
                         for (i, idxs) in self.current_note().get_content_section_indices().iter().enumerate() {
                           if i + 1 == content_focus_id.unwrap() as usize {
-                            new_content = format!("{}{}{}", &n_content[..idxs.0], &content[..], &n_content[idxs.1+1..]);
+                            new_content = format!("{}{}{}", &n_content[..idxs.0], &new_content_section[..], &n_content[idxs.1..]);
                           }
                         }
     
@@ -13118,6 +13173,68 @@ impl NoteArchive {
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
+                    PrimaryContact => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.primary_contact )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.subject.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Guardian => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.guardian )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.subject.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    CarePlanTeam => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.care_plan_team )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("they")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.subject.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PartnerICCOrFP => {
+                      let blank_string = match u.role {
+                        Icc => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "fp" || &co.title.to_ascii_lowercase()[..] == "family partner" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().subject.clone(),
+                            None => String::from("Family Partner"),
+                          }
+                        },
+                        Fp => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "icc" || &co.title.to_ascii_lowercase()[..] == "intensive care coordinator" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().subject.clone(),
+                            None => String::from("Intensive Care Coordinator"),
+                          }
+                        },
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
                     _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
                   }
                   continue;
@@ -13149,7 +13266,7 @@ impl NoteArchive {
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
                       let blank_string = if collat_ids.len() > 1 {
-                        String::from("they")
+                        String::from("them")
                       } else {
                         match self.get_pronouns_by_id(collat_ids[0]) {
                           Some(p) => p.object.clone(),
@@ -13161,12 +13278,74 @@ impl NoteArchive {
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
                       let blank_string = if collats.len() > 1 {
-                        String::from("they")
+                        String::from("them")
                       } else {
                         match self.get_pronouns_by_id(collats[0].id) {
                           Some(p) => p.object.clone(),
                           None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
                         }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PrimaryContact => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.primary_contact )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("them")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.object.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Guardian => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.guardian )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("them")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.object.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    CarePlanTeam => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.care_plan_team )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("them")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.object.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PartnerICCOrFP => {
+                      let blank_string = match u.role {
+                        Icc => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "fp" || &co.title.to_ascii_lowercase()[..] == "family partner" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().object.clone(),
+                            None => String::from("Family Partner"),
+                          }
+                        },
+                        Fp => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "icc" || &co.title.to_ascii_lowercase()[..] == "intensive care coordinator" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().object.clone(),
+                            None => String::from("Intensive Care Coordinator"),
+                          }
+                        },
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
@@ -13200,7 +13379,7 @@ impl NoteArchive {
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
                       let blank_string = if collat_ids.len() > 1 {
-                        String::from("they")
+                        String::from("their")
                       } else {
                         match self.get_pronouns_by_id(collat_ids[0]) {
                           Some(p) => p.possessive_determiner.clone(),
@@ -13212,12 +13391,74 @@ impl NoteArchive {
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
                       let blank_string = if collats.len() > 1 {
-                        String::from("they")
+                        String::from("their")
                       } else {
                         match self.get_pronouns_by_id(collats[0].id) {
                           Some(p) => p.possessive_determiner.clone(),
                           None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
                         }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PrimaryContact => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.primary_contact )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("their")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.possessive_determiner.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Guardian => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.guardian )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("their")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.possessive_determiner.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    CarePlanTeam => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.care_plan_team )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("their")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.possessive_determiner.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PartnerICCOrFP => {
+                      let blank_string = match u.role {
+                        Icc => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "fp" || &co.title.to_ascii_lowercase()[..] == "family partner" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().possessive_determiner.clone(),
+                            None => String::from("Family Partner's"),
+                          }
+                        },
+                        Fp => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "icc" || &co.title.to_ascii_lowercase()[..] == "intensive care coordinator" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().possessive_determiner.clone(),
+                            None => String::from("Intensive Care Coordinator's"),
+                          }
+                        },
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
@@ -13251,7 +13492,7 @@ impl NoteArchive {
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
                       let blank_string = if collat_ids.len() > 1 {
-                        String::from("they")
+                        String::from("theirs")
                       } else {
                         match self.get_pronouns_by_id(collat_ids[0]) {
                           Some(p) => p.possessive.clone(),
@@ -13263,12 +13504,74 @@ impl NoteArchive {
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
                       let blank_string = if collats.len() > 1 {
-                        String::from("they")
+                        String::from("theirs")
                       } else {
                         match self.get_pronouns_by_id(collats[0].id) {
                           Some(p) => p.possessive.clone(),
                           None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
                         }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PrimaryContact => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.primary_contact )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("theirs")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.possessive.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    Guardian => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.guardian )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("theirs")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.possessive.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    CarePlanTeam => {
+                      let pcs = self.current_client_collaterals().iter()
+                        .filter(|co| co.care_plan_team )
+                        .map(|co| co.id )
+                        .collect::<Vec<u32>>();
+                      let blank_string = if pcs.len() > 1 {
+                        String::from("theirs")
+                      } else {
+                        match self.get_pronouns_by_id(pcs[0]) {
+                          Some(p) => p.possessive.clone(),
+                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                        }
+                      };
+                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    },
+                    PartnerICCOrFP => {
+                      let blank_string = match u.role {
+                        Icc => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "fp" || &co.title.to_ascii_lowercase()[..] == "family partner" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().possessive.clone(),
+                            None => String::from("Family Partner's"),
+                          }
+                        },
+                        Fp => {
+                          match current_collaterals.iter().find(|co| &co.title.to_ascii_lowercase()[..] == "icc" || &co.title.to_ascii_lowercase()[..] == "intensive care coordinator" ) {
+                            Some(co) => self.get_pronouns_by_id(co.pronouns).unwrap().possessive.clone(),
+                            None => String::from("Intensive Care Coordinator's"),
+                          }
+                        },
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
@@ -13540,10 +13843,13 @@ impl NoteArchive {
 
       let (i, b) = match focus_id_option {
         Some(f_id) => {
-          let f_id_b = empty_blanks.iter().find(|b_tup| b_tup.0 == f_id ).unwrap().1;
+          let f_id_b = match empty_blanks.iter().find(|b_tup| b_tup.0 == f_id ) {
+            Some(empty_blank_tup) => empty_blank_tup.1,
+            None => n.blanks[&f_id].0,
+          };
           (f_id, f_id_b)
         },
-        None => (empty_blanks[0].0, empty_blanks[0].1)
+        None => (empty_blanks[0].0, empty_blanks[0].1),
       };
       let i = i as u32;
 
@@ -16000,7 +16306,7 @@ mod tests {
     
     // (String, Vec<(String, usize, usize)>)
     
-    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None, None, None);
+    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None, None);
     assert_eq!(
       display_content_string1,
       format!(
@@ -16029,7 +16335,7 @@ mod tests {
       ),
     );
     
-    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None, None, None);
+    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None, None);
     assert_eq!(
       display_content_string2,
       format!(
@@ -16045,7 +16351,7 @@ mod tests {
       ),
     );
 
-    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1), None);
+    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
     assert_eq!(
       display_content_string3,
       format!(
@@ -16061,7 +16367,7 @@ mod tests {
       ),
     );
 
-    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
     assert_eq!(
       format!(
         "[1]: {}[2]: 's pronouns are {}[3]: . {}[4]: 's pronouns are {}[5]: . {}[6]: 's pronouns are {}[7]: . {}[8]: 's pronouns are {}[9]: .",
@@ -16105,7 +16411,7 @@ mod tests {
 
     let check_display_string_with_content_focus = format!("{}{}{}{}{}{}{}{}{}{}{}", s1a, s1b, s1c, s1d, s1e, s1f, s1g, s1h, s1i, s1j, s1k);
 
-    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
 
     assert_eq!(check_display_string_with_content_focus, display_string_with_content_focus);
   }
@@ -16140,7 +16446,7 @@ mod tests {
       (String::from("CONTENT"), s1e, s1f),
     ];
 
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, Some(1), None);
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, Some(1), None);
 
     assert_eq!(formatting1, formatting_vector1);
 
@@ -16184,7 +16490,7 @@ mod tests {
       (String::from("CONTENT"), s1j, s1k),
     ];
 
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1), None);
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
 
     assert_eq!(formatting2, formatting_vector2);
 
@@ -16210,7 +16516,7 @@ mod tests {
       (String::from("CONTENT"), s1d, s1e),
     ];
 
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, Some(1), None);
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, Some(1), None);
 
     assert_eq!(formatting3, formatting_vector3);
   }
@@ -16247,7 +16553,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
     ];
 
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, Some(1));
 
     assert_eq!(formatting1, formatting_vector1);
 
@@ -16291,7 +16597,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1j, s1k),
     ];
 
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
 
     assert_eq!(formatting2, formatting_vector2);
 
@@ -16317,7 +16623,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
     ];
 
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, Some(1));
 
     assert_eq!(formatting3, formatting_vector3);
 
@@ -16332,7 +16638,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16363,7 +16669,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16394,7 +16700,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16447,7 +16753,7 @@ mod tests {
 
     // (String, Vec<(String, usize, usize)>)
     
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, None);
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None);
 
     assert_eq!(formatting1, formatting_vector1);
   }
@@ -16467,7 +16773,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1), None);
+    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
 
     let s1a = String::from("Here is a sentence. ").chars().count();
     let s1b = String::from("Here is another one with a blank (").chars().count() + s1a;
@@ -16570,7 +16876,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, Some(1));
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16656,7 +16962,7 @@ mod tests {
       (0, 70),
       (70+format!("{}", Appearance).len(), 71+format!("{}", Appearance).len()),
     ];
-    let sentence_indices_test = nt2.get_typed_content_indices();
+    let sentence_indices_test = nt2.get_content_section_indices();
     assert_eq!(sentence_indices, sentence_indices_test);
     
   }
@@ -16673,7 +16979,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, None);
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None);
 
     let s1a = String::from("A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("Some good, some not so good. ").chars().count() + s1a;

@@ -212,7 +212,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 28] = [
   (
     "Invited To Meeting",
     "\
-      (---u---) send Zoom and Outlook invitations for the upcoming (---im---) for (---c---) \
+      (---u---) sent Zoom and Outlook invitations for the upcoming (---im---) for (---c---) \
       to (---co---).\
     ",
   ),
