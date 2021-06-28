@@ -366,29 +366,46 @@ impl NoteTemplate {
     }
 
     let blank_matches = RE_BLANK.find_iter(&self.content);
-    let mut output: Vec<(usize, usize)> = vec![];
+    let mut sections: Vec<(usize, usize)> = vec![];
 
     let mut prev_end_idx = 0;
     for m in blank_matches {
-      let subsection = String::from(&self.content[prev_end_idx..m.start()]);
-      let mut sentence_ends = subsection.match_indices(". ");
-      let sentence_sections = subsection.match_indices(". ")
-        .map(|(idx, _)| match sentence_ends.next() {
-            None => (prev_end_idx + idx + 2, m.start()),
-            Some((next_idx, _)) => (prev_end_idx + idx + 2, next_idx + 2),
-             // + 2 to go all the way through the ". " with non-inclusive slice
-          }
-        ).collect::<Vec<(usize, usize)>>();
-
-      if sentence_sections.iter().count() > 0 {
-        for sec in sentence_sections {
-          output.push(sec);
-        }
-      } else {
-        output.push((prev_end_idx, m.start()));
-      }
-      prev_end_idx = m.end() + 1;
+        sections.push((prev_end_idx, m.start()));
+        prev_end_idx = m.end();
     }
+    sections.push((prev_end_idx, self.content.len()));
+    
+    let mut indices: Vec<(usize, usize)> = vec![];
+    
+    for (idx1, idx2) in &sections {
+      let s = String::from(&self.content[*idx1..*idx2]);
+      let periods: Vec<usize> = s.match_indices(". ").map(|(i, _)| i ).collect();
+      if periods.len() > 0 {
+        let mut prev_p = 0;
+        for p in &periods {
+          indices.push((idx1+prev_p, idx1+p+2));
+          prev_p = *p;
+        }
+        indices.push((idx1+periods[periods.len()-1]+2, *idx2));
+      } else {
+        indices.push((*idx1, *idx2));
+      }
+    }
+    
+    indices.retain(|(idx1, idx2)| idx1 != idx2 );
+
+    let mut new_indices: Vec<(usize, usize)> = vec![(0, 0)];
+
+    for idxs in &indices {
+      new_indices.push(*idxs);
+    }
+
+    let output = if indices.iter().any(|(idx1, idx2)| *idx1 == 0 as usize ) {
+      indices.clone()
+    } else {
+      new_indices
+    };
+    
     output
   }
   pub fn get_sentence_end_indices(current_idx: usize, content: String) -> Vec<(usize, usize)> {
@@ -1415,14 +1432,37 @@ impl Note {
           output.push(line);
         }
         blank_offset += RE_BLANK.find_iter(&sent).count() as u32;
-        let num_content_sections: u32 = maybe_multiple
+        let content_section_bools: Vec<Vec<bool>> = maybe_multiple
           .iter()
           .map(|(_, _, content_vec)| content_vec
             .iter()
-            .filter(|(content_type, _, _)| String::from("UNHIGHLIGHTED CONTENT").contains(&content_type[..]) )
-            .count() as u32
-          ).sum();
-        content_offset += num_content_sections;
+            .map(|(content_type, _, _)| String::from("UNHIGHLIGHTED CONTENT").contains(&content_type[..]) )
+            .collect()
+          )
+          .collect();
+        
+        // have to check to not add a new one if it's a split of a content section on mult lines
+        let mut distinct_content_sections = 0;
+        for (i, bool_vec) in content_section_bools.clone().iter().enumerate() {
+          for (i2, c_bool) in bool_vec.iter().enumerate() {
+            if *c_bool {
+              if i2 > 0 || i == 0 {
+                distinct_content_sections += 1;
+              } else {
+                let prev_vec = content_section_bools[i-1].clone();
+                if !prev_vec[prev_vec.len()-1] {
+                  distinct_content_sections += 1;
+                } else {
+                  let prev_cont = maybe_multiple[i-1].1.clone();
+                  if &prev_cont[prev_cont.len()-2..] == ". " {
+                    distinct_content_sections += 1;
+                  }
+                }
+              }
+            }
+          }
+        }
+        content_offset += distinct_content_sections;
       }
     }
     output
@@ -1480,29 +1520,46 @@ impl Note {
     }
 
     let blank_matches = RE_BLANK.find_iter(&self.content);
-    let mut output: Vec<(usize, usize)> = vec![];
+    let mut sections: Vec<(usize, usize)> = vec![];
 
     let mut prev_end_idx = 0;
     for m in blank_matches {
-      let subsection = String::from(&self.content[prev_end_idx..m.start()]);
-      let mut sentence_ends = subsection.match_indices(". ");
-      let sentence_sections = subsection.match_indices(". ")
-        .map(|(idx, _)| match sentence_ends.next() {
-            None => (prev_end_idx + idx + 2, m.start()),
-            Some((next_idx, _)) => (prev_end_idx + idx + 2, next_idx + 2),
-             // + 2 to go all the way through the ". " with non-inclusive slice
-          }
-        ).collect::<Vec<(usize, usize)>>();
-
-      if sentence_sections.iter().count() > 0 {
-        for sec in sentence_sections {
-          output.push(sec);
-        }
-      } else {
-        output.push((prev_end_idx, m.start()));
-      }
-      prev_end_idx = m.end() + 1;
+        sections.push((prev_end_idx, m.start()));
+        prev_end_idx = m.end();
     }
+    sections.push((prev_end_idx, self.content.len()));
+    
+    let mut indices: Vec<(usize, usize)> = vec![];
+    
+    for (idx1, idx2) in &sections {
+      let s = String::from(&self.content[*idx1..*idx2]);
+      let periods: Vec<usize> = s.match_indices(". ").map(|(i, _)| i ).collect();
+      if periods.len() > 0 {
+        let mut prev_p = 0;
+        for p in &periods {
+          indices.push((idx1+prev_p, idx1+p+2));
+          prev_p = *p;
+        }
+        indices.push((idx1+periods[periods.len()-1]+2, *idx2));
+      } else {
+        indices.push((*idx1, *idx2));
+      }
+    }
+    
+    indices.retain(|(idx1, idx2)| idx1 != idx2 );
+
+    let mut new_indices: Vec<(usize, usize)> = vec![(0, 0)];
+
+    for idxs in &indices {
+      new_indices.push(*idxs);
+    }
+
+    let output = if indices.iter().any(|(idx1, idx2)| *idx1 == 0 as usize ) {
+      indices.clone()
+    } else {
+      new_indices
+    };
+    
     output
   }
   pub fn add_blank(&mut self, blank: Blank) {
