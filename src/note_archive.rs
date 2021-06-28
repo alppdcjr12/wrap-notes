@@ -8951,11 +8951,11 @@ impl NoteArchive {
                           "before" | "b" => {
                             loop {
                               let last_content_char = self.current_note_template()
-                                .generate_display_content_string_with_blanks(None, None, None).0[..idx1+1]
+                                .generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1+1]
                                 .chars()
                                 .last();
                               let next_content_char = self.current_note_template()
-                                .generate_display_content_string_with_blanks(None, None, None).0[idx2..]
+                                .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                                 .chars()
                                 .next();
                               let bfrs = get_spacing_buffers(last_content_char, next_content_char);
@@ -9008,7 +9008,7 @@ impl NoteArchive {
                                 .chars()
                                 .last();
                               let next_content_char = self.current_note_template()
-                                .generate_display_content_string_with_blanks(None, None, None).0[idx2..]
+                                .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                                 .chars()
                                 .next();
                               let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char);
@@ -9064,12 +9064,12 @@ impl NoteArchive {
                           "" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -9175,11 +9175,11 @@ impl NoteArchive {
                     let content_indices = self.current_note_template().get_content_section_indices();
                     let (idx1, idx2) = content_indices[(content_focus_id.unwrap() - 1) as usize];
                     let last_content_char = self.current_note_template()
-                      .generate_display_content_string_with_blanks(None, None, None).0[..idx1+1]
+                      .generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1+1]
                       .chars()
                       .last();
                     let next_content_char = self.current_note_template()
-                      .generate_display_content_string_with_blanks(None, None, None).0[idx2..]
+                      .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                       .chars()
                       .next();
                     let bfrs = get_spacing_buffers(last_content_char, next_content_char);
@@ -9522,12 +9522,12 @@ impl NoteArchive {
                             loop {
 
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -9607,12 +9607,12 @@ impl NoteArchive {
                           "before" | "b" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -9667,12 +9667,12 @@ impl NoteArchive {
                           "after" | "a" => {
                             loop {
                               let last_content_char = if current_location == 0 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[..idx1].chars().last()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[..idx1].chars().last()
                               } else {
                                 display_string[..current_location].chars().last()
                               };
                               let next_content_char = if current_location >= &display_string.chars().count()-1 {
-                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None).0[idx2..].chars().next()
+                                self.current_note_template().generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..].chars().next()
                               } else {
                                 display_string[current_location..].chars().next()
                               };
@@ -10065,12 +10065,15 @@ impl NoteArchive {
         let chosen_id: usize = match structure.parse() {
           Ok(num) => num,
           Err(e) => {
+            if &structure[..] == "cancel" || &structure[..] == "c" {
+              return None;
+            }
             println_err!("Failed to parse '{}' as int: {}", structure, e);
             thread::sleep(time::Duration::from_secs(2));
             continue;
           }
         };
-        match StructureType::iterator().nth(chosen_id) {
+        match StructureType::iterator().nth(chosen_id - 1) {
           None => {
             println_err!("Invalid choice.");
             thread::sleep(time::Duration::from_secs(2));
@@ -10172,6 +10175,7 @@ impl NoteArchive {
             let connected_blank_id: Option<usize> = match chosen_blank {
               Pronoun1ForBlank(_) | Pronoun2ForBlank(_) | Pronoun3ForBlank(_) | Pronoun4ForBlank(_) => {
                 loop {
+                  nt.display_content(Some(0), None);
                   println_inst!("Please enter the ID of the blank to derive pronouns. Enter CANCEL / C to cancel.");
                   let mut input_string = String::new();
                   let input_result = io::stdin().read_line(&mut input_string);
@@ -10870,7 +10874,7 @@ impl NoteArchive {
                 continue;
               }
             };
-            break match StructureType::iterator().nth(chosen_id) {
+            break match StructureType::iterator().nth(chosen_id - 1) {
               None => {
                 println_err!("Invalid choice.");
                 thread::sleep(time::Duration::from_secs(2));
@@ -13109,20 +13113,23 @@ impl NoteArchive {
                     },
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
-                      let blank_string = if collat_ids.len() > 1 {
-                        String::from("they")
-                      } else {
-                        match self.get_pronouns_by_id(collat_ids[0]) {
-                          Some(p) => p.subject.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collat_ids.len() > 0 {
+                        let blank_string = if collat_ids.len() > 1 {
+                          String::from("they")
+                        } else {
+                          match self.get_pronouns_by_id(collat_ids[0]) {
+                            Some(p) => p.subject.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
-                      let blank_string = if collats.len() > 1 {
-                        String::from("they")
+                      if collats.len() > 0 {
+                        let blank_string = if collats.len() > 1 {
+                          String::from("they")
                       } else {
                         match self.get_pronouns_by_id(collats[0].id) {
                           Some(p) => p.subject.clone(),
@@ -13130,51 +13137,58 @@ impl NoteArchive {
                         }
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                    }
                     },
                     PrimaryContact => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.primary_contact )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("they")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.subject.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("they")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.subject.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     Guardian => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.guardian )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("they")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.subject.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("they")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.subject.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     CarePlanTeam => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.care_plan_team )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("they")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.subject.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("they")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.subject.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PartnerICCOrFP => {
                       let blank_string = match u.role {
@@ -13223,72 +13237,82 @@ impl NoteArchive {
                     },
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
-                      let blank_string = if collat_ids.len() > 1 {
-                        String::from("them")
-                      } else {
-                        match self.get_pronouns_by_id(collat_ids[0]) {
-                          Some(p) => p.object.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collat_ids.len() > 0 {
+                        let blank_string = if collat_ids.len() > 1 {
+                          String::from("them")
+                        } else {
+                          match self.get_pronouns_by_id(collat_ids[0]) {
+                            Some(p) => p.object.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
-                      let blank_string = if collats.len() > 1 {
-                        String::from("them")
-                      } else {
-                        match self.get_pronouns_by_id(collats[0].id) {
-                          Some(p) => p.object.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collats.len() > 0 {
+                        let blank_string = if collats.len() > 1 {
+                          String::from("them")
+                        } else {
+                          match self.get_pronouns_by_id(collats[0].id) {
+                            Some(p) => p.object.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PrimaryContact => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.primary_contact )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("them")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.object.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("them")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.object.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     Guardian => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.guardian )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("them")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.object.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("them")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.object.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     CarePlanTeam => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.care_plan_team )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("them")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.object.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("them")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.object.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PartnerICCOrFP => {
                       let blank_string = match u.role {
@@ -13336,72 +13360,82 @@ impl NoteArchive {
                     },
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
-                      let blank_string = if collat_ids.len() > 1 {
-                        String::from("their")
-                      } else {
-                        match self.get_pronouns_by_id(collat_ids[0]) {
-                          Some(p) => p.possessive_determiner.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collat_ids.len() > 0 {
+                        let blank_string = if collat_ids.len() > 1 {
+                          String::from("their")
+                        } else {
+                          match self.get_pronouns_by_id(collat_ids[0]) {
+                            Some(p) => p.possessive_determiner.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
-                      let blank_string = if collats.len() > 1 {
-                        String::from("their")
-                      } else {
-                        match self.get_pronouns_by_id(collats[0].id) {
-                          Some(p) => p.possessive_determiner.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collats.len() > 0 {
+                        let blank_string = if collats.len() > 1 {
+                          String::from("their")
+                        } else {
+                          match self.get_pronouns_by_id(collats[0].id) {
+                            Some(p) => p.possessive_determiner.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PrimaryContact => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.primary_contact )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("their")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.possessive_determiner.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("their")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.possessive_determiner.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     Guardian => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.guardian )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("their")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.possessive_determiner.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("their")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.possessive_determiner.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     CarePlanTeam => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.care_plan_team )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("their")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.possessive_determiner.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("their")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.possessive_determiner.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PartnerICCOrFP => {
                       let blank_string = match u.role {
@@ -13449,72 +13483,82 @@ impl NoteArchive {
                     },
                     Collaterals => {
                       let collat_ids = b_tup.2.to_owned();
-                      let blank_string = if collat_ids.len() > 1 {
-                        String::from("theirs")
-                      } else {
-                        match self.get_pronouns_by_id(collat_ids[0]) {
-                          Some(p) => p.possessive.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collat_ids.len() > 0 {
+                        let blank_string = if collat_ids.len() > 1 {
+                          String::from("theirs")
+                        } else {
+                          match self.get_pronouns_by_id(collat_ids[0]) {
+                            Some(p) => p.possessive.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     AllCollaterals => {
                       let collats = self.current_client_collaterals();
-                      let blank_string = if collats.len() > 1 {
-                        String::from("theirs")
-                      } else {
-                        match self.get_pronouns_by_id(collats[0].id) {
-                          Some(p) => p.possessive.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if collats.len() > 0 {
+                        let blank_string = if collats.len() > 1 {
+                          String::from("theirs")
+                        } else {
+                          match self.get_pronouns_by_id(collats[0].id) {
+                            Some(p) => p.possessive.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PrimaryContact => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.primary_contact )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("theirs")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.possessive.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("theirs")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.possessive.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     Guardian => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.guardian )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("theirs")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.possessive.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("theirs")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.possessive.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     CarePlanTeam => {
                       let pcs = self.current_client_collaterals().iter()
                         .filter(|co| co.care_plan_team )
                         .map(|co| co.id )
                         .collect::<Vec<u32>>();
-                      let blank_string = if pcs.len() > 1 {
-                        String::from("theirs")
-                      } else {
-                        match self.get_pronouns_by_id(pcs[0]) {
-                          Some(p) => p.possessive.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      if pcs.len() > 0 {
+                        let blank_string = if pcs.len() > 1 {
+                          String::from("theirs")
+                        } else {
+                          match self.get_pronouns_by_id(pcs[0]) {
+                            Some(p) => p.possessive.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PartnerICCOrFP => {
                       let blank_string = match u.role {
@@ -13741,8 +13785,15 @@ impl NoteArchive {
       }
     };
 
-    match self.foreign_key.get("current_note_day").clone() {
-      Some(_) => (),
+    let client_id = match self.foreign_key.get("current_client_id") {
+      Some(id) => *id,
+      None => self.select_client(),
+    };
+
+    self.load_client(client_id).unwrap();
+
+    let nd_id = match self.foreign_key.get("current_note_day_id").clone() {
+      Some(id) => *id,
       None => {
         let nds = self.current_user_note_days();
         let max_id: Option<u32> = match nds.iter().max_by(|a, b| a.date.cmp(&b.date) ) {
@@ -13758,13 +13809,16 @@ impl NoteArchive {
           Some(m) => {
             if max_date.unwrap() == today {
               self.foreign_key.insert(String::from("current_note_day"), m);
+              m
             } else {
               let maybe_new_nd = self.generate_unique_new_note_day(today, self.current_user().id, self.current_client().id);
               match maybe_new_nd {
                 Err(_) => panic!("Failed to generate new note day."),
                 Ok(nd) => {
-                  self.save_note_day(nd);
+                  self.save_note_day(nd.clone());
+                  self.load_note_day(nd.id).unwrap();
                   self.write_to_files();
+                  nd.id
                 }
               }
             }
@@ -13774,14 +13828,18 @@ impl NoteArchive {
             match maybe_new_nd {
               Err(_) => panic!("Failed to generate new note day."),
               Ok(nd) => {
-                self.save_note_day(nd);
+                self.save_note_day(nd.clone());
+                self.load_note_day(nd.id).unwrap();
                 self.write_to_files();
+                nd.id
               }
             }
           }
         }
       },
-    }
+    };
+
+    self.load_note_day(nd_id).unwrap();
 
     let date = self.current_note_day().date.clone();
     let mut n = self.generate_note(date, ncat, nst, ncnt).unwrap();
@@ -13793,9 +13851,12 @@ impl NoteArchive {
       // increments the current blank by going to the next one only when the current is filled,
       // or alternatively when focus_id_option is set to Some(id) because the user selected it
 
-      let empty_blanks = n.get_empty_blanks_and_indexes();
-
-      if empty_blanks.len() == 0 {
+      let mut empty_blanks = n.get_empty_blanks_and_indexes();
+      if empty_blanks.len() > 1 {
+        if let None = focus_id_option.clone() {
+          focus_id_option = Some(empty_blanks[0].0);
+        }
+      } else {
         break;
       }
 
@@ -13814,7 +13875,7 @@ impl NoteArchive {
       let choice = loop {
         let mut note_choice = String::new();
         print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-        n.display_content(Some(i), None);
+        n.display_content(focus_id_option, None);
         println_on_bg!("{:-^58}", "-");
         println_inst!(
           "| {} | {}",
@@ -13852,7 +13913,7 @@ impl NoteArchive {
             },
             None => {
               if empty_blanks.len() > 1 {
-                focus_id_option = Some(empty_blanks[1].0);
+                focus_id_option = Some(empty_blanks[0].0);
                 continue;
               }
             },
@@ -14591,8 +14652,9 @@ impl NoteArchive {
             },
             _ => (),
           }
+          empty_blanks = n.get_empty_blanks_and_indexes();
           if empty_blanks.len() > 1 {
-            focus_id_option = Some(empty_blanks[1].0);
+            focus_id_option = Some(empty_blanks[0].0);
           }
         },
         _ => {
@@ -16273,7 +16335,7 @@ mod tests {
     
     // (String, Vec<(String, usize, usize)>)
     
-    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None, None);
+    let (display_content_string1, _) = nt1.generate_display_content_string_with_blanks(None, None, None, None, None);
     assert_eq!(
       display_content_string1,
       format!(
@@ -16302,7 +16364,7 @@ mod tests {
       ),
     );
     
-    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None, None);
+    let (display_content_string2, _) = nt2.generate_display_content_string_with_blanks(None, None, None, None, None);
     assert_eq!(
       display_content_string2,
       format!(
@@ -16318,7 +16380,7 @@ mod tests {
       ),
     );
 
-    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (display_content_string3, _) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
     assert_eq!(
       display_content_string3,
       format!(
@@ -16334,7 +16396,7 @@ mod tests {
       ),
     );
 
-    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (display_content_string4, _) = nt2.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
     assert_eq!(
       format!(
         "[1]: {}[2]: 's pronouns are {}[3]: . {}[4]: 's pronouns are {}[5]: . {}[6]: 's pronouns are {}[7]: . {}[8]: 's pronouns are {}[9]: .",
@@ -16378,7 +16440,7 @@ mod tests {
 
     let check_display_string_with_content_focus = format!("{}{}{}{}{}{}{}{}{}{}{}", s1a, s1b, s1c, s1d, s1e, s1f, s1g, s1h, s1i, s1j, s1k);
 
-    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (display_string_with_content_focus, _) = nt2.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     assert_eq!(check_display_string_with_content_focus, display_string_with_content_focus);
   }
@@ -16413,7 +16475,7 @@ mod tests {
       (String::from("CONTENT"), s1e, s1f),
     ];
 
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
 
     assert_eq!(formatting1, formatting_vector1);
 
@@ -16457,7 +16519,7 @@ mod tests {
       (String::from("CONTENT"), s1j, s1k),
     ];
 
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
 
     assert_eq!(formatting2, formatting_vector2);
 
@@ -16483,7 +16545,7 @@ mod tests {
       (String::from("CONTENT"), s1d, s1e),
     ];
 
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
 
     assert_eq!(formatting3, formatting_vector3);
   }
@@ -16520,7 +16582,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
     ];
 
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     assert_eq!(formatting1, formatting_vector1);
 
@@ -16564,7 +16626,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1j, s1k),
     ];
 
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     assert_eq!(formatting2, formatting_vector2);
 
@@ -16590,7 +16652,7 @@ mod tests {
       (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
     ];
 
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     assert_eq!(formatting3, formatting_vector3);
 
@@ -16605,7 +16667,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16636,7 +16698,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16667,7 +16729,7 @@ mod tests {
       vec![],
     );
     
-    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16720,7 +16782,7 @@ mod tests {
 
     // (String, Vec<(String, usize, usize)>)
     
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None);
+    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, None, None);
 
     assert_eq!(formatting1, formatting_vector1);
   }
@@ -16740,7 +16802,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, Some(1), None);
+    let (nt_display_string, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
 
     let s1a = String::from("Here is a sentence. ").chars().count();
     let s1b = String::from("Here is another one with a blank (").chars().count() + s1a;
@@ -16843,7 +16905,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, Some(1));
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
 
     let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
@@ -16946,7 +17008,7 @@ mod tests {
       vec![],
     );
     
-    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None);
+    let (nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, None, None);
 
     let s1a = String::from("A bunch of stuff happened today. ").chars().count();
     let s1b = String::from("Some good, some not so good. ").chars().count() + s1a;
