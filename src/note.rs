@@ -437,6 +437,7 @@ impl NoteTemplate {
     }
     
     // indices.retain(|(idx1, idx2)| idx1 != idx2 );
+    indices.dedup();
 
     let mut new_indices: Vec<(usize, usize)> = vec![(0, 0)];
 
@@ -1608,6 +1609,7 @@ impl Note {
     }
     
     // indices.retain(|(idx1, idx2)| idx1 != idx2 );
+    indices.dedup();
 
     let mut new_indices: Vec<(usize, usize)> = vec![(0, 0)];
 
@@ -1808,6 +1810,7 @@ pub fn break_into_lines(
     let mut current_blank: u32 = 0;
     if let Some(num) = blank_offset {
       current_blank += num;
+      i += num;
     }
     if let Some(num) = content_offset {
       cont_i += num;
