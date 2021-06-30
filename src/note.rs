@@ -424,10 +424,16 @@ impl NoteTemplate {
       if periods.len() > 0 {
         let mut prev_p = 0;
         for p in &periods {
-          indices.push((idx1+prev_p, idx1+p+2));
-          if !indices.iter().any(|(odx1, _)| odx1 == &(idx1+p+2) ) {
-            indices.push((idx1+p+2, idx1+p+2));
-          }
+          let start = idx1+prev_p;
+          let end = idx1+p+2;
+//          indices.retain(|(i1, i2)| i1 != idx1 && i2 != idx2 );
+          indices.push((start, end));
+//          if prev_p == 0 {
+//            indices.retain(|(i1, i2)| (*i1 != start || *i2 != end) && i1 != i2 );
+//          }
+//          if !sections.iter().any(|(odx1, _)| odx1 == &(idx1+p+2) ) {
+//            indices.push((idx1+p+3, idx1+p+3));
+//          }
           prev_p = *p;
         }
         indices.push((idx1+periods[periods.len()-1]+2, *idx2));
@@ -1596,10 +1602,16 @@ impl Note {
       if periods.len() > 0 {
         let mut prev_p = 0;
         for p in &periods {
-          indices.push((idx1+prev_p, idx1+p+2));
-          if !indices.iter().any(|(odx1, _)| odx1 == &(idx1+p+2) ) {
-            indices.push((idx1+p+2, idx1+p+2));
-          }
+          let start = idx1+prev_p;
+          let end = idx1+p+2;
+//          indices.retain(|(i1, i2)| i1 != idx1 && i2 != idx2 );
+          indices.push((start, end));
+//          if prev_p == 0 {
+//            indices.retain(|(i1, i2)| (*i1 != start || *i2 != end) && i1 != i2 );
+//          }
+//          if !sections.iter().any(|(odx1, _)| odx1 == &(idx1+p+2) ) {
+//            indices.push((idx1+p+3, idx1+p+3));
+//          }
           prev_p = *p;
         }
         indices.push((idx1+periods[periods.len()-1]+2, *idx2));
