@@ -1731,7 +1731,7 @@ impl Note {
 pub fn break_into_lines(
     line: (usize, String, Vec<(String, usize, usize)>)
   ) -> Vec<(usize, String, Vec<(String, usize, usize)>)> {
-    if line.1.chars().count() <= 140 {
+    if line.1.chars().count() < 140 {
       vec![line]
     } else {
       let formatting = line.2.clone();
@@ -1739,7 +1739,7 @@ pub fn break_into_lines(
       let other_split_index: Option<usize> = match overlapping {
         None => {
           if String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(&line.2[0].0) && line.2[0].2 > 140 {
-            Some(139)
+            Some(140)
           } else {
             String::from(&line.1[..140]).rfind(' ')
           }
@@ -2025,7 +2025,7 @@ pub fn break_into_lines(
       }
 
       let mut bidxs: Vec<(usize, usize)> = vec![];
-      if display_blank.len() < 140 {
+      if display_blank.len() <= 140 {
         let bidx1 = content.chars().count();
         content.push_str(&display_blank);
         let bidx2 = content.chars().count();
@@ -2034,10 +2034,10 @@ pub fn break_into_lines(
         let mut display_clone = display_blank.clone();
         while display_clone.len() >= 140 {
           let bidx1 = content.chars().count();
-          content.push_str(&display_clone[..140]);
+          content.push_str(&display_clone[..139]);
           let bidx2 = content.chars().count();
           bidxs.push((bidx1, bidx2));
-          display_clone = String::from(&display_clone[140..]);
+          display_clone = String::from(&display_clone[139..]);
         }
         let bidx1 = content.chars().count();
         content.push_str(&display_clone[..]);

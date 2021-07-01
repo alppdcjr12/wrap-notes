@@ -1,5 +1,5 @@
 ##### collaterals #####
-1 | Mommy | Smith | mother | --NONE-- | 2 | Natural | false | true | true | true
-2 | Wendy | McDonald | OPT | Wendy's | 2 | Formal | false | false | false | true
-3 | Sam | Smith | singer | YouTube | 1 | Formal | true | false | false | false
+1 | Jack | Goldblum | OPT | Jeff Goldblum & Sons Therapy | 1 | Formal | false | false | false | true
+2 | Morgan | Freeman | mother | --NONE-- | 2 | Natural | false | true | true | true
+3 | Paul | Moriarty | Psychiatrist | Sherlock Services | 1 | Formal | false | false | false | false
 ##### collaterals #####

@@ -11634,9 +11634,19 @@ impl NoteArchive {
                 let i = blank_focus_id.unwrap();
                 let b = match self.current_note().blanks.clone().get(&i) {
                   None => {
-                    let current_content = self.current_note().content.clone();
-                    let indices = self.current_note().get_content_section_indices().iter().nth(i as usize).unwrap().clone();
-                    Blank::get_blank_from_str(&current_content[indices.0..indices.1])
+                    lazy_static! {
+                      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+                    }
+
+                    let mut b = CustomBlank;
+
+                    for (idx, m) in RE_BLANK.find_iter(&self.current_note().content).enumerate() {
+                      if idx == i as usize {
+                        b = Blank::get_blank_from_str(&self.current_note().content[m.start()..m.end()]);
+                      }
+                    }
+
+                    b
                   },
                   Some(b_tup) => b_tup.0,
                 };
@@ -13863,7 +13873,7 @@ impl NoteArchive {
       // or alternatively when focus_id_option is set to Some(id) because the user selected it
 
       let mut empty_blanks = n.get_empty_blanks_and_indexes();
-      if empty_blanks.len() > 1 {
+      if empty_blanks.len() >= 1 {
         if let None = focus_id_option.clone() {
           focus_id_option = Some(empty_blanks[0].0);
         }
@@ -15617,7 +15627,20 @@ impl NoteArchive {
               match last_space {
                 None => {
                   if n.content.chars().count() > 5 {
-                    let end_index: usize = n.content.chars().count() - 5;
+                    lazy_static! {
+                      static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
+                    }
+                    let last_m = RE_BLANK.find_iter(&n.content).last();
+                    let end_index: usize = match last_m {
+                      Some(m) => {
+                        if m.end() == n.content.len() - 1 {
+                          m.start()
+                        } else {
+                          m.end()
+                        }
+                      }
+                      None => n.content.chars().count() - 5,
+                    };
                     n.content = String::from(&n.content[..end_index]);
                   } else {
                     n.content = String::new();
@@ -15678,7 +15701,7 @@ impl NoteArchive {
                   ()
                 }
               }
-              if n.content.trim_end() != n.content || String::from("'\"@#$%^*`]}-_+=>?/").contains(choice.trim().chars().last().unwrap()) || String::new() == n.content {
+              if n.content.trim_end() != n.content || String::from("'\"@#$^*`]})>-_?!/.").contains(choice.trim().chars().last().unwrap()) || String::new() == n.content {
                 n.content.push_str(&choice.trim()[..]);
               } else {
                 n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
