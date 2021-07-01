@@ -1737,7 +1737,13 @@ pub fn break_into_lines(
       let formatting = line.2.clone();
       let overlapping: Option<&(String, usize, usize)> = formatting.iter().find(|(s, i1, i2)| i1 < &140 && i2 > &140 && String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(&s[..]) );
       let other_split_index: Option<usize> = match overlapping {
-        None => String::from(&line.1[..140]).rfind(' '),
+        None => {
+          if String::from("UNHIGHLIGHTED BLANK UNFOCUSED BLANK").contains(&line.2[0].0) && line.2[0].2 > 140 {
+            Some(139)
+          } else {
+            String::from(&line.1[..140]).rfind(' ')
+          }
+        },
         Some(_) => None,
       };
       let sec_1_output_formatting: Vec<(String, usize, usize)> = formatting.iter().filter(|(_s, i1, _i2)| i1 <= &140 )
@@ -1789,7 +1795,6 @@ pub fn break_into_lines(
       }
 
       output
-
     }
   }
   pub fn generate_display_content_string_with_blanks(
@@ -2019,23 +2024,42 @@ pub fn break_into_lines(
         }
       }
 
-      let bidx1 = content.chars().count();
-      content.push_str(&display_blank);
-      let bidx2 = content.chars().count();
+      let mut bidxs: Vec<(usize, usize)> = vec![];
+      if display_blank.len() < 140 {
+        let bidx1 = content.chars().count();
+        content.push_str(&display_blank);
+        let bidx2 = content.chars().count();
+        bidxs.push((bidx1, bidx2));
+      } else {
+        let mut display_clone = display_blank.clone();
+        while display_clone.len() >= 140 {
+          let bidx1 = content.chars().count();
+          content.push_str(&display_clone[..140]);
+          let bidx2 = content.chars().count();
+          bidxs.push((bidx1, bidx2));
+          display_clone = String::from(&display_clone[140..]);
+        }
+        let bidx1 = content.chars().count();
+        content.push_str(&display_clone[..]);
+        let bidx2 = content.chars().count();
+        bidxs.push((bidx1, bidx2));
+      }
       
-      if bidx1 != bidx2 {
-        match blank_focus_id {
-          Some(f_id) => {
-            if f_id == i {
-              format_vec.push((String::from("HIGHLIGHTED BLANK"), bidx1, bidx2));
-            } else {
-              format_vec.push((String::from("UNHIGHLIGHTED BLANK"), bidx1, bidx2));
-            }
-          },
-          None => {
-            match content_focus_id {
-              Some(_) => format_vec.push((String::from("UNFOCUSED BLANK"), bidx1, bidx2)),
-              None => format_vec.push((String::from("BLANK"), bidx1, bidx2)),
+      for (bidx1, bidx2) in bidxs {
+        if bidx1 != bidx2 {
+          match blank_focus_id {
+            Some(f_id) => {
+              if f_id == i {
+                format_vec.push((String::from("HIGHLIGHTED BLANK"), bidx1, bidx2));
+              } else {
+                format_vec.push((String::from("UNHIGHLIGHTED BLANK"), bidx1, bidx2));
+              }
+            },
+            None => {
+              match content_focus_id {
+                Some(_) => format_vec.push((String::from("UNFOCUSED BLANK"), bidx1, bidx2)),
+                None => format_vec.push((String::from("BLANK"), bidx1, bidx2)),
+              }
             }
           }
         }

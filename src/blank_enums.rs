@@ -106,7 +106,7 @@ impl InternalDocumentFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -249,7 +249,7 @@ impl ExternalDocumentFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -366,7 +366,7 @@ impl InternalMeetingFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -487,7 +487,7 @@ impl ExternalMeetingFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -664,7 +664,7 @@ impl AppearanceFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -866,7 +866,7 @@ impl SupportedParentFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -1052,7 +1052,7 @@ impl ParentingSkillFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -1244,7 +1244,7 @@ impl CarePlanningTopicFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -1510,7 +1510,7 @@ impl YouthTopicFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -1742,7 +1742,7 @@ impl ContactMethodFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -1870,7 +1870,7 @@ impl ContactPurposeFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -2013,7 +2013,7 @@ impl FulfilledContactPurposeFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -2147,7 +2147,7 @@ impl ServiceFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -2263,7 +2263,7 @@ impl MeetingMethodFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {
@@ -2365,7 +2365,7 @@ impl SignatureMethodFillIn {
           }
           Ok(_) => {
             break loop {
-              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input);
+              println_inst!("Confirm custom fill-in: '{}'? ( Y / N )", &input.trim());
               let mut confirm_input = String::new();
               let confirm_input_result = io::stdin().read_line(&mut confirm_input);
               match confirm_input_result {

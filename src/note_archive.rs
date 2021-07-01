@@ -216,7 +216,7 @@ fn display_blanks_empty() {
   println_on_bg!("{:-^10} | {:-^70}", " ID ", " Type ");
   println_on_bg!("{:-^83}", "-");
   for (i, b) in Blank::iterator().enumerate() {
-    let display = format!("{:-^10} | {: <70}", &format!(" {} ", i+1), b.display_to_user_empty());
+    let display = format!("{: ^10} | {: <70}", &format!(" {} ", i+1), b.display_to_user_empty());
     println_on_bg!("{}", display);
   }
   println_on_bg!("{: <83}", "Choose blank type by ID.");
@@ -12431,7 +12431,7 @@ impl NoteArchive {
     }
   }
   fn display_blank_fill_in(blank_type: Blank, selected: Option<Vec<usize>>) {
-    let display_category = format!("{}", blank_type.clone().display_to_user());
+    let display_category = format!("{}", blank_type.clone().display_to_user_empty());
     let fill_ins: Vec<String> = match blank_type {
       InternalDocument => {
         InternalDocumentFillIn::iterator_of_blanks().map(|b| format!("{}", b) ).collect()
@@ -12489,13 +12489,13 @@ impl NoteArchive {
       match selected.clone() {
         Some(ids) => {
           if ids.iter().any(|id| id == &i ) {
-            println_suc!("{:-^10} | {: <100}", i, fi);
+            println_suc!("{: ^10} | {: <100}", i, fi);
           } else {
-            println_on_bg!("{:-^10} | {: <100}", i, fi);
+            println_on_bg!("{: ^10} | {: <100}", i, fi);
           }
         },
         None => {
-          println_on_bg!("{:-^10} | {: <100}", i, fi);
+          println_on_bg!("{: ^10} | {: <100}", i, fi);
         }
       }
     }
@@ -13207,7 +13207,10 @@ impl NoteArchive {
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
-                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                    _ => {
+                      n.blanks.insert(i, (b.clone(), String::from("PRONOUNS"), vec![]));
+                    }
+                    // panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
                   }
                   continue;
                 },
@@ -13331,7 +13334,10 @@ impl NoteArchive {
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
-                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                    _ => {
+                      n.blanks.insert(i, (b.clone(), String::from("PRONOUNS"), vec![]));
+                    }
+                    // panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
                   }
                 },
                 None => (), 
@@ -13454,7 +13460,10 @@ impl NoteArchive {
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
-                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                    _ => {
+                      n.blanks.insert(i, (b.clone(), String::from("PRONOUNS"), vec![]));
+                    }
+                    // panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
                   }
                 },
                 None => (), 
@@ -13577,7 +13586,10 @@ impl NoteArchive {
                       };
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                     },
-                    _ => panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
+                    _ => {
+                      n.blanks.insert(i, (b.clone(), String::from("PRONOUNS"), vec![]));
+                    }
+                    // panic!("A pronoun blank was connected to a type of blank for which pronouns do not apply."),
                   }
                 },
                 None => (), 
@@ -14776,14 +14788,14 @@ impl NoteArchive {
           return None;
         },
         _ => {
-          match idx.parse() {
+          match idx.parse::<usize>() {
             Err(e) => {
               println_err!("Invalid input: '{}' ({})", idx, e);
               thread::sleep(time::Duration::from_secs(2));
               continue;
             },
             Ok(num) => {
-              match Blank::vec_of_fillables().iter().nth(num) {
+              match Blank::vec_of_fillables().iter().nth(num-1) {
                 None => {
                   println_err!("Please choose from among the displayed options.");
                   thread::sleep(time::Duration::from_secs(2));
@@ -15255,6 +15267,21 @@ impl NoteArchive {
             }
           };
           return Some((b, final_blank_string));
+        },
+        CustomBlank => {
+          let final_string = loop {
+            println!("Enter text exactly as you would like it to appear.");
+            let mut input = String::new();
+            let input_attempt = io::stdin().read_line(&mut input);
+            match input_attempt {
+              Ok(_) => break String::from(&input[..input.len()-2]),
+              Err(e) => {
+                println!("Failed to read line: {}", e);
+                continue;
+              }
+            }
+          };
+          return Some((b, final_string));
         },
         _ => panic!("Blank passed as fillable blank to fn 'get_blank_from_menu' but blank not listed as options in function."),
       }
