@@ -9403,7 +9403,7 @@ impl NoteArchive {
 
                       let mut new_content = String::new();
                       for (i, m) in RE_BLANK.find_iter(&nt_content).enumerate() {
-                        if i == blank_focus_id.unwrap() as usize {
+                        if i + 1 == blank_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &nt_content[..m.start()], &nt_content[m.end()..]);
                         }
                       }
@@ -9582,7 +9582,9 @@ impl NoteArchive {
                                   }
 
                                   for (i, m) in RE_BLANK.find_iter(&edited_content.clone()).enumerate() {
-                                    edited_content = format!("{}{}{}", &edited_content[..m.start()], &formatted_blanks[i].to_string()[..], &edited_content[m.end()..]);
+                                    if i + 1 == content_focus_id.unwrap() as usize {
+                                      edited_content = format!("{}{}{}", &edited_content[..m.start()], &formatted_blanks[i].to_string()[..], &edited_content[m.end()..]);
+                                    }
                                   }
 
                                   self.current_note_template_mut().content = edited_content;
@@ -11641,7 +11643,7 @@ impl NoteArchive {
                     let mut b = CustomBlank;
 
                     for (idx, m) in RE_BLANK.find_iter(&self.current_note().content).enumerate() {
-                      if idx == i as usize {
+                      if idx + 1 == i as usize {
                         b = Blank::get_blank_from_str(&self.current_note().content[m.start()..m.end()]);
                       }
                     }
@@ -12358,7 +12360,7 @@ impl NoteArchive {
                     }
                   },
                   _ => {
-                    println_err!("The selected blank type cannot be edited.");
+                    println_err!("The selected blank type cannot be edited: {}.", b);
                     thread::sleep(time::Duration::from_secs(2));
                     continue;
                   },
@@ -12388,7 +12390,7 @@ impl NoteArchive {
 
                       let mut new_content = String::new();
                       for (i, m) in RE_BLANK.find_iter(&n_content).enumerate() {
-                        if i == blank_focus_id.unwrap() as usize {
+                        if i + 1 == blank_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &n_content[..m.start()], &n_content[m.end()..]);
                         }
                       }
@@ -13873,7 +13875,7 @@ impl NoteArchive {
       // or alternatively when focus_id_option is set to Some(id) because the user selected it
 
       let mut empty_blanks = n.get_empty_blanks_and_indexes();
-      if empty_blanks.len() >= 1 {
+      if empty_blanks.len() > 0 {
         if let None = focus_id_option.clone() {
           focus_id_option = Some(empty_blanks[0].0);
         }
@@ -13933,7 +13935,7 @@ impl NoteArchive {
               continue;
             },
             None => {
-              if empty_blanks.len() > 1 {
+              if empty_blanks.len() > 0 {
                 focus_id_option = Some(empty_blanks[0].0);
                 continue;
               }
@@ -14674,7 +14676,7 @@ impl NoteArchive {
             _ => (),
           }
           empty_blanks = n.get_empty_blanks_and_indexes();
-          if empty_blanks.len() > 1 {
+          if empty_blanks.len() > 0 {
             focus_id_option = Some(empty_blanks[0].0);
           }
         },

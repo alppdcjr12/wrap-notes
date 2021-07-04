@@ -650,7 +650,18 @@ impl NoteTemplate {
 
       match content_focus_id {
         None => {
-          let display_content = String::from(&content_string[prev_end_idx..m.start()]);
+
+          // make a helper function so this will happen for every time you add content - check if empty and don't add
+          // make a helper function so this will happen for every time you add content - check if empty and don't add
+          // make a helper function so this will happen for every time you add content - check if empty and don't add
+          // make a helper function so this will happen for every time you add content - check if empty and don't add
+          // make a helper function so this will happen for every time you add content - check if empty and don't add
+
+          let display_content = if prev_end_idx + 1 != m.start() {
+            String::from(&content_string[prev_end_idx..m.start()])
+          } else {
+            String::new()
+          };
 
           let cidx1 = content.chars().count();
           content.push_str(&display_content);
