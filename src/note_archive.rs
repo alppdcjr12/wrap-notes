@@ -8810,7 +8810,7 @@ impl NoteArchive {
 
                       let mut new_content = String::new();
                       for (i, idxs) in self.current_note_template().get_content_section_indices().iter().enumerate() {
-                        if i == content_focus_id.unwrap() as usize {
+                        if i + 1 == content_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &nt_content[..idxs.0], &nt_content[idxs.1..]);
                         }
                       }

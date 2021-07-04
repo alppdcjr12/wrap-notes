@@ -590,7 +590,11 @@ impl NoteTemplate {
                         _ => adjust_last_index += 1,
                       }
                     }
-                    let display_content = format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add]);
+                    let display_content = if idx1 + 1 != idx2+num_to_add {
+                      format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add])
+                    } else {
+                      format!("[{}]: ", cont_i)
+                    };
                     let cidx1 = content.chars().count();
                     content.push_str(&display_content);
                     let cidx2 = content.chars().count();
@@ -651,12 +655,6 @@ impl NoteTemplate {
       match content_focus_id {
         None => {
 
-          // make a helper function so this will happen for every time you add content - check if empty and don't add
-          // make a helper function so this will happen for every time you add content - check if empty and don't add
-          // make a helper function so this will happen for every time you add content - check if empty and don't add
-          // make a helper function so this will happen for every time you add content - check if empty and don't add
-          // make a helper function so this will happen for every time you add content - check if empty and don't add
-
           let display_content = if prev_end_idx + 1 != m.start() {
             String::from(&content_string[prev_end_idx..m.start()])
           } else {
@@ -689,7 +687,11 @@ impl NoteTemplate {
             } else {
               1
             };
-            let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
+            let display_content = if idx1 + 1 != idx2+num_to_add {
+              format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]))
+            } else {
+              format!("[{}]: ", cont_i)
+            };
             let cidx1 = content.chars().count();
             content.push_str(&display_content);
             let cidx2 = content.chars().count();
@@ -1915,7 +1917,11 @@ pub fn break_into_lines(
                         _ => adjust_last_index += 1,
                       }
                     }
-                    let display_content = format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add]);
+                    let display_content = if idx1 + 1 != idx2+num_to_add {
+                      format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add])
+                    } else {
+                      format!("[{}]: ", cont_i)
+                    };
                     let cidx1 = content.chars().count();
                     content.push_str(&display_content);
                     let cidx2 = content.chars().count();
@@ -1987,7 +1993,11 @@ pub fn break_into_lines(
 
       match content_focus_id {
         None => {
-          let display_content = String::from(&content_string[prev_end_idx..m.start()]);
+          let display_content = if prev_end_idx + 1 != m.start() {
+            String::from(&content_string[prev_end_idx..m.start()])
+          } else {
+            String::new()
+          };
 
           let cidx1 = content.chars().count();
           content.push_str(&display_content);
@@ -2020,7 +2030,11 @@ pub fn break_into_lines(
             } else {
               1
             };
-            let display_content = format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]));
+            let display_content = if idx1 + 1 != idx2+num_to_add {
+              format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]))
+            } else {
+              format!("[{}]: ", cont_i)
+            };
             let cidx1 = content.chars().count();
             content.push_str(&display_content);
             let cidx2 = content.chars().count();
