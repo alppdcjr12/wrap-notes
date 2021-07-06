@@ -1,7 +1,15 @@
 ##### collaterals #####
-1 | Jack | Goldblum | OPT | Jeff Goldblum & Sons Therapy | 1 | Formal | false | false | false | true
-2 | Morgan | Freeman | mother | --NONE-- | 2 | Natural | false | true | true | true
-3 | Paul | Moriarty | Psychiatrist | Sherlock Services | 1 | Formal | false | false | false | false
-4 | Sally | Jones | mother | --NONE-- | 2 | Natural | false | true | true | true
-5 | James | Orbourne | OPT | OPT, inc. | 1 | Formal | false | false | false | true
+1 | asdfas dfasdf asdf asd f | asdf asdf | WAH | --NONE-- | 1 | Natural | false | false | false | true
+2 | LL | LL | OPT | OOO | 1 | Formal | false | false | false | false
+3 | O | O | OPT | OPT Inc | 1 | Formal | false | false | false | false
+4 | I | I | OPT | OPT Inc. | 1 | Formal | false | false | false | true
+5 | F | F | OPT | OPT Inc. | 1 | Formal | false | false | false | true
+6 | K | K | OPT | OPT Inc. | 1 | Formal | false | false | false | false
+7 | G | G | OPT | OPT Inc. | 1 | Formal | false | false | false | true
+8 | dd | dd | OPT | OPT Inc. | 1 | Formal | false | false | false | false
+9 | H | H | OPT | OPT, Inc. | 1 | Formal | false | false | false | true
+10 | GG | GG | OPT | SADadsfasf | 3 | Formal | false | false | false | false
+11 | asdf | asdf | asdf | --NONE-- | 1 | Natural | false | true | true | true
+12 | aaa | aaaa | opt | asdfdsaf | 1 | Formal | false | false | false | false
+13 | SS | SS | OPT | SS | 1 | Formal | false | false | false | true
 ##### collaterals #####

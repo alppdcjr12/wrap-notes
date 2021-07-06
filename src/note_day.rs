@@ -89,7 +89,7 @@ impl NoteDay {
     date
   }
   pub fn fmt_date_short(&self) -> String {
-    self.date.format("%m-%d").to_string()
+    self.date.format("%m-%d-%y").to_string()
   }
   pub fn fmt_day(&self) -> String {
     let wd = match self.date.weekday() {

@@ -590,7 +590,7 @@ impl NoteTemplate {
                         _ => adjust_last_index += 1,
                       }
                     }
-                    let display_content = if idx1 + 1 != idx2+num_to_add {
+                    let display_content = if &content_string[idx1..idx2+num_to_add] != "X" {
                       format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add])
                     } else {
                       format!("[{}]: ", cont_i)
@@ -655,7 +655,7 @@ impl NoteTemplate {
       match content_focus_id {
         None => {
 
-          let display_content = if prev_end_idx + 1 != m.start() {
+          let display_content = if &content_string[prev_end_idx..m.start()] != "X" {
             String::from(&content_string[prev_end_idx..m.start()])
           } else {
             String::new()
@@ -687,7 +687,7 @@ impl NoteTemplate {
             } else {
               1
             };
-            let display_content = if idx1 + 1 != idx2+num_to_add {
+            let display_content = if &content_string[idx1..idx2+num_to_add] != "X" {
               format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]))
             } else {
               format!("[{}]: ", cont_i)
@@ -1917,7 +1917,7 @@ pub fn break_into_lines(
                         _ => adjust_last_index += 1,
                       }
                     }
-                    let display_content = if idx1 + 1 != idx2+num_to_add {
+                    let display_content = if &content_string[idx1..idx2+num_to_add] != "X" {
                       format!("[{}]: {}", cont_i, &content_string[idx1..idx2+num_to_add])
                     } else {
                       format!("[{}]: ", cont_i)
@@ -1993,7 +1993,7 @@ pub fn break_into_lines(
 
       match content_focus_id {
         None => {
-          let display_content = if prev_end_idx + 1 != m.start() {
+          let display_content = if &content_string[prev_end_idx..m.start()] != "X" {
             String::from(&content_string[prev_end_idx..m.start()])
           } else {
             String::new()
@@ -2030,7 +2030,7 @@ pub fn break_into_lines(
             } else {
               1
             };
-            let display_content = if idx1 + 1 != idx2+num_to_add {
+            let display_content = if &content_string[idx1..idx2+num_to_add] != "X" {
               format!("[{}]: {}", cont_i, &String::from(&content_string[idx1..idx2+num_to_add]))
             } else {
               format!("[{}]: ", cont_i)

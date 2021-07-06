@@ -288,14 +288,27 @@ fn choose_blanks_option() -> Option<usize> {
     }
   }
 }
-pub fn get_spacing_buffers(last_content_char: Option<char>, next_content_char: Option<char>) -> (String, String) {
+pub fn get_spacing_buffers(last_content_char: Option<char>, next_content_char: Option<char>, s: String) -> (String, String) {
+  let content_1 = match s.chars().next() {
+    Some(c) => c,
+    None => 'X', // arbitrary non space value
+  };
+  let content_2 = match s.chars().last() {
+    Some(c) => c,
+    None => 'X', // arbitrary non space value
+  };
+  if !s.chars().any(|c| !c.is_whitespace() ) {
+    return (String::from(" "), String::new());
+  }
   match (last_content_char, next_content_char) {
     (Some(lc), Some(nc)) => {
       if lc.is_whitespace() && (nc.is_whitespace() || nc == '.') {
         (String::new(), String::new())
-      } else if lc.is_whitespace() {
+      } else if content_1 == ' ' && content_2 == ' ' {
+        (String::new(), String::new())
+      } else if lc.is_whitespace() || content_1 == ' ' {
         (String::new(), String::from(" "))
-      } else if nc.is_whitespace() || nc == '.' {
+      } else if nc.is_whitespace() || nc == '.' || content_2 == ' ' {
         (String::from(" "), String::new())
       } else {
         (String::from(" "), String::from(" "))
@@ -830,6 +843,13 @@ impl NoteArchive {
           self.choose_edit_user();
         },
         "user" | "u" => {
+          self.foreign_key.remove("current_user_id");
+          self.foreign_key.remove("current_client_id");
+          self.foreign_key.remove("current_collateral_id");
+          self.foreign_key.remove("current_note_id");
+          self.foreign_key.remove("current_note_day_id");
+          self.foreign_key.remove("current_note_template_id");
+          self.foreign_key.remove("current_goal_id");
           self.choose_user();
         },
         "p" | "prns" | "pronouns" => {
@@ -842,8 +862,12 @@ impl NoteArchive {
           }
         },
         "delete" | "d" => {
-          self.choose_delete_user();
-          self.choose_user();
+          match self.choose_delete_user() {
+            Some(_) => {
+              self.choose_user();
+            }
+            None => (),
+          }
         },
         "security" | "s" => {
           self.choose_security_options();
@@ -1490,7 +1514,7 @@ impl NoteArchive {
       }
     }
   }
-  fn choose_delete_user(&mut self) {
+  fn choose_delete_user(&mut self) -> Option<()> {
     loop {
       self.display_delete_user();
       println_yel!("Are you sure you want to delete this user?");
@@ -1509,10 +1533,10 @@ impl NoteArchive {
         "yes" | "y" => {
           self.delete_current_user();
           self.write_to_files();
-          break;
+          break Some(());
         },
         _ => {
-          break;
+          break None;
         },
       }
     }
@@ -1543,11 +1567,26 @@ impl NoteArchive {
         Ok(_) => self.delete_current_client(),
       }
     }
+    let current_note_days = self.current_user_note_days().iter().map(|nd| nd.id ).collect::<Vec<u32>>();
+    for nd_id in current_note_days {
+      match self.load_note_day(nd_id) {
+        Err(_) => panic!("Failed to delete note day for current user."),
+        Ok(_) => self.delete_current_note_day(),
+      }
+    }
+    let current_notes = self.current_user_notes().iter().map(|n| n.id ).collect::<Vec<u32>>();
+    for n_id in current_notes {
+      match self.load_note(n_id) {
+        Err(_) => panic!("Failed to delete note day for current user."),
+        Ok(_) => self.delete_current_note(),
+      }
+    }
 
     let id = self.foreign_key.get("current_user_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("user"), id);
     self.users.retain(|u| u.id != id);
     self.reindex_users();
+    self.note_templates.retain(|nt| nt.foreign_keys["user_ids"].len() > 0 );
     self.foreign_key.remove("current_user_id");
     self.foreign_key.remove("current_client_id");
     self.foreign_key.remove("current_collateral_id");
@@ -1601,6 +1640,13 @@ impl NoteArchive {
     match maybe_current {
       Some(c) => c,
       None => panic!("The loaded client ID does not match any saved clients."),
+    }
+  }
+  fn current_client_id_option(&self) -> Option<u32> {
+    let maybe = self.foreign_key.get("current_client_id");
+    match maybe {
+      Some(id) => Some(*id),
+      None => None,
     }
   }
   fn get_current_clients(&self) -> Vec<&Client> {
@@ -1688,7 +1734,7 @@ impl NoteArchive {
       None => (),
     }
     println_on_bg!("{:-^96}", "-");
-    println_on_bg!("| {} | {}", "Choose client by ID.", "QUIT / Q: quit menu");
+    println_inst!("| {} | {}", "Choose client by ID.", "QUIT / Q: quit menu");
   }
   fn get_noncurrent_clients(&self) -> Vec<&Client> {
     self.clients.iter().filter(|client| !self.current_user().foreign_keys["client_ids"]
@@ -2070,7 +2116,6 @@ impl NoteArchive {
               } else {
                 match self.load_client(num) {
                   Ok(_) => {
-                    self.foreign_key.remove("current_client_id");
                     break num
                   }
                   Err(e) => {
@@ -2108,6 +2153,7 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "quit" | "q" => {
+          self.foreign_key.remove("current_client_id");
           break;
         }
         "delete" | "d" => {
@@ -2650,8 +2696,20 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note_day(),
       }
     }
+    let current_notes = self.current_client_notes().iter().map(|co| co.id ).collect::<Vec<u32>>();
+    for n_id in current_notes {
+      match self.load_note(n_id) {
+        Err(_) => panic!("Failed to delete note for current client."),
+        Ok(_) => self.delete_current_note(),
+      }
+    }
     let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("client"), id);
+    for u in &mut self.users {
+      let mut new_ids = u.foreign_keys["client_ids"].clone();
+      new_ids.retain(|co_id| co_id != &id );
+      u.foreign_keys.insert(String::from("client_ids"), new_ids);
+    }
     self.clients.retain(|c| c.id != id);
     self.reindex_clients();
     self.foreign_key.remove("current_client_id");
@@ -3421,7 +3479,8 @@ impl NoteArchive {
       };
       match &initial_input.to_ascii_lowercase()[..] {
         "new" | "n" => {
-          let maybe_new_id = self.create_collateral_get_id();
+          let maybe_c_id = self.current_client_id_option();
+          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
           match maybe_new_id {
             _ => (),
           }
@@ -3578,7 +3637,8 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "new" | "n" => {
-          let maybe_new_id = self.create_collateral_get_id();
+          let maybe_c_id = self.current_client_id_option();
+          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
           match maybe_new_id {
             _ => (),
           }
@@ -3679,7 +3739,8 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "new" | "n" => {
-          let maybe_new_id = self.create_collateral_get_id();
+          let maybe_c_id = self.current_client_id_option();
+          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
           match maybe_new_id {
             Some(_) => (),
             None => (),
@@ -3957,7 +4018,7 @@ impl NoteArchive {
       }
     }
   }
-  fn create_collateral_get_id(&mut self) -> Option<u32> {
+  fn create_collateral_get_id(&mut self, c_id: Option<u32>) -> Option<u32> {
     let collateral = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
@@ -4284,6 +4345,14 @@ impl NoteArchive {
         }
       }
     };
+    match c_id {
+      Some(current_client_id) => {
+        match self.load_client(current_client_id) {
+          _ => (),
+        }
+      },
+      None => (),
+    }
     let id = collateral.id;
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
@@ -4312,6 +4381,7 @@ impl NoteArchive {
             }
           }
         };
+        self.foreign_key.insert(String::from("current_client_id"), c_id);
         if !self.get_client_by_id(c_id).unwrap().foreign_keys.get("collateral_ids").unwrap().iter().any(|co_id| co_id == &id ) {
           self.get_client_by_id_mut(c_id).unwrap().foreign_keys.get_mut("collateral_ids").unwrap().push(id);
         }
@@ -4866,7 +4936,6 @@ impl NoteArchive {
       .iter()
       .map(|(_, co)| (*co).clone() )
       .collect();
-    self.reindex_collaterals();
   }
   fn sort_general_collaterals(&mut self) {
 
@@ -4923,7 +4992,8 @@ impl NoteArchive {
           break;
         },
         "new" | "n" => {
-          let maybe_new_id = self.create_collateral_get_id();
+          let maybe_c_id = self.current_client_id_option();
+          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
           match maybe_new_id {
             Some(_) => {
               println_suc!("Collateral added to client '{}'.", self.current_client().full_name());
@@ -5843,6 +5913,20 @@ impl NoteArchive {
   fn delete_current_collateral(&mut self) {
     let id = self.foreign_key.get("current_collateral_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("collateral"), id);
+    let mut new_user_ids = self.current_user().foreign_keys["collateral_ids"].clone();
+    new_user_ids.retain(|co_id| co_id != &id );
+    self.current_user_mut().foreign_keys.insert(String::from("collateral_ids"), new_user_ids);
+    let c_ids: Vec<u32> = self.get_clients_by_collateral_id(id).iter().map(|c| c.id ).collect();
+    for c_id in c_ids {
+      let mut new_client_ids = self.get_client_by_id(c_id).unwrap().foreign_keys["collateral_ids"].clone();
+      new_client_ids.retain(|co_id| co_id != &id );
+      self.get_client_by_id_mut(c_id).unwrap().foreign_keys.insert(String::from("collateral_ids"), new_client_ids);
+    }
+    for n in &mut self.notes {
+      let mut new_ids = n.foreign_keys["collateral_ids"].clone();
+      new_ids.retain(|co_id| co_id != &id );
+      n.foreign_keys.insert(String::from("collateral_ids"), new_ids);
+    }
     self.collaterals.retain(|c| c.id != id);
     self.reindex_collaterals();
     self.foreign_key.remove("current_collateral_id");
@@ -7324,6 +7408,10 @@ impl NoteArchive {
     let nds: Vec<NoteDay> = self.current_client_note_days().iter().cloned().cloned().collect();
     self.notes.iter_mut().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
   }
+  fn current_client_notes(&mut self) -> Vec<&Note> {
+    let nds: Vec<NoteDay> = self.current_client_note_days().iter().cloned().cloned().collect();
+    self.notes.iter().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
+  }
   fn current_collateral_notes_mut(&mut self) -> Vec<&mut Note> {
     let co_id_b = &self.current_collateral().id.clone();
     self.notes.iter_mut().filter(|n| n.foreign_keys["collateral_ids"].iter().any(|co_id| co_id == co_id_b ) ).collect()
@@ -7458,7 +7546,7 @@ impl NoteArchive {
       let current_nd = self.current_note_day();
       self.display_note_day();
       print_inst!("Enter 'CANCEL' at any time to cancel.");
-      print!("/n");
+      print!("\n");
       let mut today_choice = String::new();
       if today != current_nd.date {
         'today: loop {
@@ -7486,157 +7574,155 @@ impl NoteArchive {
             }
           }
         }
-      } else {
-        let mut same_year = false;
-        let year = loop {
-          let mut this_year_choice = String::new();
-          println_inst!("This year ({})? (Y/N)", today.year());
-          let this_year_attempt = io::stdin().read_line(&mut this_year_choice);
-          match this_year_attempt {
-            Ok(_) => match &this_year_choice.trim()[..] {
-              "YES" | "yes" | "Yes" | "Y" | "y" => {
-                same_year = true;
-                break today.year();
-              }
-              "NO" | "no" | "No" | "N" | "n" => {
-                let mut year_choice = String::new();
-                println_inst!("What year?");
-                let year_attempt = io::stdin().read_line(&mut year_choice);
-                match year_attempt {
-                  Ok(_) => {
-                    if year_choice.trim().to_ascii_lowercase() == String::from("cancel") {
-                      return ();
-                    }
-                    match year_choice.trim().parse() {
-                      Ok(val) => {
-                        if val > 9999 || val < 1000 {
-                          println_err!("Please enter a valid year.");
-                          continue;
-                        } else {
-                          break val;
-                        }
-                      }
-                      Err(e) => {
-                        println_err!("Invalid repsonse: {}", e);
+      }
+      let mut same_year = false;
+      let year = loop {
+        let mut this_year_choice = String::new();
+        println_inst!("This year ({})? (Y/N)", today.year());
+        let this_year_attempt = io::stdin().read_line(&mut this_year_choice);
+        match this_year_attempt {
+          Ok(_) => match &this_year_choice.trim()[..] {
+            "YES" | "yes" | "Yes" | "Y" | "y" => {
+              same_year = true;
+              break today.year();
+            }
+            "NO" | "no" | "No" | "N" | "n" => {
+              let mut year_choice = String::new();
+              println_inst!("What year?");
+              let year_attempt = io::stdin().read_line(&mut year_choice);
+              match year_attempt {
+                Ok(_) => {
+                  if year_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+                    return ();
+                  }
+                  match year_choice.trim().parse() {
+                    Ok(val) => {
+                      if val > 9999 || val < 1000 {
+                        println_err!("Please enter a valid year.");
                         continue;
+                      } else {
+                        break val;
                       }
                     }
-                  }
-                  Err(e) => {
-                    println_err!("Invalid repsonse: {}", e);
-                    continue;
+                    Err(e) => {
+                      println_err!("Invalid repsonse: {}", e);
+                      continue;
+                    }
                   }
                 }
-              },
-              "Cancel" | "CANCEL" | "cancel" => return (),
-              _ => {
-                println_err!("Please choose 'yes' or 'no.'");
-                continue;
+                Err(e) => {
+                  println_err!("Invalid repsonse: {}", e);
+                  continue;
+                }
               }
-
             },
-            Err(e) => {
-              println_err!("Invalid repsonse: {}", e);
+            "Cancel" | "CANCEL" | "cancel" => return (),
+            _ => {
+              println_err!("Please choose 'yes' or 'no.'");
               continue;
             }
-          }
-        };
-        let month = 'month: loop {
-          if same_year {
-            loop {
-              let mut this_month_choice = String::new();
-              println_inst!("This month ({})? (Y/N)", today.month());
-              let this_month_attempt = io::stdin().read_line(&mut this_month_choice);
-              match this_month_attempt {
-                Ok(_) => match &this_month_choice.trim()[..] {
-                  "YES" | "yes" | "Yes" | "Y" | "y" => break 'month today.month(),
-                  "NO" | "no" | "No" | "N" | "n" => {
-                    same_year = false;
-                    break;
-                  },
-                  "CANCEL" | "cancel" | "Cancel" => return (),
-                  _ => {
-                    println_err!("Please choose 'yes' or 'no.'");
-                    continue;
-                  }
-                },
-                Err(e) => {
-                  println_err!("Invalid repsonse: {}", e);
-                  continue;
-                }
-              }
-            }
-          }
-          let mut month_choice = String::new();
-          println_inst!("What month?");
-          let month_attempt = io::stdin().read_line(&mut month_choice);
-          match month_attempt {
-            Ok(_) => {
-              if month_choice.trim().to_ascii_lowercase() == String::from("cancel") {
-                return ();
-              }
-              match month_choice.trim().parse() {
-                Ok(val) => {
-                  if val > 12 || val < 1 {
-                    println_err!("Please enter a valid month.");
-                    continue;
-                  } else {
-                    break val;
-                  }
-                }
-                Err(e) => {
-                  println_err!("Invalid repsonse: {}", e);
-                  continue;
-                }
-              }
-            }
-            Err(e) => {
-              println_err!("Invalid repsonse: {}", e);
-              continue;
-            }
-          }
-        };
-        let day = loop {
-          let mut day_choice = String::new();
-          println_inst!("What day?");
-          let day_attempt = io::stdin().read_line(&mut day_choice);
-          match day_attempt {
-            Ok(_) => {
-              if day_choice.trim().to_ascii_lowercase() == String::from("cancel") {
-                return ();
-              }
-              match day_choice.trim().parse() {
-                Ok(val) => {
-                  if val > 31 || val < 1 {
-                    println_err!("Please enter a valid day.");
-                    continue;
-                  } else {
-                    break val;
-                  }
-                }
-                Err(e) => {
-                  println_err!("Invalid repsonse: {}", e);
-                  continue;
-                }
-              }
-            }
-            Err(e) => {
-              println_err!("Invalid repsonse: {}", e);
-              continue;
-            }
-          }
-        };
-        match NaiveDate::from_ymd_opt(year, month, day) {
-          Some(date) => break date,
-          None => {
-            println_err!(
-              "{}-{}-{} does not appear to be a valid date. Please try again.",
-              year, month, day
-            );
+
+          },
+          Err(e) => {
+            println_err!("Invalid repsonse: {}", e);
             continue;
           }
         }
-
+      };
+      let month = 'month: loop {
+        if same_year {
+          loop {
+            let mut this_month_choice = String::new();
+            println_inst!("This month ({})? (Y/N)", today.month());
+            let this_month_attempt = io::stdin().read_line(&mut this_month_choice);
+            match this_month_attempt {
+              Ok(_) => match &this_month_choice.trim()[..] {
+                "YES" | "yes" | "Yes" | "Y" | "y" => break 'month today.month(),
+                "NO" | "no" | "No" | "N" | "n" => {
+                  same_year = false;
+                  break;
+                },
+                "CANCEL" | "cancel" | "Cancel" => return (),
+                _ => {
+                  println_err!("Please choose 'yes' or 'no.'");
+                  continue;
+                }
+              },
+              Err(e) => {
+                println_err!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+          }
+        }
+        let mut month_choice = String::new();
+        println_inst!("What month?");
+        let month_attempt = io::stdin().read_line(&mut month_choice);
+        match month_attempt {
+          Ok(_) => {
+            if month_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+              return ();
+            }
+            match month_choice.trim().parse() {
+              Ok(val) => {
+                if val > 12 || val < 1 {
+                  println_err!("Please enter a valid month.");
+                  continue;
+                } else {
+                  break val;
+                }
+              }
+              Err(e) => {
+                println_err!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+          }
+          Err(e) => {
+            println_err!("Invalid repsonse: {}", e);
+            continue;
+          }
+        }
+      };
+      let day = loop {
+        let mut day_choice = String::new();
+        println_inst!("What day?");
+        let day_attempt = io::stdin().read_line(&mut day_choice);
+        match day_attempt {
+          Ok(_) => {
+            if day_choice.trim().to_ascii_lowercase() == String::from("cancel") {
+              return ();
+            }
+            match day_choice.trim().parse() {
+              Ok(val) => {
+                if val > 31 || val < 1 {
+                  println_err!("Please enter a valid day.");
+                  continue;
+                } else {
+                  break val;
+                }
+              }
+              Err(e) => {
+                println_err!("Invalid repsonse: {}", e);
+                continue;
+              }
+            }
+          }
+          Err(e) => {
+            println_err!("Invalid repsonse: {}", e);
+            continue;
+          }
+        }
+      };
+      match NaiveDate::from_ymd_opt(year, month, day) {
+        Some(date) => break date,
+        None => {
+          println_err!(
+            "{}-{}-{} does not appear to be a valid date. Please try again.",
+            year, month, day
+          );
+          continue;
+        }
       }
         
     };
@@ -7894,7 +7980,6 @@ impl NoteArchive {
   }
   fn choose_delete_notes(&mut self) {
     loop {
-
       self.display_delete_note_day();
       println_inst!("Select note ID to delete.");
       println_inst!("CANCEL / C: Cancel");
@@ -8469,7 +8554,7 @@ impl NoteArchive {
       println_inst!(
         "{} | {}",
         "EDIT / E: Edit custom note templates",
-        "COPY / C: Copy default templates"
+        "COPY / C: Copy default/other template"
       );
     } else {
       println_inst!(
@@ -8699,7 +8784,7 @@ impl NoteArchive {
         },
         "content" | "c" => {
           let mut content_focus_id: Option<u32> = Some(1);
-          let blank_focus_id: Option<u32> = None;
+          let mut blank_focus_id: Option<u32> = None;
           loop {
             self.current_note_template().display_edit_content(blank_focus_id, content_focus_id);
             println_inst!(
@@ -8958,7 +9043,7 @@ impl NoteArchive {
                                 .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                                 .chars()
                                 .next();
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, chosen_text.clone());
 
                               let new_content_section = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
@@ -9011,7 +9096,7 @@ impl NoteArchive {
                                 .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                                 .chars()
                                 .next();
-                              let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char, chosen_text.clone());
 
                               let last_char = match last_content_char {
                                 Some(c) => c.to_string(),
@@ -9073,7 +9158,7 @@ impl NoteArchive {
                               } else {
                                 display_string[current_location..].chars().next()
                               };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, chosen_text.to_string());
 
                               let new_content = format!(
                                 "{}{}{}{}{}",
@@ -9136,8 +9221,14 @@ impl NoteArchive {
                           _ => {
                             match insert_string.trim().parse() {
                               Ok(num) => {
-                                current_location = num;
-                                continue;
+                                if num <= chosen_text.len() {
+                                  current_location = num;
+                                  continue;
+                                } else {
+                                  println_err!("Value too high.");
+                                  thread::sleep(time::Duration::from_secs(1));
+                                  continue;
+                                }
                               },
                               Err(_) => {
                                 println_err!("Invalid command.");
@@ -9159,6 +9250,7 @@ impl NoteArchive {
                         Ok(num) => {
                           if num > 0 && (num as usize) < content_indices.len() {
                             content_focus_id = Some(num);
+                            blank_focus_id = None;
                           } else {
                             println_err!("Please enter an ID in the range shown.");
                           }
@@ -9182,12 +9274,12 @@ impl NoteArchive {
                       .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                       .chars()
                       .next();
-                    let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                    let bfrs = get_spacing_buffers(last_content_char, next_content_char, content.to_string());
 
                     let new_content_section = format!("{}{}{}", &bfrs.0, &content, &bfrs.1);
                     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
                     self.current_note_template().display_content(blank_focus_id, content_focus_id);
-                    println_inst!("Press ENTER to confirm editing selected content to '{}'.", &new_content_section);
+                    println_inst!("Press ENTER to confirm replacing selected content with '{}'.", &new_content_section);
                     println_inst!("Any other key to cancel.");
                     let mut new_section = String::new();
                     let new_section_choice = loop {
@@ -9531,7 +9623,7 @@ impl NoteArchive {
                               } else {
                                 display_string[current_location..].chars().next()
                               };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, new_blank.to_string());
 
                               let new_content = format!(
                                 "{}{}{}{}{}",
@@ -9590,12 +9682,14 @@ impl NoteArchive {
                                   self.current_note_template_mut().content = edited_content;
                                   self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
+                                  content_focus_id = None; // because after inserting, we will go back to focusing on blank
                                   break 'insert_loop;
                                 },
                                 "no" | "n" => {
                                   continue 'insert_location_blanks;
                                 },
                                 "cancel" | "c" => {
+                                  content_focus_id = None; // because after inserting, we will go back to focusing on blank
                                   break 'insert_loop;
                                 },
                                 _ => {
@@ -9618,7 +9712,7 @@ impl NoteArchive {
                               } else {
                                 display_string[current_location..].chars().next()
                               };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, new_blank.display_to_user_empty());
 
                               let new_display_content = format!(
                                 "{}{}{}{}",
@@ -9645,7 +9739,7 @@ impl NoteArchive {
                               let current_content = self.current_note_template().content.clone();
 
                               match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                "yes" | "y" => {
                                   self.current_note_template_mut().content = format!(
                                     "{}{}",
                                     &new_blank,
@@ -9653,11 +9747,16 @@ impl NoteArchive {
                                   );
                                   self.current_note_template_mut().clean_spacing();
                                   self.write_note_templates().unwrap();
+                                  content_focus_id = None; // because after inserting, we will go back to focusing on blank
                                   break 'insert_location_blanks;
                                 },
-                                "NO" | "no" | "No" | "N" | "n" => {
+                                "no" | "n" => {
                                   continue 'insert_location_blanks;
                                 },
+                                "cancel" => {
+                                  content_focus_id = None; // because after inserting, we will go back to focusing on blank
+                                  break 'insert_loop;
+                                }
                                 _ => {
                                   println_err!("Invalid command.");
                                   thread::sleep(time::Duration::from_secs(2));
@@ -9678,7 +9777,7 @@ impl NoteArchive {
                               } else {
                                 display_string[current_location..].chars().next()
                               };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, new_blank.to_string());
 
                               let new_content = format!(
                                 "{}{}{}{}",
@@ -9704,7 +9803,7 @@ impl NoteArchive {
                               let current_content = self.current_note_template().content.clone();
 
                               match &confirm[..] {
-                                "YES" | "yes" | "Yes" | "Y" | "y" => {
+                                "yes" | "y" => {
                                   self.current_note_template_mut().content = format!(
                                     "{}{}",
                                     &current_content[..],
@@ -9714,8 +9813,12 @@ impl NoteArchive {
                                   self.write_note_templates().unwrap();
                                   break 'insert_location_blanks;
                                 },
-                                "NO" | "no" | "No" | "N" | "n" => {
+                                "no" | "n" => {
                                   continue 'insert_location_blanks;
+                                },
+                                "cancel" => {
+                                  content_focus_id = None; // because after inserting, we will go back to focusing on blank
+                                  break 'insert_loop;
                                 },
                                 _ => {
                                   println_err!("Invalid command.");
@@ -9760,6 +9863,7 @@ impl NoteArchive {
                             continue;
                           } else {
                             content_focus_id = Some(num);
+                            blank_focus_id = None;
                             continue;
                           }
                         },
@@ -9768,12 +9872,6 @@ impl NoteArchive {
                   }
                 }
                 self.write_note_templates().unwrap();
-
-
-                // insert a new blank in the text areas
-                // iterate over the non-blank areas and then have them choose a character number
-                // have them do this by a position of a caret ^
-                // underneath the character they are editing
               },
               _ => {
                 let nt_content = self.current_note_template().content.clone();
@@ -9788,6 +9886,7 @@ impl NoteArchive {
                 match blank.parse::<usize>() {
                   Ok(num) => if num <= num_matches {
                     blank_focus_id = Some(u32_num.unwrap());
+                    content_focus_id = None; // because after inserting, we will go back to focusing on blank
                     continue;
                   } else {
                     println_err!("Please choose a blank by ID among those displayed in the note template's content.");
@@ -11169,7 +11268,7 @@ impl NoteArchive {
                 let mut chosen_text = String::new();
                 'insert_content: loop {
                   print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                  self.current_note().display_content(blank_focus_id, content_focus_id);
+                  self.current_note().display_content(blank_focus_id, None);
                   
                   if chosen_text == String::new() {
                     println_inst!("Enter new content to insert, without spaces on the ends.");
@@ -11293,7 +11392,7 @@ impl NoteArchive {
                                 .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                                 .chars()
                                 .next();
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, chosen_text.clone());
 
                               let new_content_section = format!("{}{}{}{}", &bfrs.0, &chosen_text, &bfrs.1, &display_string[..]);
                               println_inst!("Confirm editing the selection to the following? (Y/N)");
@@ -11346,7 +11445,7 @@ impl NoteArchive {
                                 .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                                 .chars()
                                 .next();
-                              let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char.clone(), next_content_char, chosen_text.clone());
 
                               let last_char = match last_content_char {
                                 Some(c) => c.to_string(),
@@ -11410,7 +11509,7 @@ impl NoteArchive {
                               } else {
                                 display_string[current_location..].chars().next()
                               };
-                              let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                              let bfrs = get_spacing_buffers(last_content_char, next_content_char, chosen_text.clone());
 
                               let new_content = format!(
                                 "{}{}{}{}{}",
@@ -11518,7 +11617,7 @@ impl NoteArchive {
                       .generate_display_content_string_with_blanks(None, None, None, None, None).0[idx2..]
                       .chars()
                       .next();
-                    let bfrs = get_spacing_buffers(last_content_char, next_content_char);
+                    let bfrs = get_spacing_buffers(last_content_char, next_content_char, content.to_string());
 
                     let new_content_section = format!("{}{}{}", &bfrs.0, &content, &bfrs.1);
                     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -11673,7 +11772,8 @@ impl NoteArchive {
                       };
                       match &initial_input.to_ascii_lowercase()[..] {
                         "new" | "n" => {
-                          let maybe_new_id = self.create_collateral_get_id();
+                          let maybe_c_id = self.current_client_id_option();
+                          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
                           match maybe_new_id {
                             _ => (),
                           }
@@ -14657,7 +14757,7 @@ impl NoteArchive {
             CustomBlank => {
               loop {
                 let mut custom_choice = String::new();
-                println_inst!("Enter custom content for the current blank.");
+                println_inst!("Enter custom content for the current blank. CANCEL to cancel.");
                 let custom_attempt = io::stdin().read_line(&mut custom_choice);
                 let custom_content = match custom_attempt {
                   Ok(_) => custom_choice.trim(),
@@ -14669,6 +14769,9 @@ impl NoteArchive {
                 };
                 let blank_string = custom_content.to_string();
                 let id_vec = vec![];
+                if &blank_string.to_ascii_lowercase()[..] == "cancel" {
+                  break;
+                }
                 n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                 break;
               }
@@ -14729,6 +14832,9 @@ impl NoteArchive {
                       };
                       let blank_string = custom_content.to_string();
                       let id_vec = vec![];
+                      if &blank_string.to_ascii_lowercase()[..] == "cancel" {
+                        continue 'choice;
+                      }
                       n.blanks.insert(i, (b.clone(), blank_string, id_vec));
                       continue 'choice;
                     }
@@ -15987,10 +16093,10 @@ impl NoteArchive {
 
     let pos = self.notes.binary_search_by(|n| n.id.cmp(&note.id) ).unwrap_or_else(|e| e);
 
-    let mut saved_ids: Vec<u32> = self.current_note_day().foreign_keys["note_ids"].clone();
-    saved_ids.push(note.id);
-
-    self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), saved_ids);
+    let mut saved_nd_ids: Vec<u32> = self.current_note_day().foreign_keys["note_ids"].clone();
+    saved_nd_ids.push(note.id);
+    
+    self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), saved_nd_ids);
     
     self.notes.insert(pos, note);
 
@@ -16045,6 +16151,11 @@ impl NoteArchive {
   fn delete_current_note(&mut self) {
     let id = self.foreign_key.get("current_note_id").unwrap();
     self.notes.retain(|n| n.id != *id);
+    for nd in &mut self.note_days {
+      let mut new_ids = nd.foreign_keys["note_ids"].clone();
+      new_ids.retain(|n_id| n_id != id );
+      nd.foreign_keys.insert(String::from("note_ids"), new_ids);
+    }
     self.reindex_notes();
     self.foreign_key.remove("current_note_id");
   }
