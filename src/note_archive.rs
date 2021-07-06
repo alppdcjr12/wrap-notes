@@ -1642,13 +1642,6 @@ impl NoteArchive {
       None => panic!("The loaded client ID does not match any saved clients."),
     }
   }
-  fn current_client_id_option(&self) -> Option<u32> {
-    let maybe = self.foreign_key.get("current_client_id");
-    match maybe {
-      Some(id) => Some(*id),
-      None => None,
-    }
-  }
   fn get_current_clients(&self) -> Vec<&Client> {
     self.clients.iter().filter(|client| self.current_user().foreign_keys["client_ids"]
         .iter()
@@ -2116,7 +2109,7 @@ impl NoteArchive {
               } else {
                 match self.load_client(num) {
                   Ok(_) => {
-                    break num
+                    break num;
                   }
                   Err(e) => {
                     println_err!("Unable to load client with id {}: {}", num, e);
@@ -3479,8 +3472,7 @@ impl NoteArchive {
       };
       match &initial_input.to_ascii_lowercase()[..] {
         "new" | "n" => {
-          let maybe_c_id = self.current_client_id_option();
-          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
+          let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             _ => (),
           }
@@ -3637,8 +3629,7 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "new" | "n" => {
-          let maybe_c_id = self.current_client_id_option();
-          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
+          let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             _ => (),
           }
@@ -3739,8 +3730,7 @@ impl NoteArchive {
       let input = input.trim();
       match input {
         "new" | "n" => {
-          let maybe_c_id = self.current_client_id_option();
-          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
+          let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             Some(_) => (),
             None => (),
@@ -4018,7 +4008,7 @@ impl NoteArchive {
       }
     }
   }
-  fn create_collateral_get_id(&mut self, c_id: Option<u32>) -> Option<u32> {
+  fn create_collateral_get_id(&mut self) -> Option<u32> {
     let collateral = loop {
       let first_name = loop {
         let mut first_name_choice = String::new();
@@ -4345,14 +4335,6 @@ impl NoteArchive {
         }
       }
     };
-    match c_id {
-      Some(current_client_id) => {
-        match self.load_client(current_client_id) {
-          _ => (),
-        }
-      },
-      None => (),
-    }
     let id = collateral.id;
     match self.foreign_key.get("current_client_id") {
       Some(_) => {
@@ -4992,8 +4974,7 @@ impl NoteArchive {
           break;
         },
         "new" | "n" => {
-          let maybe_c_id = self.current_client_id_option();
-          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
+          let maybe_new_id = self.create_collateral_get_id();
           match maybe_new_id {
             Some(_) => {
               println_suc!("Collateral added to client '{}'.", self.current_client().full_name());
@@ -11772,8 +11753,7 @@ impl NoteArchive {
                       };
                       match &initial_input.to_ascii_lowercase()[..] {
                         "new" | "n" => {
-                          let maybe_c_id = self.current_client_id_option();
-                          let maybe_new_id = self.create_collateral_get_id(maybe_c_id);
+                          let maybe_new_id = self.create_collateral_get_id();
                           match maybe_new_id {
                             _ => (),
                           }
