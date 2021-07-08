@@ -1532,6 +1532,7 @@ impl NoteArchive {
       match &choice.to_ascii_lowercase()[..] {
         "yes" | "y" => {
           self.delete_current_user();
+          self.reindex_users();
           self.write_to_files();
           break Some(());
         },
@@ -1567,6 +1568,7 @@ impl NoteArchive {
         Ok(_) => self.delete_current_client(),
       }
     }
+    self.reindex_clients();
     let current_note_days = self.current_user_note_days().iter().map(|nd| nd.id ).collect::<Vec<u32>>();
     for nd_id in current_note_days {
       match self.load_note_day(nd_id) {
@@ -1574,6 +1576,7 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note_day(),
       }
     }
+    self.reindex_note_days();
     let current_notes = self.current_user_notes().iter().map(|n| n.id ).collect::<Vec<u32>>();
     for n_id in current_notes {
       match self.load_note(n_id) {
@@ -1581,11 +1584,11 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note(),
       }
     }
+    self.reindex_notes();
 
     let id = self.foreign_key.get("current_user_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("user"), id);
     self.users.retain(|u| u.id != id);
-    self.reindex_users();
     self.note_templates.retain(|nt| nt.foreign_keys["user_ids"].len() > 0 );
     self.foreign_key.remove("current_user_id");
     self.foreign_key.remove("current_client_id");
@@ -1650,9 +1653,7 @@ impl NoteArchive {
       .collect()
   }
   fn display_clients(&self) {
-    let mut heading = String::from(" ");
-    heading.push_str(&self.current_user().full_name()[..]);
-    heading.push_str("'s clients ");
+    let heading = format!(" {}'s clients ", &self.current_user().full_name()[..]);
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^96}", "-");
     println_on_bg!("{:-^96}", heading);
@@ -2639,6 +2640,7 @@ impl NoteArchive {
       match &command.to_ascii_lowercase()[..] {
         "yes" | "y" => {
           self.delete_current_client();
+          self.reindex_clients();
           self.write_to_files();
           break;
         }
@@ -2675,6 +2677,7 @@ impl NoteArchive {
         Ok(_) => self.delete_current_collateral(),
       }
     }
+    self.reindex_collaterals();
     let current_goals = self.current_client_goals().iter().map(|co| co.id ).collect::<Vec<u32>>();
     for g_id in current_goals {
       match self.load_goal(g_id) {
@@ -2682,6 +2685,7 @@ impl NoteArchive {
         Ok(_) => self.delete_current_goal(),
       }
     }
+    self.reindex_goals();
     let current_note_days = self.current_client_note_days().iter().map(|co| co.id ).collect::<Vec<u32>>();
     for nd_id in current_note_days {
       match self.load_note_day(nd_id) {
@@ -2689,13 +2693,7 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note_day(),
       }
     }
-    let current_notes = self.current_client_notes().iter().map(|co| co.id ).collect::<Vec<u32>>();
-    for n_id in current_notes {
-      match self.load_note(n_id) {
-        Err(_) => panic!("Failed to delete note for current client."),
-        Ok(_) => self.delete_current_note(),
-      }
-    }
+    self.reindex_note_days();
     let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("client"), id);
     for u in &mut self.users {
@@ -2704,7 +2702,6 @@ impl NoteArchive {
       u.foreign_keys.insert(String::from("client_ids"), new_ids);
     }
     self.clients.retain(|c| c.id != id);
-    self.reindex_clients();
     self.foreign_key.remove("current_client_id");
     self.foreign_key.remove("current_collateral_id");
   }
@@ -5788,6 +5785,7 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_collateral();
+          self.reindex_collaterals();
           self.write_to_files();
           break true;
         }
@@ -5815,6 +5813,7 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_general_collateral();
+          self.reindex_general_collaterals();
           self.write_to_files();
           break true;
         }
@@ -5909,14 +5908,12 @@ impl NoteArchive {
       n.foreign_keys.insert(String::from("collateral_ids"), new_ids);
     }
     self.collaterals.retain(|c| c.id != id);
-    self.reindex_collaterals();
     self.foreign_key.remove("current_collateral_id");
   }
   fn delete_current_general_collateral(&mut self) {
     let id = self.foreign_key.get("current_general_collateral_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("collateral"), id);
     self.general_collaterals.retain(|c| c.id != id);
-    self.reindex_general_collaterals();
     self.foreign_key.remove("current_general_collateral_id");
   }
   fn reindex_collaterals(&mut self) {
@@ -7322,6 +7319,7 @@ impl NoteArchive {
               match &command[..] {
                 "YES" | "yes" | "Yes" | "Y" | "y" => {
                   self.delete_current_goal();
+                  self.reindex_goals();
                   continue;
                 },
                 _ => {
@@ -7346,7 +7344,6 @@ impl NoteArchive {
     let id = self.foreign_key["current_goal_id"];
     self.delete_from_blanks(String::from("goal"), id);
     self.delete_goal(id);
-    self.reindex_goals();
   }
   fn reindex_goals(&mut self) {
     let mut i: u32 = 1;
@@ -7389,16 +7386,11 @@ impl NoteArchive {
     let nds: Vec<NoteDay> = self.current_client_note_days().iter().cloned().cloned().collect();
     self.notes.iter_mut().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
   }
-  fn current_client_notes(&mut self) -> Vec<&Note> {
-    let nds: Vec<NoteDay> = self.current_client_note_days().iter().cloned().cloned().collect();
-    self.notes.iter().filter(|n| nds.iter().any(|nd| nd.foreign_keys["note_ids"].iter().any(|n_id| n_id == &n.id ) ) ).collect()
-  }
   fn current_collateral_notes_mut(&mut self) -> Vec<&mut Note> {
     let co_id_b = &self.current_collateral().id.clone();
     self.notes.iter_mut().filter(|n| n.foreign_keys["collateral_ids"].iter().any(|co_id| co_id == co_id_b ) ).collect()
   }
   /// returns the first 10 notedays for the current user
-  /// completed within 4 days of the most recent date
   fn current_user_recent_10_note_days(&self) -> Vec<&NoteDay> {
     let user_note_days: Vec<&NoteDay> = self.note_days.iter().filter(|nd| nd.foreign_key["user_id"] == self.current_user().id )
       .collect();
@@ -8433,6 +8425,7 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_note_day();
+          self.reindex_note_days();
           self.write_to_files();
           break;
         }
@@ -8446,14 +8439,14 @@ impl NoteArchive {
     let current_note_day_notes = self.current_note_day_notes().iter().map(|co| co.id ).collect::<Vec<u32>>();
     for n_id in current_note_day_notes {
       match self.load_note(n_id) {
-        Err(_) => panic!("Failed to delete note for current note day."),
+        Err(_) => panic!("Failed to delete note for current note day: {}. Available notes: {}.", n_id, self.notes.iter().map(|n| format!("{}", n.id) ).collect::<Vec<String>>().join(" ") ),
         Ok(_) => self.delete_current_note(),
       }
     }
+    self.reindex_notes();
     let id = self.foreign_key.get("current_note_day_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("note_day"), id);
     self.note_days.retain(|nd| nd.id != id);
-    self.reindex_note_days();
     self.foreign_key.remove("current_note_day_id");
   }
   fn reindex_note_days(&mut self) {
@@ -8712,6 +8705,7 @@ impl NoteArchive {
                   Err(e) => panic!("Detected duplicate note template with ID '{}' after copy, loaded successfully but failed to delete: {}", nt_id, e),
                 }
               }
+              self.reindex_note_templates();
               self.write_to_files();
               print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
               println_yel!("Copies discarded: {}", num_dups);
@@ -10742,6 +10736,7 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_note_template();
+          self.reindex_note_templates();
           self.write_to_files();
           break;
         }
@@ -10765,7 +10760,6 @@ impl NoteArchive {
   fn delete_current_note_template(&mut self) {
     let id = self.foreign_key.get("current_note_template_id").unwrap();
     self.note_templates.retain(|nd| nd.id != *id);
-    self.reindex_note_templates();
     self.foreign_key.remove("current_note_template_id");
   }
   fn reindex_note_templates(&mut self) {
@@ -16107,6 +16101,7 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_note();
+          self.reindex_notes();
           self.write_to_files();
           break;
         }
@@ -16131,12 +16126,10 @@ impl NoteArchive {
   fn delete_current_note(&mut self) {
     let id = self.foreign_key.get("current_note_id").unwrap();
     self.notes.retain(|n| n.id != *id);
-    for nd in &mut self.note_days {
-      let mut new_ids = nd.foreign_keys["note_ids"].clone();
-      new_ids.retain(|n_id| n_id != id );
-      nd.foreign_keys.insert(String::from("note_ids"), new_ids);
-    }
-    self.reindex_notes();
+    let nd = self.current_note_day();
+    let mut new_ids = nd.foreign_keys["note_ids"].clone();
+    new_ids.retain(|n_id| n_id != id );
+    self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), new_ids);
     self.foreign_key.remove("current_note_id");
   }
   fn reindex_notes(&mut self) {
@@ -16587,311 +16580,6 @@ mod tests {
     assert_eq!(check_display_string_with_content_focus, display_string_with_content_focus);
   }
   #[test]
-  fn note_template_accurate_formatting_vector() {
-    let nt1 = NoteTemplate::new(
-      1,
-      CarePlan,
-      true,
-      format!(
-        "{} is a user with {}/{} for pronouns.",
-        CurrentUser,
-        Pronoun1ForUser,
-        Pronoun2ForUser,
-      ),
-      vec![],
-    );
-
-    let s1a = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count();
-    let s1b = String::from(" is a user with ").chars().count() + s1a;
-    let s1c = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1b;
-    let s1d = String::from("/").chars().count() + s1c;
-    let s1e = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1d;
-    let s1f = String::from(" for pronouns.").chars().count() + s1e + 1;
-
-    let formatting1: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED BLANK"), 0, s1a),
-      (String::from("CONTENT"), s1a, s1b),
-      (String::from("UNHIGHLIGHTED BLANK"), s1b, s1c),
-      (String::from("CONTENT"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED BLANK"), s1d, s1e),
-      (String::from("CONTENT"), s1e, s1f),
-    ];
-
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
-
-    assert_eq!(formatting1, formatting_vector1);
-
-    let nt2 = NoteTemplate::new(
-      2,
-      Sncd,
-      true,
-      format!(
-        "Here is a sentence. Here is another one with a blank ({}) in it. Here is another sentence that has a {}, {}, and {}.",
-        CurrentUser,
-        Pronoun1ForUser,
-        Pronoun2ForUser,
-        AllCollaterals,
-      ),
-      vec![],
-    );
-    
-    let s1a = String::from("Here is a sentence. ").chars().count();
-    let s1b = String::from("Here is another one with a blank (").chars().count() + s1a;
-    let s1c = format!("[1]: {}", &CurrentUser.display_to_user()).chars().count() + s1b;
-    let s1d = String::from(") in it. ").chars().count() + s1c;
-    let s1e = String::from("Here is another sentence that has a ").chars().count() + s1d;
-    let s1f = format!("[2]: {}", &Pronoun1ForUser.display_to_user()).chars().count() + s1e;
-    let s1g = String::from(", ").chars().count() + s1f;
-    let s1h = format!("[3]: {}", &Pronoun2ForUser.display_to_user()).chars().count() + s1g;
-    let s1i = String::from(", and ").chars().count() + s1h;
-    let s1j = format!("[4]: {}", &AllCollaterals.display_to_user()).chars().count() + s1i;
-    let s1k = String::from(".").chars().count() + s1j + 1;
-
-    let formatting2: Vec<(String, usize, usize)> = vec![
-      (String::from("CONTENT"), 0, s1a),
-      (String::from("CONTENT"), s1a, s1b),
-      (String::from("HIGHLIGHTED BLANK"), s1b, s1c),
-      (String::from("CONTENT"), s1c, s1d),
-      (String::from("CONTENT"), s1d, s1e),
-      (String::from("UNHIGHLIGHTED BLANK"), s1e, s1f),
-      (String::from("CONTENT"), s1f, s1g),
-      (String::from("UNHIGHLIGHTED BLANK"), s1g, s1h),
-      (String::from("CONTENT"), s1h, s1i),
-      (String::from("UNHIGHLIGHTED BLANK"), s1i, s1j),
-      (String::from("CONTENT"), s1j, s1k),
-    ];
-
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
-
-    assert_eq!(formatting2, formatting_vector2);
-
-    let nt3 = NoteTemplate::new(
-      3,
-      Sncd,
-      true,
-      String::from("Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool."),
-      vec![],
-    );
-    
-    let s1a = String::from("Here is a sentence. ").chars().count();
-    let s1b = String::from("This is a new template. ").chars().count() + s1a;
-    let s1c = String::from("And it has a blank here: ").chars().count() + s1b;
-    let s1d = format!("[1]: {}", &Pronoun4ForClient.display_to_user()).chars().count() + s1c;
-    let s1e = String::from(" which is pretty cool.").chars().count() + s1d + 1;
-
-    let formatting3: Vec<(String, usize, usize)> = vec![
-      (String::from("CONTENT"), 0, s1a),
-      (String::from("CONTENT"), s1a, s1b),
-      (String::from("CONTENT"), s1b, s1c),
-      (String::from("HIGHLIGHTED BLANK"), s1c, s1d),
-      (String::from("CONTENT"), s1d, s1e),
-    ];
-
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, None, Some(1), None);
-
-    assert_eq!(formatting3, formatting_vector3);
-  }
-  #[test]
-  fn note_template_accurate_formatting_vector_content_focus() {
-    let nt1 = NoteTemplate::new(
-      1,
-      CarePlan,
-      true,
-      format!(
-        "{} is a user with {}/{} for pronouns.",
-        CurrentUser,
-        Pronoun1ForUser,
-        Pronoun2ForUser,
-      ),
-      vec![],
-    );
-    
-    let s1a = String::from("[1]: ").chars().count();
-    let s1b = format!("{}", &CurrentUser.display_to_user()).chars().count() + s1a;
-    let s1c = String::from("[1]:  is a user with ").chars().count() + s1b;
-    let s1d = format!("{}", &Pronoun1ForUser.display_to_user()).chars().count() + s1c;
-    let s1e = String::from("[2]: /").chars().count() + s1d;
-    let s1f = format!("{}", &Pronoun2ForUser.display_to_user()).chars().count() + s1e;
-    let s1g = String::from("[3]:  for pronouns.").chars().count() + s1f;
-
-    let formatting1: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("UNFOCUSED BLANK"), s1a, s1b),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("UNFOCUSED BLANK"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("UNFOCUSED BLANK"), s1e, s1f),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
-    ];
-
-    let (_, formatting_vector1) = nt1.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
-
-    assert_eq!(formatting1, formatting_vector1);
-
-    let nt2 = NoteTemplate::new(
-      2,
-      Sncd,
-      true,
-      format!(
-        "Here is a sentence. Here is another one with a blank ({}) in it. Here is another sentence that has a {}, {}, and {}.",
-        CurrentUser,
-        Pronoun1ForUser,
-        Pronoun2ForUser,
-        AllCollaterals,
-      ),
-      vec![],
-    );
-    
-    let s1a = String::from("[1]: Here is a sentence. ").chars().count();
-    let s1b = String::from("[2]: Here is another one with a blank (").chars().count() + s1a;
-    let s1c = format!("{}", &CurrentUser.display_to_user()).chars().count() + s1b;
-    let s1d = String::from("[3]: ) in it. ").chars().count() + s1c;
-    let s1e = String::from("[4]: Here is another sentence that has a ").chars().count() + s1d;
-    let s1f = format!("{}", &Pronoun1ForUser.display_to_user()).chars().count() + s1e;
-    let s1g = String::from("[5]: , ").chars().count() + s1f;
-    let s1h = format!("{}", &Pronoun2ForUser.display_to_user()).chars().count() + s1g;
-    let s1i = String::from("[6]: , and ").chars().count() + s1h;
-    let s1j = format!("{}", &AllCollaterals.display_to_user()).chars().count() + s1i;
-    let s1k = String::from("[7]: .").chars().count() + s1j;
-
-    let formatting2: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("UNFOCUSED BLANK"), s1b, s1c),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("UNFOCUSED BLANK"), s1e, s1f),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1f, s1g),
-      (String::from("UNFOCUSED BLANK"), s1g, s1h),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1h, s1i),
-      (String::from("UNFOCUSED BLANK"), s1i, s1j),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1j, s1k),
-    ];
-
-    let (_, formatting_vector2) = nt2.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
-
-    assert_eq!(formatting2, formatting_vector2);
-
-    let nt3 = NoteTemplate::new(
-      3,
-      Sncd,
-      true,
-      String::from("Here is a sentence. This is a new template. And it has a blank here: (---pc4---) which is pretty cool."),
-      vec![],
-    );
-    
-    let s1a = String::from("[1]: Here is a sentence. ").chars().count();
-    let s1b = String::from("[2]: This is a new template. ").chars().count() + s1a;
-    let s1c = String::from("[3]: And it has a blank here: ").chars().count() + s1b;
-    let s1d = format!("{}", &Pronoun4ForClient.display_to_user()).chars().count() + s1c;
-    let s1e = String::from("[4]:  which is pretty cool.").chars().count() + s1d;
-
-    let formatting3: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("UNFOCUSED BLANK"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-    ];
-
-    let (_, formatting_vector3) = nt3.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
-
-    assert_eq!(formatting3, formatting_vector3);
-
-    let nt4 = NoteTemplate::new(
-      4,
-      Sncd,
-      true,
-      format!(
-        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right?",
-        ExternalDocument,
-      ),
-      vec![],
-    );
-    
-    let (_nt_display_string, formatting_vector4) = nt4.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
-
-    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
-    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
-    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
-    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
-    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
-    let s1f = String::from("[5]:  Lame, right?").chars().count() + s1e;
-
-    let formatting4: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("UNFOCUSED BLANK"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
-    ];
-
-    assert_eq!(formatting4, formatting_vector4);
-
-    let nt6 = NoteTemplate::new(
-      6,
-      Sncd,
-      true,
-      format!(
-        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, rightt",
-        ExternalDocument,
-      ),
-      vec![],
-    );
-    
-    let (_nt_display_string, formatting_vector6) = nt6.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
-
-    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
-    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
-    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
-    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
-    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
-    let s1f = String::from("[5]:  Lame, rightt").chars().count() + s1e;
-
-    let formatting6: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("UNFOCUSED BLANK"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
-    ];
-
-    assert_eq!(formatting6, formatting_vector6);
-
-    let nt5 = NoteTemplate::new(
-      5,
-      Sncd,
-      true,
-      format!(
-        "A bunch of stuff happened today. Some good, some not so good. For example, here is some this that {} I have to write some stuff about. Lame, right.",
-        ExternalDocument,
-      ),
-      vec![],
-    );
-    
-    let (_nt_display_string, formatting_vector5) = nt5.generate_display_content_string_with_blanks(None, None, None, None, Some(1));
-
-    let s1a = String::from("[1]: A bunch of stuff happened today. ").chars().count();
-    let s1b = String::from("[2]: Some good, some not so good. ").chars().count() + s1a;
-    let s1c = String::from("[3]: For example, here is some this that ").chars().count() + s1b;
-    let s1d = format!("{}", &ExternalDocument.display_to_user()).chars().count() + s1c;
-    let s1e = String::from("[4]:  I have to write some stuff about. ").chars().count() + s1d;
-    let s1f = String::from("[5]:  Lame, right.").chars().count() + s1e;
-
-    let formatting5: Vec<(String, usize, usize)> = vec![
-      (String::from("HIGHLIGHTED CONTENT"), 0, s1a),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1a, s1b),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1b, s1c),
-      (String::from("UNFOCUSED BLANK"), s1c, s1d),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1d, s1e),
-      (String::from("UNHIGHLIGHTED CONTENT"), s1e, s1f),
-    ];
-
-    assert_eq!(formatting5, formatting_vector5);
-  }
-  #[test]
   fn note_template_accurate_formatting_vector_without_focus() {
     let nt1 = NoteTemplate::new(
       1,
@@ -17115,27 +16803,6 @@ mod tests {
     let sentence_indices_2: Vec<(usize, usize)> = vec![(0, 31), (32, 57), (58, 80), (81, 99)];
     let nt_indices_2 = NoteTemplate::get_sentence_end_indices(0, some_sentences_2);
     assert_eq!(sentence_indices_2, nt_indices_2);
-  }
-  #[test]
-  fn note_template_gets_correct_sentence_indices() {
-    let nt2 = NoteTemplate::new(
-      2,
-      Sncd,
-      true,
-      format!(
-        "ICC called a bunch of people. They didn't answer. ICC then decided to {}.",
-        Appearance,
-      ),
-      vec![],
-    );
-
-    let sentence_indices = vec![
-      (0, 70),
-      (70+format!("{}", Appearance).len(), 71+format!("{}", Appearance).len()),
-    ];
-    let sentence_indices_test = nt2.get_content_section_indices();
-    assert_eq!(sentence_indices, sentence_indices_test);
-    
   }
   #[test]
   fn note_template_displays_properly_with_no_focus_id() {
