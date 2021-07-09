@@ -15386,9 +15386,9 @@ impl NoteArchive {
         Some(nc) => break nc,
         None => {
           let mut choice = String::new();
-          let choice_att = io::stdin().read_line(&mut choice);
           println_yel!("In order to enter a note manually, you must select a category.");
           println_inst!("Do you wish to cancel writing this note?");
+          let choice_att = io::stdin().read_line(&mut choice);
           match choice_att {
             Ok(_) => {
               match &choice.trim().to_ascii_lowercase()[..] {
