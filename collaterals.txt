@@ -1,2 +1,6 @@
 ##### collaterals #####
+1 | b1 | b1 | b1 | --NONE-- | 1 | Natural | false | true | true | true
+2 | b2 | b2 | b2 | --NONE-- | 1 | Natural | false | true | true | true
+3 | c1 | c1 | c1 | --NONE-- | 1 | Natural | false | true | true | true
+4 | c2 | c2 | c2 | --NONE-- | 1 | Natural | false | true | true | true
 ##### collaterals #####
