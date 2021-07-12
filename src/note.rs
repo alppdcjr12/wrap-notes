@@ -1664,6 +1664,14 @@ impl Note {
       }
     }
   }
+  pub fn blank_contains_string(&self, s: String) -> bool {
+    for (_k, v) in &self.blanks {
+      if v.1.contains(&s) {
+        return true
+      }
+    }
+    false
+  }
   pub fn remove_blanks_after_content_index(&mut self, idx: usize) {
     lazy_static! {
       static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
@@ -1671,7 +1679,7 @@ impl Note {
     let matches = RE_BLANK.find_iter(&self.content);
     for (i, m) in matches.enumerate() {
       if m.start() > idx {
-        self.blanks.remove(&(i as u32));
+        self.blanks.remove(&((i + 1) as u32));
       }
     }
   }

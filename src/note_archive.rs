@@ -1596,14 +1596,10 @@ impl NoteArchive {
   }
   fn reindex_users(&mut self) {
     let mut i: u32 = 1;
-    let mut new_note_templates: Vec<NoteTemplate> = self.note_templates.clone();
     let mut new_note_days: Vec<NoteDay> = self.note_days.clone();
     let mut new_notes: Vec<Note> = self.notes.clone();
+    let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut u in &mut self.users {
-      for nt in &mut new_note_templates {
-        let new_ids = nt.foreign_keys["user_ids"].clone().iter().map(|id| if id == &u.id { i } else { *id } ).collect::<Vec<u32>>();
-        nt.foreign_keys.insert(String::from("user_ids"), new_ids);
-      }
       for nd in &mut new_note_days {
         if nd.foreign_key["user_id"] == u.id {
           nd.foreign_key.insert(String::from("user_id"), i);
@@ -1614,10 +1610,22 @@ impl NoteArchive {
           n.foreign_key.insert(String::from("user_id"), i);
         }
       }
-      u.id = i;
+      if u.id == i {
+        ()
+      } else {
+        changes.insert(u.id, i);
+        u.id = i;
+      }
       i += 1;
     }
-    self.note_templates = new_note_templates;
+
+    for nt in &mut self.note_templates {
+      let old_ids = nt.foreign_keys["user_ids"].clone();
+      let new_ids: Vec<u32> = old_ids.iter()
+        .map(|co_id| match changes.get(co_id) { Some(val) => *val, None => *co_id } )
+        .collect();
+      nt.foreign_keys.insert(String::from("user_ids"), new_ids);
+    }
     self.note_days = new_note_days;
     self.notes = new_notes;
   }
@@ -2709,14 +2717,8 @@ impl NoteArchive {
     let mut i: u32 = 1;
     let mut new_note_days: Vec<NoteDay> = self.note_days.clone();
     let mut new_notes: Vec<Note> = self.notes.clone();
+    let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut c in &mut self.clients {
-      for u in &mut self.users {
-        for c_id in &mut u.foreign_keys.get_mut("client_ids").unwrap().iter_mut() {
-          if c_id == &c.id {
-            *c_id = i;
-          }
-        }
-      }
       for nd in &mut new_note_days {
         if nd.foreign_key["client_id"] == c.id {
           nd.foreign_key.insert(String::from("client_id"), i);
@@ -2727,8 +2729,20 @@ impl NoteArchive {
           n.foreign_key.insert(String::from("client_id"), i);
         }
       }
-      c.id = i;
+      if c.id == i {
+        ()
+      } else {
+        changes.insert(c.id, i);
+        c.id = i;
+      }
       i += 1;
+    }
+    for u in &mut self.users {
+      let old_ids = u.foreign_keys["client_ids"].clone();
+      let new_ids: Vec<u32> = old_ids.iter()
+        .map(|co_id| match changes.get(co_id) { Some(val) => *val, None => *co_id } )
+        .collect();
+      u.foreign_keys.insert(String::from("client_ids"), new_ids);
     }
     self.note_days = new_note_days;
     self.notes = new_notes;
@@ -4993,6 +5007,7 @@ impl NoteArchive {
               match self.load_collateral(num) {
                 Ok(_) => {
                   self.update_current_collaterals(num);
+                  self.write_to_files();
                   break;
                 }
                 Err(e) => {
@@ -5918,23 +5933,28 @@ impl NoteArchive {
   }
   fn reindex_collaterals(&mut self) {
     let mut i: u32 = 1;
-    for mut co in &mut self.collaterals {
-      for cl in &mut self.clients {
-        for co_id in &mut cl.foreign_keys.get_mut("collateral_ids").unwrap().iter_mut() {
-          if co_id == &co.id {
-            *co_id = i;
-          }
-        }
+    let mut changes: HashMap<u32, u32> = HashMap::new();
+    for co in &mut self.collaterals {
+      if co.id == i {
+      } else {
+        changes.insert(co.id, i);
+        co.id = i;
       }
-      for cl in &mut self.users {
-        for co_id in &mut cl.foreign_keys.get_mut("collateral_ids").unwrap().iter_mut() {
-          if co_id == &co.id {
-            *co_id = i;
-          }
-        }
-      }
-      co.id = i;
       i += 1;
+    }
+    for cl in &mut self.clients {
+      let old_ids = cl.foreign_keys["collateral_ids"].clone();
+      let new_ids: Vec<u32> = old_ids.iter()
+        .map(|co_id| match changes.get(co_id) { Some(val) => *val, None => *co_id } )
+        .collect();
+      cl.foreign_keys.insert(String::from("collateral_ids"), new_ids);
+    }
+    for u in &mut self.users {
+      let old_ids = u.foreign_keys["collateral_ids"].clone();
+      let new_ids: Vec<u32> = old_ids.iter()
+        .map(|co_id| match changes.get(co_id) { Some(val) => *val, None => *co_id } )
+        .collect();
+      u.foreign_keys.insert(String::from("collateral_ids"), new_ids);
     }
   }
   fn reindex_general_collaterals(&mut self) {
@@ -11241,9 +11261,11 @@ impl NoteArchive {
               },
               "insert" | "i" => { // in content choice
                 let mut chosen_text = String::new();
+                content_focus_id = Some(1);
+                blank_focus_id = None;
                 'insert_content: loop {
                   print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-                  self.current_note().display_content(blank_focus_id, None);
+                  self.current_note().display_content(blank_focus_id, content_focus_id);
                   
                   if chosen_text == String::new() {
                     println_inst!("Enter new content to insert, without spaces on the ends.");
@@ -14921,7 +14943,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -14951,7 +14973,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -14981,7 +15003,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15011,7 +15033,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15041,7 +15063,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15071,7 +15093,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15101,7 +15123,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15131,7 +15153,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15161,7 +15183,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15191,7 +15213,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15221,7 +15243,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15251,7 +15273,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15281,7 +15303,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15311,7 +15333,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15341,7 +15363,7 @@ impl NoteArchive {
                 break if fill_in_strings.len() > 1 {
                   format!(
                     "{}{}{}",
-                    fill_in_strings[..fill_in_strings.len()-2].join(", "),
+                    fill_in_strings[..fill_in_strings.len()-1].join(", "),
                     " and ",
                     fill_in_strings[fill_in_strings.len()-1],
                   )
@@ -15715,7 +15737,7 @@ impl NoteArchive {
                     let last_m = RE_BLANK.find_iter(&n.content).last();
                     let end_index: usize = match last_m {
                       Some(m) => {
-                        if m.end() == n.content.len() - 1 {
+                        if m.end() == n.content.len() {
                           m.start()
                         } else {
                           m.end()
@@ -15729,10 +15751,13 @@ impl NoteArchive {
                   }
                 },
                 Some(idx) => {
-                  if String::from(&n.content[idx..]).contains(&self.current_client().full_name_with_label()[..]) {
-                    youth_added = false;
+                  lazy_static! {
+                    static ref RE_BLANK: Regex = Regex::new("[(]---[a-zA-Z0-9_]*@?[0-9]*@?---[)]").unwrap();
                   }
+                  let num_blanks = RE_BLANK.find_iter(&n.content[idx..]).count();
+                  current_blank -= num_blanks as u32;
                   n.remove_blanks_after_content_index(idx);
+                  youth_added = n.blank_contains_string(self.current_client().full_name_with_label());
                   n.content = n.content[..idx].to_string();
                 },
               }
@@ -15783,10 +15808,47 @@ impl NoteArchive {
                   ()
                 }
               }
-              if n.content.trim_end() != n.content || String::from("'\"@#$^*`]})>-_?!/.").contains(choice.trim().chars().last().unwrap()) || String::new() == n.content {
-                n.content.push_str(&choice.trim()[..]);
+              if !choice.contains("(---") && !choice.contains("---)") {
+                let mut apostrophe = false;
+                if choice.trim().chars().count() >= 2 {
+                  if choice.trim().chars().count() >= 3 {
+                    if &choice[..3] == "'s " {
+                      apostrophe = true;
+                    }
+                  } else {
+                    if &choice[..2] == "'s" {
+                      apostrophe = true;
+                    }
+                  }
+                }
+                let mut ends_with_punctuation = false;
+                match n.content.chars().last() {
+                  Some(c) => {
+                    if String::from("'\"@#$^*`({[<-_?!/.").contains(c) {
+                      ends_with_punctuation = true;
+                    }
+                  }
+                  None => (),
+                }
+                let mut adding_punctuation = false;
+                if choice.trim().len() >= 1 {
+                  match &choice[..1] {
+                    "." | "!" | "?" | "/" | ")" | "}" | "]" | ":" | ";" | "," => adding_punctuation = true,
+                    _ => (),
+                  }
+                }
+                if n.content.trim_end() != n.content
+                || String::new() == n.content
+                || ends_with_punctuation
+                || adding_punctuation
+                || apostrophe {
+                  n.content.push_str(&choice[..choice.len()-2]);
+                } else {
+                  n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
+                }
               } else {
-                n.content.push_str(&format!("{}{}", " ", choice.trim())[..]);
+                println_err!("Invalid character series in string.");
+                thread::sleep(time::Duration::from_secs(2));
               }
               continue;
             }
@@ -16134,16 +16196,22 @@ impl NoteArchive {
   }
   fn reindex_notes(&mut self) {
     let mut i: u32 = 1;
+    let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut n in &mut self.notes {
-      for nd in &mut self.note_days {
-        for n_id in &mut nd.foreign_keys.get_mut("note_ids").unwrap().iter_mut() {
-          if n_id == &n.id {
-            *n_id = i;
-          }
-        }
+      if n.id == i {
+        ()
+      } else {
+        changes.insert(n.id, i);
+        n.id = i;
       }
-      n.id = i;
       i += 1;
+    }
+    for nd in &mut self.note_days {
+      let old_ids = nd.foreign_keys["note_ids"].clone();
+      let new_ids: Vec<u32> = old_ids.iter()
+        .map(|co_id| match changes.get(co_id) { Some(val) => *val, None => *co_id } )
+        .collect();
+      nd.foreign_keys.insert(String::from("note_ids"), new_ids);
     }
   }
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
