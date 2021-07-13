@@ -2370,7 +2370,11 @@ impl NoteArchive {
                       }
                     };
                     match &choice.to_ascii_lowercase()[..] {
-                      "yes" | "y" => break client.clone(),
+                      "yes" | "y" => {
+                        let mut new_client = client.clone();
+                        new_client.id = (self.clients.len() + 1) as u32;
+                        break new_client;
+                      }
                       "no" | "n" => continue,
                       _ => println_err!("Invalid command.")
                     }
@@ -7411,14 +7415,14 @@ impl NoteArchive {
     self.notes.iter_mut().filter(|n| n.foreign_keys["collateral_ids"].iter().any(|co_id| co_id == co_id_b ) ).collect()
   }
   /// returns the first 10 notedays for the current user
-  fn current_user_recent_10_note_days(&self) -> Vec<&NoteDay> {
+  fn current_user_recent_15_note_days(&self) -> Vec<&NoteDay> {
     let user_note_days: Vec<&NoteDay> = self.note_days.iter().filter(|nd| nd.foreign_key["user_id"] == self.current_user().id )
       .collect();
 
     if user_note_days.len() == 0 {
       vec![]
     } else {
-      user_note_days.iter().map(|nd| *nd ).take(10).collect()
+      user_note_days.iter().map(|nd| *nd ).take(15).collect()
     } 
     
   }
@@ -7451,7 +7455,7 @@ impl NoteArchive {
     println_on_bg!("{:-^77}", heading);
     println_on_bg!("{:-^77}", "-");
     println_on_bg!("{:-^10} | {:-^40} | {:-^21}", " ID ", " Client ", " Day ");
-    for nd in self.current_user_recent_10_note_days() {
+    for nd in self.current_user_recent_15_note_days() {
       println_on_bg!(
         "{: ^10} | {: ^40} | {: <7} {: >12}",
         nd.id,
@@ -8404,7 +8408,7 @@ impl NoteArchive {
     }
     note_days.sort_by(|a, b| a.foreign_key["client_id"].cmp(&b.foreign_key["client_id"]));
     note_days.sort_by(|a, b| a.foreign_key["user_id"].cmp(&b.foreign_key["user_id"]));
-    note_days.sort_by(|a, b| a.date.cmp(&b.date));
+    note_days.sort_by(|a, b| b.date.cmp(&a.date));
     Ok(note_days)
   }
   pub fn write_note_days(&self) -> std::io::Result<()> {
@@ -15745,8 +15749,15 @@ impl NoteArchive {
                       }
                       None => n.content.chars().count() - 5,
                     };
+                    let num_blanks = RE_BLANK.find_iter(&n.content[end_index..]).count();
+                    current_blank -= num_blanks as u32;
+                    n.remove_blanks_after_content_index(end_index);
+                    youth_added = n.blank_contains_string(self.current_client().full_name_with_label());
                     n.content = String::from(&n.content[..end_index]);
                   } else {
+                    current_blank = 1;
+                    youth_added = false;
+                    n.blanks.clear();
                     n.content = String::new();
                   }
                 },

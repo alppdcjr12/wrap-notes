@@ -1678,7 +1678,7 @@ impl Note {
     }
     let matches = RE_BLANK.find_iter(&self.content);
     for (i, m) in matches.enumerate() {
-      if m.start() > idx {
+      if m.start() >= idx {
         self.blanks.remove(&((i + 1) as u32));
       }
     }
