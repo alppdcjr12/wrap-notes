@@ -3002,13 +3002,13 @@ impl NoteArchive {
     println_on_bg!("{:-^166}", "-");
     println_on_bg!("{:-^166}", heading);
     println_on_bg!("{:-^166}", "-");
-    println_on_bg!("{:-^10} | {:-<30} | {:-<37} | {:-<80}", " ID ", "Name ", "Title ", "Youth(s) ");
+    println_on_bg!("{:-^5} | {:-<30} | {:-<62} | {:-<60}", " ID ", "Name ", "Title ", "Youth(s) ");
     println_on_bg!("{:-^166}", "-");
     
     for co in self.current_user_collaterals() {
 
       println_on_bg!(
-        "{: ^10} | {: <30} | {: <37} | {: <80}",
+        "{: ^5} | {: <30} | {: <62} | {: <60}",
         co.id,
         co.full_name(),
         co.title(),
@@ -3544,15 +3544,15 @@ impl NoteArchive {
                   };
                   if !general_collats.iter().any(|co| co == &collat ) {
                     general_collats.push(collat);
-                    if collats.len() == self.current_client_collaterals().len() {
+                    if general_collats.len() == self.general_collaterals.len() {
                       break;
                     }
                   } else {
-                    collats.retain(|co| co != &collat );
+                    general_collats.retain(|co| co != &collat );
                   }
                 },
                 Err(e) => {
-                  println_err!("Invalid input: {}; error: {}", initial_input, e);
+                  println_err!("Invalid input: {}; error: {}", general_input, e);
                   thread::sleep(time::Duration::from_secs(3));
                   continue;
                 }
@@ -4950,14 +4950,14 @@ impl NoteArchive {
     let collat_id = collateral.id;
     self.collaterals.push(collateral);
     self.current_user_mut().foreign_keys.get_mut("collateral_ids").unwrap().push(collat_id);
-
     self.sort_collaterals();
+    self.reindex_collaterals();
     self.write_to_files();
   }
   pub fn save_general_collateral(&mut self, collateral: Collateral) {
     self.general_collaterals.push(collateral);
-
     self.sort_general_collaterals();
+    self.reindex_general_collaterals();
     self.write_to_files();
   }
   fn update_current_collaterals(&mut self, id: u32) {
@@ -5936,6 +5936,7 @@ impl NoteArchive {
     self.foreign_key.remove("current_general_collateral_id");
   }
   fn reindex_collaterals(&mut self) {
+    self.collaterals.reverse();
     let mut i: u32 = 1;
     let mut changes: HashMap<u32, u32> = HashMap::new();
     for co in &mut self.collaterals {
@@ -5960,13 +5961,16 @@ impl NoteArchive {
         .collect();
       u.foreign_keys.insert(String::from("collateral_ids"), new_ids);
     }
+    self.collaterals.reverse();
   }
   fn reindex_general_collaterals(&mut self) {
+    self.general_collaterals.reverse();
     let mut i: u32 = 1;
     for mut co in &mut self.general_collaterals {
       co.id = i;
       i += 1;
     }
+    self.general_collaterals.reverse();
   }
   fn get_collateral_by_id(&self, id: u32) -> Option<&Collateral> {
     self.collaterals.iter().find(|p| p.id == id)
@@ -7217,6 +7221,7 @@ impl NoteArchive {
   }
   pub fn save_goal(&mut self, goal: Goal) {
     self.goals.push(goal);
+    self.reindex_goals();
     self.write_to_files();
   }
   fn load_goal(&mut self, id: u32) -> std::io::Result<()> {
@@ -7250,6 +7255,7 @@ impl NoteArchive {
       let input = loop {
         let mut choice = String::new();
         println_inst!("Enter new text for this goal, or 'CANCEL' to go back.");
+        println_inst!("DELETE / D to delete.");
         let read_attempt = io::stdin().read_line(&mut choice);
         match read_attempt {
           Ok(_) => break choice.trim().to_string(),
@@ -7297,69 +7303,96 @@ impl NoteArchive {
   }
   fn choose_delete_goal(&mut self) {
     loop {
-      self.display_current_client_goals(None);
-      let input = loop {
-        let mut choice = String::new();
-        println_inst!("| {} | {}", "Enter ID to delete.", "CANCEL / C: cancel");
-        let read_attempt = io::stdin().read_line(&mut choice);
-        match read_attempt {
-          Ok(_) => break choice.to_ascii_lowercase(),
-          Err(e) => {
-            println_err!("Could not read input; try again ({}).", e);
-            thread::sleep(time::Duration::from_millis(10000));
-            continue;
-          }
+      self.display_goal();
+      println_yel!("Are you sure you want to delete this goal?");
+      println_inst!("'YES'/'Y' to confirm.");
+      let mut confirm = String::new();
+      let input_attempt = io::stdin().read_line(&mut confirm);
+      let command = match input_attempt {
+        Ok(_) => confirm.trim().to_string(),
+        Err(e) => {
+          println_err!("Failed to read input: {}", e);
+          thread::sleep(time::Duration::from_secs(1));
+          continue;
         }
       };
-      let input = input.trim();
-    
-      match input {
-        "cancel" | "c" => {
+      match &command[..] {
+        "YES" | "yes" | "Yes" | "Y" | "y" => {
+          self.delete_current_goal();
+          self.reindex_goals();
           break;
         },
         _ => {
-          let id = match input.trim().parse::<u32>() {
-            Ok(num) => num,
-            Err(e) => {
-              println_err!("Could not read input as a number; try again ({}).", e);
-              continue;
-            }
-          };
-          match self.load_goal(id) {
-            Ok(_) => {
-              self.display_goal();
-              println_yel!("Are you sure you want to delete this goal?");
-              println_inst!("'YES'/'Y' to confirm.");
-              let mut confirm = String::new();
-              let input_attempt = io::stdin().read_line(&mut confirm);
-              let command = match input_attempt {
-                Ok(_) => confirm.trim().to_string(),
-                Err(e) => {
-                  println_err!("Failed to read input: {}", e);
-                  thread::sleep(time::Duration::from_secs(1));
-                  continue;
-                }
-              };
-              match &command[..] {
-                "YES" | "yes" | "Yes" | "Y" | "y" => {
-                  self.delete_current_goal();
-                  self.reindex_goals();
-                  continue;
-                },
-                _ => {
-                  break;
-                },
-              }
-            },
-            Err(e) => {
-              println_err!("Unable to load goal with id {}: {}", input, e);
-              continue;
-            },
-          }
+          break;
         },
       }
     }
   }
+  // fn choose_delete_goals(&mut self) {
+  //   loop {
+  //     self.display_current_client_goals(None);
+  //     let input = loop {
+  //       let mut choice = String::new();
+  //       println_inst!("| {} | {}", "Enter ID to delete.", "CANCEL / C: cancel");
+  //       let read_attempt = io::stdin().read_line(&mut choice);
+  //       match read_attempt {
+  //         Ok(_) => break choice.to_ascii_lowercase(),
+  //         Err(e) => {
+  //           println_err!("Could not read input; try again ({}).", e);
+  //           thread::sleep(time::Duration::from_millis(10000));
+  //           continue;
+  //         }
+  //       }
+  //     };
+  //     let input = input.trim();
+    
+  //     match input {
+  //       "cancel" | "c" => {
+  //         break;
+  //       },
+  //       _ => {
+  //         let id = match input.trim().parse::<u32>() {
+  //           Ok(num) => num,
+  //           Err(e) => {
+  //             println_err!("Could not read input as a number; try again ({}).", e);
+  //             continue;
+  //           }
+  //         };
+  //         match self.load_goal(id) {
+  //           Ok(_) => {
+  //             self.display_goal();
+  //             println_yel!("Are you sure you want to delete this goal?");
+  //             println_inst!("'YES'/'Y' to confirm.");
+  //             let mut confirm = String::new();
+  //             let input_attempt = io::stdin().read_line(&mut confirm);
+  //             let command = match input_attempt {
+  //               Ok(_) => confirm.trim().to_string(),
+  //               Err(e) => {
+  //                 println_err!("Failed to read input: {}", e);
+  //                 thread::sleep(time::Duration::from_secs(1));
+  //                 continue;
+  //               }
+  //             };
+  //             match &command[..] {
+  //               "YES" | "yes" | "Yes" | "Y" | "y" => {
+  //                 self.delete_current_goal();
+  //                 self.reindex_goals();
+  //                 continue;
+  //               },
+  //               _ => {
+  //                 break;
+  //               },
+  //             }
+  //           },
+  //           Err(e) => {
+  //             println_err!("Unable to load goal with id {}: {}", input, e);
+  //             continue;
+  //           },
+  //         }
+  //       },
+  //     }
+  //   }
+  // }
   fn delete_goal(&mut self, g_id: u32) {
     self.goals.retain(|g| g.id != g_id);
     self.write_to_files();
@@ -7370,11 +7403,13 @@ impl NoteArchive {
     self.delete_goal(id);
   }
   fn reindex_goals(&mut self) {
+    self.goals.reverse();
     let mut i: u32 = 1;
     for mut g in &mut self.goals {
       g.id = i;
       i += 1;
     }
+    self.goals.reverse();
   }
 
   // note_days
@@ -7925,8 +7960,8 @@ impl NoteArchive {
     println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^7} | {:-^70}", " ID ", " Category ", " Topic/structure ", " Words ", " Content sample " );
     println_on_bg!("{:-^162}", "-");
     for n in notes {
-      let words: Vec<&str> = n.content.split(" ").collect();
       let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None, None);
+      let words: Vec<String> = s.split(" ").map(|word| word.to_string() ).collect();
       let sample = if s.len() > 65 {
         format!("{}{}", String::from(&s[..60]), String::from("..."))
       } else {
@@ -7957,9 +7992,9 @@ impl NoteArchive {
     println_on_bg!("{:-^6} | {:-^35} | {:-^30} | {:-^14} | {:-^79}", " ID ", " Category ", " Topic/structure ", " Word count ", " Content sample " );
     println_on_bg!("{:-^178}", "-");
     for n in notes {
-      let words: Vec<&str> = n.content.split(" ").collect();
       let (s, _) = n.generate_display_content_string_with_blanks(None, None, None, None, None);
-      let sample = if s.len() > 75 {
+      let words: Vec<String> = s.split(" ").map(|word| word.to_string() ).collect();
+      let sample = if s.chars().count() > 75 {
         format!("{}{}", String::from(&s[..73]), String::from("..."))
       } else {
         s
@@ -8429,6 +8464,7 @@ impl NoteArchive {
     ).unwrap_or_else(|e| e);
 
     self.note_days.insert(pos, note_day);
+    self.reindex_note_days();
     self.write_to_files();
   }
   fn choose_delete_note_day(&mut self) {
@@ -10570,48 +10606,6 @@ impl NoteArchive {
 
     let mut note_templates: Vec<NoteTemplate> = vec![];
 
-    for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
-      let i = i as u32;
-      let structure = match def.0 {
-        "Care Plan" => CarePlan,
-        "Intake" => Intake,
-        "Assessment" => Assessment,
-        "SNCD" => Sncd,
-        "Home Visit" => HomeVisit,
-        "Agenda Prep" => AgendaPrep,
-        "Debrief" => Debrief,
-        "Phone Call" => PhoneCall,
-        "Scheduling" => Scheduling,
-        "Sent Email" => SentEmail,
-        "Referral" => Referral,
-        "Custom Structure" => CustomStructure,
-        "Parent Support" => ParentSupport,
-        "Sent Cancellation" => SentCancellation,
-        "Parent Appearance" => ParentAppearance,
-        "Parent Skills" => ParentSkills,
-        "Failed Contact Attempt" => FailedContactAttempt,
-        "Categorized Emails" => CategorizedEmails,
-        "Authorization Requested" => AuthorizationRequested,
-        "Authorization Issued" => AuthorizationIssued,
-        "Collateral Outreach" => CollateralOutreach,
-        "Update From Collateral" => UpdateFromCollateral,
-        "Invited To Meeting" => InvitedToMeeting,
-        "Sent Document" => SentDocument,
-        "Updated Document" => UpdatedDocument,
-        "Discuss Communication" => DiscussCommunication,
-        "Received Verbal Consent" => ReceivedVerbalConsent,
-        "Received Written Consent" => ReceivedWrittenConsent,
-        "Documentation" => DocumentationStructure,
-        "Brainstorm Contribution" => BrainstormContribution,
-        _ => {
-          panic!("Support not added for reading default Structure Type from constant: {}.", def.0);
-        }
-      };
-      let content = String::from(def.1);
-      let nt = NoteTemplate::new(i, structure, false, content, vec![]);
-      note_templates.push(nt);
-    }
-
     for line in lines {
       let line_string = line?;
 
@@ -10683,6 +10677,48 @@ impl NoteArchive {
       note_templates.push(nt);
     }
 
+    for (i, def) in DEFAULT_NOTE_TEMPLATES.iter().enumerate() {
+      let i = i as u32;
+      let structure = match def.0 {
+        "Care Plan" => CarePlan,
+        "Intake" => Intake,
+        "Assessment" => Assessment,
+        "SNCD" => Sncd,
+        "Home Visit" => HomeVisit,
+        "Agenda Prep" => AgendaPrep,
+        "Debrief" => Debrief,
+        "Phone Call" => PhoneCall,
+        "Scheduling" => Scheduling,
+        "Sent Email" => SentEmail,
+        "Referral" => Referral,
+        "Custom Structure" => CustomStructure,
+        "Parent Support" => ParentSupport,
+        "Sent Cancellation" => SentCancellation,
+        "Parent Appearance" => ParentAppearance,
+        "Parent Skills" => ParentSkills,
+        "Failed Contact Attempt" => FailedContactAttempt,
+        "Categorized Emails" => CategorizedEmails,
+        "Authorization Requested" => AuthorizationRequested,
+        "Authorization Issued" => AuthorizationIssued,
+        "Collateral Outreach" => CollateralOutreach,
+        "Update From Collateral" => UpdateFromCollateral,
+        "Invited To Meeting" => InvitedToMeeting,
+        "Sent Document" => SentDocument,
+        "Updated Document" => UpdatedDocument,
+        "Discuss Communication" => DiscussCommunication,
+        "Received Verbal Consent" => ReceivedVerbalConsent,
+        "Received Written Consent" => ReceivedWrittenConsent,
+        "Documentation" => DocumentationStructure,
+        "Brainstorm Contribution" => BrainstormContribution,
+        _ => {
+          panic!("Support not added for reading default Structure Type from constant: {}.", def.0);
+        }
+      };
+      let content = String::from(def.1);
+      let nt = NoteTemplate::new(i, structure, false, content, vec![]);
+      note_templates.push(nt);
+    }
+
     let mut nonduplicates: Vec<NoteTemplate> = vec![];
     for nt in note_templates {
       if !nonduplicates.iter().any(|nondup|
@@ -10733,6 +10769,7 @@ impl NoteArchive {
     ).unwrap_or_else(|e| e);
 
     self.note_templates.insert(pos, note_template);
+    self.reindex_note_templates();
     self.write_to_files();
   }
   // fn current_user_custom_note_templates(&self) -> Vec<&NoteTemplate> {
@@ -10787,11 +10824,13 @@ impl NoteArchive {
     self.foreign_key.remove("current_note_template_id");
   }
   fn reindex_note_templates(&mut self) {
+    self.note_templates.reverse();
     let mut i: u32 = 1;
     for mut nt in &mut self.note_templates {
       nt.id = i;
       i += 1;
     }
+    self.note_templates.reverse();
   }
   fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nt| nt.id == id)
@@ -15523,6 +15562,10 @@ impl NoteArchive {
           "BACK / B: Delete last word",
           "CANCEL / C: Cancel and discard",
         );
+        println_inst!(
+          "| {}",
+          "GENERAL: Choose from general/universal collaterals (e.g., Intake Coordinators/Office Managers Extraordinaire",
+        );
         if hide {
           println_inst!(
             "| {} | {}",
@@ -15729,6 +15772,89 @@ impl NoteArchive {
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
               }
             }
+            "general" => {
+              let mut general_collats: Vec<Collateral> = vec![];
+              loop {
+                let general_collat_ids = general_collats.iter().map(|co| co.id ).collect::<Vec<u32>>();
+                let general_input = loop {
+                  self.display_select_general_collaterals(Some(general_collat_ids.clone()));
+                  println_inst!("ALL: Select all");
+                  let mut choice = String::new();
+                  let read_attempt = io::stdin().read_line(&mut choice);
+                  match read_attempt {
+                    Ok(_) => break choice.trim().to_string(),
+                    Err(e) => {
+                      println_err!("Could not read input; try again ({}).", e);
+                      continue;
+                    }
+                  }
+                };
+                match &general_input.to_ascii_lowercase()[..] {
+                  "new" | "n" => {
+                    let maybe_new_id = self.create_general_collateral_get_id();
+                    match maybe_new_id {
+                      Some(_) => (),
+                      None => (),
+                    }
+                    continue;
+                  },
+                  "edit" | "e" => {
+                    self.choose_edit_general_collaterals();
+                    continue;
+                  },
+                  "all" | "a" => {
+                    general_collats = self.general_collaterals.clone();
+                    break;
+                  },
+                  "quit" | "q" => {
+                    break;
+                  },
+                  "" => {
+                    break;
+                  }
+                  _ => match general_input.parse() {
+                    Ok(num) => {
+                      let collat = match self.general_collaterals.iter().find(|co| co.id == num) {
+                        Some(co) => co.clone(),
+                        None => continue,
+                      };
+                      if !general_collats.iter().any(|co| co == &collat ) {
+                        general_collats.push(collat);
+                        if general_collats.len() == self.general_collaterals.len() {
+                          break;
+                        }
+                      } else {
+                        general_collats.retain(|co| co != &collat );
+                      }
+                    },
+                    Err(e) => {
+                      println_err!("Invalid input: {}; error: {}", general_input, e);
+                      thread::sleep(time::Duration::from_secs(3));
+                      continue;
+                    }
+                  }
+                }
+              }
+              let num_collats = general_collats.len();
+              let general_collaterals_string = if num_collats == 0 {
+                println_err!("No collaterals are saved for the current client.");
+                thread::sleep(time::Duration::from_secs(2));
+                continue;
+              } else if num_collats == 1 {
+                general_collats[0].full_name_and_title()
+              } else if num_collats > 1 {
+                let part1 = general_collats[..num_collats-1].to_owned().iter().map(|co| co.full_name_and_title() ).collect::<Vec<String>>().join(", ");
+                let part2 = general_collats[num_collats-1].full_name_and_title();
+                format!("{} and {}", part1, part2)
+              } else {
+                // else condition is impossible because vec must have positive length
+                String::new()
+              };
+              n.add_blank(Collaterals);
+              n.blanks.insert(current_blank, (Collaterals, general_collaterals_string, vec![]));
+              current_blank += 1;
+              continue;
+            }
             "back" | "b" => {
               n.content = n.content.trim().to_string();
               let last_space = n.content.rfind(' ');
@@ -15835,7 +15961,7 @@ impl NoteArchive {
                 let mut ends_with_punctuation = false;
                 match n.content.chars().last() {
                   Some(c) => {
-                    if String::from("'\"@#$^*`({[<-_?!/.").contains(c) {
+                    if String::from("'\"@#$^*`]})<-_?!/.").contains(c) {
                       ends_with_punctuation = true;
                     }
                   }
@@ -15850,7 +15976,7 @@ impl NoteArchive {
                 }
                 if n.content.trim_end() != n.content
                 || String::new() == n.content
-                || ends_with_punctuation
+                || !ends_with_punctuation
                 || adding_punctuation
                 || apostrophe {
                   n.content.push_str(&choice[..choice.len()-2]);
@@ -16146,7 +16272,7 @@ impl NoteArchive {
     self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), saved_nd_ids);
     
     self.notes.insert(pos, note);
-
+    self.reindex_notes();
     self.write_to_files();
   }
   fn current_user_notes(&self) -> Vec<&Note> {
@@ -16206,6 +16332,7 @@ impl NoteArchive {
     self.foreign_key.remove("current_note_id");
   }
   fn reindex_notes(&mut self) {
+    self.notes.reverse();
     let mut i: u32 = 1;
     let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut n in &mut self.notes {
@@ -16224,6 +16351,7 @@ impl NoteArchive {
         .collect();
       nd.foreign_keys.insert(String::from("note_ids"), new_ids);
     }
+    self.notes.reverse();
   }
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
     self.notes.iter().find(|n| n.id == id)
