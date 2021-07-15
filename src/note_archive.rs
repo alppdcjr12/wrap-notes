@@ -340,7 +340,6 @@ impl NoteArchive {
   pub fn run(&mut self) {
     self.choose_user();
     self.write_to_files();
-
     self.logged_in_action();
   }
   fn display_decrypt_files() {
@@ -594,6 +593,7 @@ impl NoteArchive {
       false,
       false,
       false,
+      Local::now().naive_local().date(),
     );
     let collateral_2 = Collateral::new(
       2,
@@ -607,6 +607,7 @@ impl NoteArchive {
       false,
       false,
       false,
+      Local::now().naive_local().date(),
     );
     let collaterals = vec![collateral_1, collateral_2];
     let p1 = Pronouns::new(
@@ -816,8 +817,17 @@ impl NoteArchive {
 
     println_on_bg!("{:-^58}", "-");
   }
+  fn sort_data_by_dates(&mut self) {
+    self.sort_collaterals();
+    self.reindex_collaterals();
+    self.note_days.sort_by(|a, b| b.date.cmp(&a.date) );
+    self.reindex_note_days();
+    self.notes.sort_by(|a, b| b.date.cmp(&a.date) );
+    self.reindex_notes();
+  }
   fn logged_in_action(&mut self) {
     loop {
+      self.sort_data_by_dates();
       self.display_actions();
 
       let mut choice = String::new();
@@ -3629,6 +3639,7 @@ impl NoteArchive {
   }
   fn choose_client_collaterals(&mut self) {
     loop {
+      self.sort_data_by_dates();
       let input = loop {
         self.display_client_collaterals(None);
         let mut choice = String::new();
@@ -3730,6 +3741,7 @@ impl NoteArchive {
   }
   fn choose_collaterals(&mut self) {
     loop {
+      self.sort_data_by_dates();
       let input = loop {
         self.display_user_collaterals();
         let mut choice = String::new();
@@ -4329,7 +4341,11 @@ impl NoteArchive {
                       }
                     };
                     match &choice[..] {
-                      "YES" | "yes" | "Y" | "y" => break collat.clone(),
+                      "YES" | "yes" | "Y" | "y" => {
+                        let mut c = collat.clone();
+                        c.id = (self.collaterals.len() + 1) as u32;
+                        break c;
+                      }
                       "NO" | "no" | "N" | "n" => continue,
                       "CANCEL" | "Cancel" | "cancel" => return None,
                       _ => println_err!("Invalid command."),
@@ -4658,6 +4674,7 @@ impl NoteArchive {
         primary_contact,
         guardian,
         care_plan_team,
+        Local::now().naive_local().date(),
       ))
     }
 
@@ -4705,6 +4722,7 @@ impl NoteArchive {
         primary_contact,
         guardian,
         care_plan_team,
+        Local::now().naive_local().date(),
       ))
     }
 
@@ -4776,6 +4794,21 @@ impl NoteArchive {
         _ => panic!("Invalid 'care plan team boolean' value stored in file."),
       };
 
+      let date = if values.len() > 11 {
+        let date_vec: Vec<i32> = match &values[11][..] {
+          "" => vec![],
+          _ => values[11]
+            .split("-")
+            .map(|val| val.parse().unwrap())
+            .collect(),
+        };
+
+        let (year, month, day): (i32, u32, u32) = (date_vec[0], date_vec[1] as u32, date_vec[2] as u32);
+        NaiveDate::from_ymd(year, month, day)
+      } else {
+        Local::now().naive_local().date()
+      };
+
       let c = Collateral::new(
         id,
         first_name,
@@ -4787,7 +4820,8 @@ impl NoteArchive {
         indirect_support,
         primary_contact,
         guardian,
-        care_plan_team
+        care_plan_team,
+        date,
       );
       collaterals.push(c);
     }
@@ -4860,6 +4894,21 @@ impl NoteArchive {
         _ => panic!("Invalid 'care plan team boolean' value stored in file."),
       };
 
+      let date = if values.len() > 11 {
+        let date_vec: Vec<i32> = match &values[11][..] {
+          "" => vec![],
+          _ => values[11]
+            .split("-")
+            .map(|val| val.parse().unwrap())
+            .collect(),
+        };
+
+        let (year, month, day): (i32, u32, u32) = (date_vec[0], date_vec[1] as u32, date_vec[2] as u32);
+        NaiveDate::from_ymd(year, month, day)
+      } else {
+        Local::now().naive_local().date()
+      };
+
       let c = Collateral::new(
         id,
         first_name,
@@ -4871,7 +4920,8 @@ impl NoteArchive {
         indirect_support,
         primary_contact,
         guardian,
-        care_plan_team
+        care_plan_team,
+        date,
       );
       general_collaterals.push(c);
     }
@@ -4929,10 +4979,13 @@ impl NoteArchive {
       
       sorted_collaterals.sort_by(| (i_a, _), (i_b, _)| first_client_ids[*i_a].cmp(&first_client_ids[*i_b]) );
       
-    self.collaterals = sorted_collaterals
+    let mut new_collaterals: Vec<Collateral> = sorted_collaterals
       .iter()
       .map(|(_, co)| (*co).clone() )
       .collect();
+
+    new_collaterals.sort_by(|a, b| b.date.cmp(&a.date) );
+    self.collaterals = new_collaterals;
   }
   fn sort_general_collaterals(&mut self) {
 
@@ -4944,14 +4997,17 @@ impl NoteArchive {
         _ => a.institution.cmp(&b.institution),
       }
     );
+    self.general_collaterals.sort_by(|a, b|
+      match (a.institution.as_ref(), b.institution.as_ref()) {
+        (Some(a_i), Some(b_i)) => a_i.cmp(&b_i),
+        _ => b.date.cmp(&a.date),
+      }
+    );
 
   }
   pub fn save_collateral(&mut self, collateral: Collateral) {
-    let collat_id = collateral.id;
     self.collaterals.push(collateral);
-    self.current_user_mut().foreign_keys.get_mut("collateral_ids").unwrap().push(collat_id);
     self.sort_collaterals();
-    self.reindex_collaterals();
     self.write_to_files();
   }
   pub fn save_general_collateral(&mut self, collateral: Collateral) {
@@ -5788,6 +5844,7 @@ impl NoteArchive {
   }
   fn choose_delete_collateral(&mut self) -> bool {
     loop {
+      self.sort_data_by_dates();
       self.display_delete_collateral();
       println_yel!("Are you sure you want to delete this collateral?");
       println_inst!("| {} | {}", "YES / Y: confirm", "Any other key to cancel");
@@ -5936,7 +5993,6 @@ impl NoteArchive {
     self.foreign_key.remove("current_general_collateral_id");
   }
   fn reindex_collaterals(&mut self) {
-    self.collaterals.reverse();
     let mut i: u32 = 1;
     let mut changes: HashMap<u32, u32> = HashMap::new();
     for co in &mut self.collaterals {
@@ -5961,16 +6017,13 @@ impl NoteArchive {
         .collect();
       u.foreign_keys.insert(String::from("collateral_ids"), new_ids);
     }
-    self.collaterals.reverse();
   }
   fn reindex_general_collaterals(&mut self) {
-    self.general_collaterals.reverse();
     let mut i: u32 = 1;
     for mut co in &mut self.general_collaterals {
       co.id = i;
       i += 1;
     }
-    self.general_collaterals.reverse();
   }
   fn get_collateral_by_id(&self, id: u32) -> Option<&Collateral> {
     self.collaterals.iter().find(|p| p.id == id)
@@ -7403,13 +7456,11 @@ impl NoteArchive {
     self.delete_goal(id);
   }
   fn reindex_goals(&mut self) {
-    self.goals.reverse();
     let mut i: u32 = 1;
     for mut g in &mut self.goals {
       g.id = i;
       i += 1;
     }
-    self.goals.reverse();
   }
 
   // note_days
@@ -7785,6 +7836,7 @@ impl NoteArchive {
   fn choose_note_days(&mut self) {
     let mut display_all = false;
     loop {
+      self.sort_data_by_dates();
       self.foreign_key.remove("current_client_id");
       let input = loop {
         if display_all {
@@ -8063,7 +8115,7 @@ impl NoteArchive {
   }
   fn choose_note_day(&mut self) {
     loop {
-
+      self.sort_data_by_dates();
       self.display_note_day();
 
       println_inst!(
@@ -8464,7 +8516,6 @@ impl NoteArchive {
     ).unwrap_or_else(|e| e);
 
     self.note_days.insert(pos, note_day);
-    self.reindex_note_days();
     self.write_to_files();
   }
   fn choose_delete_note_day(&mut self) {
@@ -10769,7 +10820,6 @@ impl NoteArchive {
     ).unwrap_or_else(|e| e);
 
     self.note_templates.insert(pos, note_template);
-    self.reindex_note_templates();
     self.write_to_files();
   }
   // fn current_user_custom_note_templates(&self) -> Vec<&NoteTemplate> {
@@ -10824,13 +10874,11 @@ impl NoteArchive {
     self.foreign_key.remove("current_note_template_id");
   }
   fn reindex_note_templates(&mut self) {
-    self.note_templates.reverse();
     let mut i: u32 = 1;
     for mut nt in &mut self.note_templates {
       nt.id = i;
       i += 1;
     }
-    self.note_templates.reverse();
   }
   fn get_note_template_option_by_id(&self, id: u32) -> Option<&NoteTemplate> {
     self.note_templates.iter().find(|nt| nt.id == id)
@@ -15483,31 +15531,31 @@ impl NoteArchive {
       Err(e) => panic!("Failed to generate Note with custom structure and '{}' as note category: {}.", format!("{}", ncat), e),
     };
     
-    // prepare current client collaterals to display for entering into Note
-    let collats = self.current_client_collaterals().iter().cloned().cloned().collect::<Vec<Collateral>>();
-    let mut collats_iter = collats.iter();
-    let mut col_rows: Vec<Vec<Collateral>> = vec![];
-    'adding_rows: loop {
-      let mut new_vec: Vec<Collateral> = vec![];
-      for _ in 1..=4 {
-        match collats_iter.next() {
-          Some(col) => new_vec.push(col.to_owned()),
-          None => {
-            col_rows.push(new_vec);
-            break 'adding_rows;
-          }
-        }
-      }
-
-      col_rows.push(new_vec.clone());
-    }
-
     // add blanks
     let mut current_blank = 1;
     let mut hide = false;
     let mut youth_added = false;
     let mut hide_inst = false;
     loop {
+      // prepare current client collaterals to display for entering into Note
+      // inside loop because it is possible to add a collateral
+      let collats = self.current_client_collaterals().iter().cloned().cloned().collect::<Vec<Collateral>>();
+      let mut collats_iter = collats.iter();
+      let mut col_rows: Vec<Vec<Collateral>> = vec![];
+      'adding_rows: loop {
+        let mut new_vec: Vec<Collateral> = vec![];
+        for _ in 1..=4 {
+          match collats_iter.next() {
+            Some(col) => new_vec.push(col.to_owned()),
+            None => {
+              col_rows.push(new_vec);
+              break 'adding_rows;
+            }
+          }
+        }
+
+        col_rows.push(new_vec.clone());
+      }
       n.blanks = self.autofill_note_blanks(n.clone()).blanks.clone();
       print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
       n.display_content(Some(0), None);
@@ -15919,7 +15967,7 @@ impl NoteArchive {
             _ => {
               match &choice.trim().parse::<u32>() {
                 Ok(num) => {
-                  if !self.current_user_collaterals().iter().any(|col| col.id == *num ) {
+                  if !self.current_client_collaterals().iter().any(|col| col.id == *num ) {
                     ()
                   } else {
                     match self.get_collateral_by_id(*num) {
@@ -16272,7 +16320,6 @@ impl NoteArchive {
     self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), saved_nd_ids);
     
     self.notes.insert(pos, note);
-    self.reindex_notes();
     self.write_to_files();
   }
   fn current_user_notes(&self) -> Vec<&Note> {
@@ -16332,7 +16379,6 @@ impl NoteArchive {
     self.foreign_key.remove("current_note_id");
   }
   fn reindex_notes(&mut self) {
-    self.notes.reverse();
     let mut i: u32 = 1;
     let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut n in &mut self.notes {
@@ -16351,7 +16397,6 @@ impl NoteArchive {
         .collect();
       nd.foreign_keys.insert(String::from("note_ids"), new_ids);
     }
-    self.notes.reverse();
   }
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
     self.notes.iter().find(|n| n.id == id)

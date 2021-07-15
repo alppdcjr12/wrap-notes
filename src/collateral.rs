@@ -1,4 +1,5 @@
 use std::fmt;
+use chrono::{NaiveDate, Datelike};
 
 #[derive(Debug, Clone)]
 pub struct Collateral {
@@ -13,6 +14,7 @@ pub struct Collateral {
   pub primary_contact: bool,
   pub guardian: bool,
   pub care_plan_team: bool,
+  pub date: NaiveDate,
 }
 
 impl PartialEq for Collateral {
@@ -56,6 +58,7 @@ impl Collateral {
     primary_contact: bool,
     guardian: bool,
     care_plan_team: bool,
+    date: NaiveDate,
   ) -> Collateral {
     Collateral {
       id,
@@ -69,6 +72,7 @@ impl Collateral {
       primary_contact,
       guardian,
       care_plan_team,
+      date,
     }
   }
   pub fn full_name(&self) -> String {
@@ -163,7 +167,7 @@ impl fmt::Display for Collateral {
     let last_name = self.last_name.replace(" | ", " / ");
     write!(
       f,
-      "{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}\n",
+      "{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {}-{}-{}\n",
       &self.id,
       &first_name[..],
       &last_name[..],
@@ -175,6 +179,9 @@ impl fmt::Display for Collateral {
       primary_contact,
       guardian,
       care_plan_team,
+      &self.date.year(),
+      &self.date.month(),
+      &self.date.day(),
     )
   }
 }
