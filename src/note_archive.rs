@@ -818,12 +818,40 @@ impl NoteArchive {
     println_on_bg!("{:-^58}", "-");
   }
   fn sort_data_by_dates(&mut self) {
+    let current_collateral_id: Option<u32> = self.foreign_key.get("current_collateral_id").map_or(None, |v| Some(*v) );
+    let current_note_day_id: Option<u32> = self.foreign_key.get("current_note_day_id").map_or(None, |v| Some(*v) );
+    let current_note_id: Option<u32> = self.foreign_key.get("current_note_id").map_or(None, |v| Some(*v) );
     self.sort_collaterals();
-    self.reindex_collaterals();
+    let new_collateral_id = self.reindex_collaterals(current_collateral_id);
     self.note_days.sort_by(|a, b| b.date.cmp(&a.date) );
-    self.reindex_note_days();
+    let new_note_day_id = self.reindex_note_days(current_note_day_id);
     self.notes.sort_by(|a, b| b.date.cmp(&a.date) );
-    self.reindex_notes();
+    let new_note_id = self.reindex_notes(current_note_id);
+    let new_collateral_id_return_option = match new_collateral_id {
+      Some(collateral_id) => self.foreign_key.insert(String::from("current_collateral_id"), collateral_id),
+      None => None,
+    };
+    match new_collateral_id_return_option {
+      _ => (),
+    }
+    let new_note_day_id_return_option = match new_note_day_id {
+      Some(note_day_id) => {
+        let current_client = self.get_client_by_note_day_id(note_day_id).unwrap();
+        self.foreign_key.insert(String::from("current_client_id"), current_client.id);
+        self.foreign_key.insert(String::from("current_note_day_id"), note_day_id)
+      }
+      None => None,
+    };
+    match new_note_day_id_return_option {
+      _ => (),
+    }
+    let new_note_id_return_option = match new_note_id {
+      Some(note_id) => self.foreign_key.insert(String::from("current_note_id"), note_id),
+      None => None,
+    };
+    match new_note_id_return_option {
+      _ => (),
+    }
   }
   fn logged_in_action(&mut self) {
     loop {
@@ -1586,7 +1614,10 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note_day(),
       }
     }
-    self.reindex_note_days();
+    let new_note_day_id = self.reindex_note_days(None);
+    match new_note_day_id {
+      _ => (),
+    }
     let current_notes = self.current_user_notes().iter().map(|n| n.id ).collect::<Vec<u32>>();
     for n_id in current_notes {
       match self.load_note(n_id) {
@@ -1594,7 +1625,10 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note(),
       }
     }
-    self.reindex_notes();
+    let new_note_id = self.reindex_notes(None);
+    match new_note_id {
+      _ => (),
+    }
 
     let id = self.foreign_key.get("current_user_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("user"), id);
@@ -2699,7 +2733,10 @@ impl NoteArchive {
         Ok(_) => self.delete_current_collateral(),
       }
     }
-    self.reindex_collaterals();
+    let new_collateral_id = self.reindex_collaterals(None);
+    match new_collateral_id {
+      _ => (),
+    }
     let current_goals = self.current_client_goals().iter().map(|co| co.id ).collect::<Vec<u32>>();
     for g_id in current_goals {
       match self.load_goal(g_id) {
@@ -2715,7 +2752,7 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note_day(),
       }
     }
-    self.reindex_note_days();
+    let new_note_day_id = self.reindex_note_days(None);
     let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("client"), id);
     for u in &mut self.users {
@@ -5861,7 +5898,10 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_collateral();
-          self.reindex_collaterals();
+          let new_collateral_id = self.reindex_collaterals(None);
+          match new_collateral_id {
+            _ => (),
+          }
           self.write_to_files();
           break true;
         }
@@ -5992,14 +6032,24 @@ impl NoteArchive {
     self.general_collaterals.retain(|c| c.id != id);
     self.foreign_key.remove("current_general_collateral_id");
   }
-  fn reindex_collaterals(&mut self) {
+  fn reindex_collaterals(&mut self, current_id: Option<u32>) -> Option<u32> {
     let mut i: u32 = 1;
     let mut changes: HashMap<u32, u32> = HashMap::new();
+    let mut new_current_id: Option<u32> = None;
     for co in &mut self.collaterals {
       if co.id == i {
+        ()
       } else {
         changes.insert(co.id, i);
         co.id = i;
+      }
+      match current_id {
+        Some(id) => {
+          if co.id == id {
+            new_current_id = Some(i);
+          }
+        },
+        None => (),
       }
       i += 1;
     }
@@ -6017,6 +6067,7 @@ impl NoteArchive {
         .collect();
       u.foreign_keys.insert(String::from("collateral_ids"), new_ids);
     }
+    new_current_id
   }
   fn reindex_general_collaterals(&mut self) {
     let mut i: u32 = 1;
@@ -7880,6 +7931,25 @@ impl NoteArchive {
       match input {
         "new" | "n" => {
           let maybe_new_id = self.create_note_day_get_id();
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
+          println!("ndid: {:?}", maybe_new_id);
           match maybe_new_id {
             Some(id) => {
               match self.load_note_day(id) {
@@ -8536,7 +8606,10 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_note_day();
-          self.reindex_note_days();
+          let new_note_day_id = self.reindex_note_days(None);
+          match new_note_day_id {
+            _ => (),
+          }
           self.write_to_files();
           break;
         }
@@ -8554,18 +8627,31 @@ impl NoteArchive {
         Ok(_) => self.delete_current_note(),
       }
     }
-    self.reindex_notes();
+    let new_note_id = self.reindex_notes(None);
+    match new_note_id {
+      _ => (),
+    }
     let id = self.foreign_key.get("current_note_day_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("note_day"), id);
     self.note_days.retain(|nd| nd.id != id);
     self.foreign_key.remove("current_note_day_id");
   }
-  fn reindex_note_days(&mut self) {
+  fn reindex_note_days(&mut self, current_id: Option<u32>) -> Option<u32> {
     let mut i: u32 = 1;
+    let mut new_current_id: Option<u32> = None;
     for mut nd in &mut self.note_days {
       nd.id = i;
+      match current_id {
+        Some(id) => {
+          if nd.id == id {
+            new_current_id = Some(i);
+          }
+        },
+        None => (),
+      }
       i += 1;
     }
+    new_current_id
   }
   fn get_note_day_by_id(&self, id: u32) -> Option<&NoteDay> {
     self.note_days.iter().find(|nd| nd.id == id)
@@ -16347,7 +16433,10 @@ impl NoteArchive {
       match &command[..] {
         "YES" | "yes" | "Yes" | "Y" | "y" => {
           self.delete_current_note();
-          self.reindex_notes();
+          let new_note_id = self.reindex_notes(None);
+          match new_note_id {
+            _ => (),
+          }
           self.write_to_files();
           break;
         }
@@ -16378,8 +16467,9 @@ impl NoteArchive {
     self.current_note_day_mut().foreign_keys.insert(String::from("note_ids"), new_ids);
     self.foreign_key.remove("current_note_id");
   }
-  fn reindex_notes(&mut self) {
+  fn reindex_notes(&mut self, current_id: Option<u32>) -> Option<u32> {
     let mut i: u32 = 1;
+    let mut new_current_id: Option<u32> = None;
     let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut n in &mut self.notes {
       if n.id == i {
@@ -16387,6 +16477,14 @@ impl NoteArchive {
       } else {
         changes.insert(n.id, i);
         n.id = i;
+      }
+      match current_id {
+        Some(id) => {
+          if n.id == id {
+            new_current_id = Some(i);
+          }
+        },
+        None => (),
       }
       i += 1;
     }
@@ -16397,6 +16495,7 @@ impl NoteArchive {
         .collect();
       nd.foreign_keys.insert(String::from("note_ids"), new_ids);
     }
+    new_current_id
   }
   fn get_note_option_by_id(&self, id: u32) -> Option<&Note> {
     self.notes.iter().find(|n| n.id == id)
