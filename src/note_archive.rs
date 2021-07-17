@@ -836,7 +836,7 @@ impl NoteArchive {
     }
     let new_note_day_id_return_option = match new_note_day_id {
       Some(note_day_id) => {
-        let current_client = self.get_client_by_note_day_id(note_day_id).unwrap();
+        let current_client = self.get_client_by_note_day_id(note_day_id).unwrap().clone();
         self.foreign_key.insert(String::from("current_client_id"), current_client.id);
         self.foreign_key.insert(String::from("current_note_day_id"), note_day_id)
       }
@@ -2753,6 +2753,9 @@ impl NoteArchive {
       }
     }
     let new_note_day_id = self.reindex_note_days(None);
+    match new_note_day_id {
+      _ => (),
+    }
     let id = self.foreign_key.get("current_client_id").unwrap().to_owned();
     self.delete_from_blanks(String::from("client"), id);
     for u in &mut self.users {
@@ -7931,25 +7934,6 @@ impl NoteArchive {
       match input {
         "new" | "n" => {
           let maybe_new_id = self.create_note_day_get_id();
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
-          println!("ndid: {:?}", maybe_new_id);
           match maybe_new_id {
             Some(id) => {
               match self.load_note_day(id) {
