@@ -15878,6 +15878,11 @@ impl NoteArchive {
                 }
                 n.foreign_keys.insert(String::from("collateral_ids"), old_ids);
               } else {
+                  if self.current_client_collaterals().len() == 0 {
+                    println_err!("No collaterals are saved for the current client.");
+                    thread::sleep(time::Duration::from_secs(2));
+                    continue;
+                  }
                   println_inst!("No Care Plan Team members found for current client.");
                   println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
                   let mut s = String::new();
