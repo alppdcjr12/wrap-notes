@@ -15869,6 +15869,7 @@ impl NoteArchive {
                 let id_vec = cpt.iter().map(|co| co.id ).collect::<Vec<u32>>();
                 n.add_blank(CarePlanTeam);
                 n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
+                current_blank += 1;
                 let mut old_ids = n.foreign_keys["collateral_ids"].clone();
                 for new_id in id_vec {
                   if !old_ids.clone().iter().any(|o_id| o_id == &new_id ) {
@@ -15887,6 +15888,7 @@ impl NoteArchive {
                   let (blank_string, id_vec) = self.select_collaterals();
                   n.add_blank(CarePlanTeam);
                   n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
+                  current_blank += 1;
                   n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
               }
             }
