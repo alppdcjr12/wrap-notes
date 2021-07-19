@@ -3084,7 +3084,7 @@ impl NoteArchive {
     println_on_bg!("{:-^116}", "-");
     println_on_bg!("{:-^116}", heading);
     println_on_bg!("{:-^116}", " These collaterals can be selected for any youth. ");
-    println_on_bg!("{:-^116}", " (E.g. intake coordinators, insurance contacts, Office Managers extraordinaire.) ");
+    println_on_bg!("{:-^116}", " (E.g. intake coordinators, insurance contacts, office managers extraordinaire.) ");
     println_on_bg!("{:-^116}", "-");
     println_on_bg!("{:-^10} | {:-^30} | {:-^70}", " ID ", " Name ", " Title ");
 
@@ -15682,7 +15682,7 @@ impl NoteArchive {
         );
         println_inst!(
           "| {}",
-          "GENERAL: Choose from general/universal collaterals (e.g., Intake Coordinators/Office Managers Extraordinaire",
+          "GENERAL: Choose from general/universal collaterals (E.g. intake coordinators, insurance contacts, office managers extraordinaire.)",
         );
         if hide {
           println_inst!(
