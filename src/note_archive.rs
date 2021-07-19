@@ -6040,12 +6040,6 @@ impl NoteArchive {
     let mut changes: HashMap<u32, u32> = HashMap::new();
     let mut new_current_id: Option<u32> = None;
     for co in &mut self.collaterals {
-      if co.id == i {
-        ()
-      } else {
-        changes.insert(co.id, i);
-        co.id = i;
-      }
       match current_id {
         Some(id) => {
           if co.id == id {
@@ -6053,6 +6047,12 @@ impl NoteArchive {
           }
         },
         None => (),
+      }
+      if co.id == i {
+        ()
+      } else {
+        changes.insert(co.id, i);
+        co.id = i;
       }
       i += 1;
     }
@@ -8624,7 +8624,6 @@ impl NoteArchive {
     let mut i: u32 = 1;
     let mut new_current_id: Option<u32> = None;
     for mut nd in &mut self.note_days {
-      nd.id = i;
       match current_id {
         Some(id) => {
           if nd.id == id {
@@ -8633,6 +8632,7 @@ impl NoteArchive {
         },
         None => (),
       }
+      nd.id = i;
       i += 1;
     }
     new_current_id
@@ -16456,12 +16456,6 @@ impl NoteArchive {
     let mut new_current_id: Option<u32> = None;
     let mut changes: HashMap<u32, u32> = HashMap::new();
     for mut n in &mut self.notes {
-      if n.id == i {
-        ()
-      } else {
-        changes.insert(n.id, i);
-        n.id = i;
-      }
       match current_id {
         Some(id) => {
           if n.id == id {
@@ -16469,6 +16463,12 @@ impl NoteArchive {
           }
         },
         None => (),
+      }
+      if n.id == i {
+        ()
+      } else {
+        changes.insert(n.id, i);
+        n.id = i;
       }
       i += 1;
     }
