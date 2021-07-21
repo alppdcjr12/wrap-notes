@@ -81,7 +81,7 @@ pub const DEFAULT_NOTE_TEMPLATES: [(&'static str, &'static str); 28] = [
       (---pc---)'s hopes and expectations for Wraparound using \
       open-ended questions to explore changes the family wants to make. \
       (---cu---). \
-      The team elicited (---pc---)'s experience of challenges (---pb1@9@---) and \
+      The team elicited (---pc---)'s experience of challenges (---pb1@8@---) and \
       (---c---) have faced, including (---c---)'s (---yt---). \
       The team elicited and reflected the family's strengths, including (---cu---). \
       (---u---) explained the Wraparound process. \

@@ -338,9 +338,13 @@ pub fn get_spacing_buffers(last_content_char: Option<char>, next_content_char: O
 
 impl NoteArchive {
   pub fn run(&mut self) {
-    self.choose_user();
-    self.write_to_files();
-    self.logged_in_action();
+    match self.choose_user() {
+      Some(_) => {
+        self.write_to_files();
+        self.logged_in_action();
+      },
+      None => (),
+    }
   }
   fn display_decrypt_files() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
@@ -888,7 +892,10 @@ impl NoteArchive {
           self.foreign_key.remove("current_note_day_id");
           self.foreign_key.remove("current_note_template_id");
           self.foreign_key.remove("current_goal_id");
-          self.choose_user();
+          match self.choose_user() {
+            Some(_) => (),
+            None => break,
+          }
         },
         "p" | "prns" | "pronouns" => {
           let chosen_pronoun = self.choose_pronouns_option();
@@ -902,7 +909,12 @@ impl NoteArchive {
         "delete" | "d" => {
           match self.choose_delete_user() {
             Some(_) => {
-              self.choose_user();
+              loop {
+                match self.choose_user() {
+                  _ => break,
+                }
+
+              }
             }
             None => (),
           }
@@ -1143,13 +1155,13 @@ impl NoteArchive {
       )),
     }
   }
-  fn choose_user(&mut self) -> u32 {
-    let verified_id = 'outer: loop {
+  fn choose_user(&mut self) -> Option<u32> {
+    'outer: loop {
       self.display_users();
       let chosen_id = loop {
         let input = loop {
           let mut choice = String::new();
-          println_inst!("| {} | {}", "Enter ID to choose user.", "NEW / N: new user");
+          println_inst!("| {} | {} | {}", "Enter ID to choose user.", "NEW / N: new user", "QUIT / Q: Quit program");
           let read_attempt = io::stdin().read_line(&mut choice);
           match read_attempt {
             Ok(_) => break choice.to_ascii_lowercase(),
@@ -1164,12 +1176,15 @@ impl NoteArchive {
           "new" | "n" => {
             let maybe_user_id = self.create_user_get_id();
             match maybe_user_id {
-              Some(num) => break num,
+              Some(num) => break Some(num),
               None => continue 'outer,
             }
           }
+          "cancel" | "c" | "quit" | "q" => {
+            break None;
+          }
           _ => match input.parse() {
-            Ok(num) => break num,
+            Ok(num) => break Some(num),
             Err(e) => {
               println_err!("Could not read input as a number; try again ({}).", e);
               continue;
@@ -1177,16 +1192,20 @@ impl NoteArchive {
           },
         }
       };
-      match self.load_user(chosen_id) {
-        Ok(_) => break chosen_id,
-        Err(e) => {
-          println_err!("Unable to load user with id {}: {}", chosen_id, e);
-          thread::sleep(time::Duration::from_secs(1));
-          continue;
-        }
+      match chosen_id {
+        Some(id) => {
+          match self.load_user(id) {
+            Ok(_) => break Some(id),
+            Err(e) => {
+              println_err!("Unable to load user with id {}: {}", id, e);
+              thread::sleep(time::Duration::from_secs(1));
+              continue;
+            }
+          }
+        },
+        None => break None,
       }
-    };
-    verified_id
+    }
   }
   fn create_user_get_id(&mut self) -> Option<u32> {
     let user = loop {
@@ -3511,7 +3530,7 @@ impl NoteArchive {
           "and",
           collats[collats.len()-1].full_name_and_title()
         )
-      } else if collats.len() > 0{
+      } else if collats.len() > 0 {
         collats[0].full_name_and_title()
       } else {
         String::new()
@@ -3671,8 +3690,10 @@ impl NoteArchive {
         "and",
         collats[collats.len()-1].full_name_and_title()
       )
-    } else {
+    } else if collats.len() > 0 {
       collats[0].full_name_and_title()
+    } else {
+      String::new()
     };
     let id_vec: Vec<u32> = collats.clone().iter().map(|co| co.id ).collect();
     (blank_string, id_vec)
@@ -8901,7 +8922,7 @@ impl NoteArchive {
             self.display_structure_types();
             print_inst!("Choose a new structure for the selected note template from the menu.");
             print!("\n");
-            print_inst!("Enter 'CANCEL' at any time to cancel.");
+            print_inst!("'CANCEL/QUIT' at any time to cancel.");
             print!("\n");
             let mut structure_choice = String::new();
             let structure_attempt = io::stdin().read_line(&mut structure_choice);
@@ -10275,11 +10296,11 @@ impl NoteArchive {
   fn display_structure_types(&self) {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     println_on_bg!("{:-^96}", "-");
-    println_on_bg!("{:-^10} | {:-^40} | {:-^40}", " ID ", " Template type ", " Abbreviation ");
+    println_on_bg!("{: ^10} | {: ^40} | {: ^40}", " ID ", " Note/template type ", " Abbreviation ");
     println_on_bg!("{:-^96}", "-");
     for (i, st) in StructureType::iterator().enumerate() {
       println_on_bg!(
-        "{:-^10} | {:-^40} | {:-^40}",
+        "{: ^10} | {: ^40} | {: ^40}",
         i+1,
         &format!(" {} ", st),
         &format!(" {} ", st.abbreviate()),
@@ -12073,8 +12094,10 @@ impl NoteArchive {
                         "and",
                         collats[collats.len()-1].full_name_and_title()
                       )
-                    } else {
+                    } else if collats.len() > 0 {
                       collats[0].full_name_and_title()
+                    } else {
+                      String::new()
                     };
                     let id_vec: Vec<u32> = collats.iter().map(|co| co.id ).collect();
                     self.current_note_mut().blanks.insert(i, (b.clone(), blank_string, id_vec.clone()));
@@ -12649,6 +12672,7 @@ impl NoteArchive {
                       for (i, m) in RE_BLANK.find_iter(&n_content).enumerate() {
                         if i + 1 == blank_focus_id.unwrap() as usize {
                           new_content = format!("{}{}", &n_content[..m.start()], &n_content[m.end()..]);
+                          self.current_note_mut().blanks.remove(&((i+1) as u32));
                         }
                       }
                       self.current_note_mut().content = new_content;
@@ -13074,7 +13098,7 @@ impl NoteArchive {
         }
       };
       match &ncat_input[..] {
-        "quit" | "q" => return None,
+        "quit" | "q" | "cancel" | "c" => return None,
         _ => match ncat_input.parse::<usize>() {
           Err(e) => {
             println_err!("Failed to parse input as a number: {}. Try again.", e);
@@ -13399,14 +13423,14 @@ impl NoteArchive {
                       if collats.len() > 0 {
                         let blank_string = if collats.len() > 1 {
                           String::from("they")
-                      } else {
-                        match self.get_pronouns_by_id(collats[0].id) {
-                          Some(p) => p.subject.clone(),
-                          None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
-                        }
-                      };
-                      n.blanks.insert(i, (b.clone(), blank_string, id_vec));
-                    }
+                        } else {
+                          match self.get_pronouns_by_id(collats[0].id) {
+                            Some(p) => p.subject.clone(),
+                            None => panic!("The selected collateral's pronouns cannot be entered due to a missing record."),
+                          }
+                        };
+                        n.blanks.insert(i, (b.clone(), blank_string, id_vec));
+                      }
                     },
                     PrimaryContact => {
                       let pcs = self.current_client_collaterals().iter()
@@ -15878,23 +15902,23 @@ impl NoteArchive {
                 }
                 n.foreign_keys.insert(String::from("collateral_ids"), old_ids);
               } else {
-                  if self.current_client_collaterals().len() == 0 {
-                    println_err!("No collaterals are saved for the current client.");
-                    thread::sleep(time::Duration::from_secs(2));
-                    continue;
-                  }
-                  println_inst!("No Care Plan Team members found for current client.");
-                  println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
-                  let mut s = String::new();
-                  let input_attempt = io::stdin().read_line(&mut s);
-                  match input_attempt {
-                    _ => (),
-                  }
-                  let (blank_string, id_vec) = self.select_collaterals();
-                  n.add_blank(CarePlanTeam);
-                  n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
-                  current_blank += 1;
-                  n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
+                if self.current_client_collaterals().len() == 0 {
+                  println_err!("No collaterals are saved for the current client.");
+                  thread::sleep(time::Duration::from_secs(2));
+                  continue;
+                }
+                println_inst!("No Care Plan Team members found for current client.");
+                println_inst!("Press ENTER to choose or edit collaterals on the next menu.");
+                let mut s = String::new();
+                let input_attempt = io::stdin().read_line(&mut s);
+                match input_attempt {
+                  _ => (),
+                }
+                let (blank_string, id_vec) = self.select_collaterals();
+                n.add_blank(CarePlanTeam);
+                n.blanks.insert(current_blank, (CarePlanTeam, blank_string, id_vec.clone()));
+                current_blank += 1;
+                n.foreign_keys.insert(String::from("collateral_ids"), id_vec);
               }
             }
             "general" => {
